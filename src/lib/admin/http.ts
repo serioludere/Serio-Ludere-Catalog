@@ -65,9 +65,21 @@ export const adminRuntime = {
   driveScopeOk: undefined as boolean | undefined,
 };
 
-if (!adminRuntime.configured && (ADMIN_PASSWORD_HASH || ADMIN_SESSION_SECRET)) {
+// Warn whenever the panel is off, not only when it is half-configured, and name the variable at
+// fault. A deployment that set neither said nothing at all, so the only symptom was /admin
+// answering 404 with no reason anywhere in the log — the same trap the `[customer]` warning in
+// ../customer/http.ts avoids by firing unconditionally. Logged on the first request that loads this
+// module rather than at boot, which is when that one does too.
+if (!adminRuntime.configured) {
+  const missing = [
+    !ADMIN_PASSWORD_HASH && 'ADMIN_PASSWORD_HASH is unset',
+    !ADMIN_SESSION_SECRET
+      ? 'ADMIN_SESSION_SECRET is unset'
+      : ADMIN_SESSION_SECRET.length < 32 && 'ADMIN_SESSION_SECRET is shorter than 32 characters',
+  ].filter((reason): reason is string => Boolean(reason));
   console.warn(
-    '[admin] only one of ADMIN_PASSWORD_HASH / ADMIN_SESSION_SECRET is set (or the secret is shorter than 32 characters): /admin stays disabled (404).',
+    `[admin] /admin and /api/admin stay disabled (404): ${missing.join('; ')}. Set both in this ` +
+      "process's environment and restart; /api/health reports `adminConfigured`.",
   );
 }
 

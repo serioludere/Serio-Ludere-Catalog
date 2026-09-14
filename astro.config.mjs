@@ -126,6 +126,12 @@ export default defineConfig({
   },
   security: {
     checkOrigin: true,
+    // Behind Hostinger LiteSpeed the TCP socket is plain http, so Astro derives http:// as its
+    // own origin while the browser sends Origin: https://preview.serioludere.com. checkOrigin
+    // then rejects every POST as cross-site and the admin login cannot be used. Trusting
+    // X-Forwarded-Proto for this one host restores the match; a blanket [{}] would trust any
+    // domain and is not needed here.
+    allowedDomains: [{ hostname: 'preview.serioludere.com', protocol: 'https' }],
     // Hash-based CSP (ADR D1): Astro hashes its own inlined scripts and scoped styles; the pre-paint
     // script and the Google Fonts stylesheet are the only additions. Delivered as a <meta> tag, so
     // frame protection lives in src/middleware.ts (X-Frame-Options) instead of frame-ancestors.

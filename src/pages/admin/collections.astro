@@ -1,0 +1,286 @@
+---
+// /admin/collections — collections (reorder ▲/▼, inline edit, add) and tags (chips + edit panel,
+// add) on one page (docs/ADMIN_SPEC.md §2.1, §8.3). Wired by src/scripts/admin/collections.ts.
+// Renaming never rewrites rugs (they store display names); the rug counts show what would detach.
+export const prerender = false;
+
+import AdminLayout from '../../components/admin/AdminLayout.astro';
+import Button from '../../components/ui/Button.astro';
+import Icon from '../../components/ui/Icon.astro';
+import Input from '../../components/ui/Input.astro';
+import Modal from '../../components/ui/Modal.astro';
+import EmptyState from '../../components/ui/EmptyState.astro';
+import { fetchAdminSnapshot, type AdminSnapshot , syncLabel } from '../../lib/admin/read.ts';
+import { getClient } from '../../lib/runtime.ts';
+import { consoleLogger, serializeError } from '../../lib/sheets/errors.ts';
+import { jsonForScript } from '../../lib/view.ts';
+
+let snapshot: AdminSnapshot | undefined;
+let error: string | undefined;
+try {
+  snapshot = await fetchAdminSnapshot(getClient(), { logger: consoleLogger });
+} catch (e) {
+  const safe = serializeError(e);
+  consoleLogger.error('admin collections read failed', { error: safe });
+  error = safe.message;
+}
+const rugs = snapshot?.rugs ?? [];
+const rugCount = (name: string): number =>
+  rugs.filter((r) => r.collection.trim().toLowerCase() === name.trim().toLowerCase()).length;
+const tagCount = (name: string): number =>
+  rugs.filter((r) => r.tags.some((t) => t.trim().toLowerCase() === name.trim().toLowerCase())).length;
+const collections = (snapshot?.collections ?? [])
+  .slice()
+  .sort((a, b) => (a.sortOrder ?? 1e9) - (b.sortOrder ?? 1e9) || a.name.localeCompare(b.name));
+const tags = snapshot?.tags ?? [];
+const data = {
+  collections: collections.map((c) => ({ ...c, rugs: rugCount(c.name) })),
+  tags: tags.map((t) => ({ ...t, rugs: tagCount(t.name) })),
+};
+
+// Figma 25:236 — the topbar's status line. Empty on every screen until now.
+const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
+---
+
+<AdminLayout title="Serio Ludere — Collections" active="collections" meta={syncLabel_}>
+  {error && <div class="msg err on">Could not read the sheet: {error}</div>}
+
+  <section class="stack" aria-labelledby="h-collections">
+    <div class="page-head">
+      <div class="page-head__titles">
+        <h1 class="page-head__title">Collections</h1>
+        <p class="page-head__count" id="collectionCount">
+          {collections.length}
+          {collections.length === 1 ? 'collection' : 'collections'}
+        </p>
+      </div>
+      <span class="page-head__rule"></span>
+      <Button icon="plus" data-open="new-collection">New collection</Button>
+    </div>
+
+    <p class="hint">
+      Order = the tabs on the site. Renaming a collection does not rewrite its rugs — they keep the old name
+      and drop out of the tab until re-saved.
+    </p>
+    <div id="m5" class="msg"></div>
+
+    <div class="crow__columns" aria-hidden="true">
+      <span class="crow__col-name">Collection</span>
+      <span class="crow__rule"></span>
+      <span class="crow__col-count">Products</span>
+    </div>
+
+    <ul class="crow-list" id="collectionList" aria-labelledby="h-collections">
+      {
+        collections.map((c, i) => (
+          <li
+            class="crow"
+            data-id={c.id}
+            data-version={c.version}
+            data-name={c.name}
+            data-order={String(c.sortOrder ?? i + 1)}
+            data-slug={c.slug}
+          >
+            <div class="crow__head">
+              <span class="crow__name">{c.name}</span>
+              <span class="crow__rule" />
+              <span class="crow__count">
+                {rugCount(c.name)} {rugCount(c.name) === 1 ? 'product' : 'products'}
+              </span>
+              {/* The reorder pair was two ghost buttons whose entire label was the text character
+                  ▲ / ▼, so they rendered as bare black triangles in the heading font, wedged between
+                  the muted count and the letterspaced EDIT — stray typography rather than controls.
+                  `chevron-up` is not in the handoff's icon set (69:2, pinned by icons.test.ts), so
+                  "up" is the same chevron rotated rather than a nineteenth glyph.
+                  Disabled at the ends: `move()` already returns silently when the index is out of
+                  range, so these used to take focus and do nothing. */}
+              <button
+                type="button"
+                class="btn btn--ghost crow__move crow__move--up"
+                data-act="up"
+                disabled={i === 0}
+                aria-label={`Move ${c.name} up`}
+              >
+                <Icon name="chevron-down" />
+              </button>
+              <button
+                type="button"
+                class="btn btn--ghost crow__move"
+                data-act="down"
+                disabled={i === collections.length - 1}
+                aria-label={`Move ${c.name} down`}
+              >
+                <Icon name="chevron-down" />
+              </button>
+              <button type="button" class="btn btn--ghost" data-act="edit">
+                Edit
+              </button>
+            </div>
+            {c.description && <p class="crow__description">{c.description}</p>}
+            {c.description && (
+              <button type="button" class="crow__more" data-act="expand">
+                See more
+              </button>
+            )}
+            <div class="crow__edit" hidden>
+              <input class="input" data-field="name" value={c.name} aria-label={`Name of ${c.name}`} />
+              <input
+                class="input"
+                data-field="description"
+                value={c.description}
+                aria-label={`Description of ${c.name}`}
+              />
+              <input
+                class="input"
+                data-field="cover"
+                value={c.coverImageUrl ?? ''}
+                aria-label={`Cover of ${c.name}`}
+              />
+              <button type="button" class="btn btn--primary" data-act="save">
+                Save
+              </button>
+              <button type="button" class="btn btn--ghost" data-act="cancel">
+                Cancel
+              </button>
+            </div>
+          </li>
+        ))
+      }
+    </ul>
+
+    {
+      collections.length === 0 && (
+        <EmptyState
+          type="first-run"
+          title="No collections yet"
+          message="Collections group the catalogue for the buyer. A rug can sit in several at once."
+        />
+      )
+    }
+
+    <p class="hint">
+      Each collection carries its own description. Collapsed clamps it to one line so the list stays
+      scannable; See more expands that row in place rather than navigating away, so two collections can be
+      compared side by side.
+    </p>
+
+    <Modal id="new-collection" title="New collection">
+      <p>Collections group the catalogue for the buyer. A rug can sit in several at once.</p>
+      <div class="modal__fields">
+        <Input name="c_name" label="Name" placeholder="Shiraz" hint="Required, and must be unique." />
+        <Input
+          type="textarea"
+          name="c_description"
+          label="Description"
+          hint="Shown to buyers on the collection. The list clamps it to one line and expands on See more."
+        />
+        <Input name="c_cover" label="Cover image (Drive id / URL)" />
+      </div>
+      <Fragment slot="footer">
+        <Button style="ghost" data-close="new-collection">Cancel</Button>
+        <Button id="btnAddCollection" icon="plus">Create collection</Button>
+      </Fragment>
+    </Modal>
+
+    <div id="m6" class="msg"></div>
+  </section>
+
+  <section class="stack" aria-labelledby="h-tags">
+    <h3 id="h-tags">Tags</h3>
+    <p class="hint">Click a tag to rename it or change its colour. Rugs keep the tag names they store.</p>
+    <div class="chips" id="tagList" role="group" aria-label="Tags">
+      {
+        tags.map((t) => (
+          <button
+            type="button"
+            class="chip"
+            data-id={t.id}
+            data-version={t.version}
+            data-name={t.name}
+            data-color={t.color ?? ''}
+            data-rugs={tagCount(t.name)}
+          >
+            {t.name}
+          </button>
+        ))
+      }
+    </div>
+    {tags.length === 0 && <div class="msg busy on">No tags yet.</div>}
+    <div id="tagEdit" class="fields" hidden>
+      <div class="f">
+        <label for="t_name">Tag name</label>
+        <input id="t_name" autocomplete="off" />
+      </div>
+      <div class="f">
+        <label for="t_color">Colour</label>
+        <input id="t_color" type="color" value="#bb3e03" />
+      </div>
+      <div class="f">
+        <label class="chk" for="t_noColor"><input type="checkbox" id="t_noColor" /> no colour</label>
+      </div>
+      <div class="f actions">
+        <button class="go" id="btnSaveTag" type="button">Save tag</button>
+        <button class="go alt" id="btnCancelTag" type="button">Cancel</button>
+      </div>
+      <p class="hint" id="tagEditHint"></p>
+    </div>
+    <div id="m7" class="msg"></div>
+    <div class="fields">
+      <div class="f">
+        <label for="nt_name">New tag</label>
+        <input id="nt_name" placeholder="Name" autocomplete="off" />
+      </div>
+      <div class="f">
+        <label for="nt_color">Colour (optional)</label>
+        <input id="nt_color" type="color" value="#bb3e03" />
+      </div>
+      <div class="f">
+        <label class="chk" for="nt_noColor"><input type="checkbox" id="nt_noColor" checked /> no colour</label
+        >
+      </div>
+    </div>
+    <div class="actions">
+      <button class="go" id="btnAddTag" type="button">Add tag</button>
+    </div>
+    <div id="m8" class="msg"></div>
+  </section>
+
+  {/* Cloned by scripts/admin/collections.ts so a rebuilt row carries the same icon markup as the
+      server's, instead of the literal ▲ character it used to insert. */}
+  <template id="moveTpl"
+    ><button type="button" class="btn btn--ghost crow__move"><Icon name="chevron-down" /></button></template
+  >
+
+  <script is:inline type="application/json" id="admin-data" set:html={jsonForScript(data)} />
+  <script>
+    import { initCollections } from '../../scripts/admin/collections.ts';
+    import { initOverlays } from '../../scripts/ui/overlay.ts';
+    initCollections();
+    initOverlays();
+  </script>
+</AdminLayout>
+
+<style is:global>
+  [hidden] {
+    display: none !important;
+  }
+  td.acts {
+    white-space: nowrap;
+  }
+  td.acts .chip + .chip {
+    margin-left: 4px;
+  }
+  td input {
+    padding: 6px 8px;
+    font-size: 13px;
+    min-width: 120px;
+  }
+  .chip .swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    margin-right: 6px;
+    border: 1px solid var(--rule);
+    vertical-align: middle;
+  }
+</style>

@@ -1,0 +1,286 @@
+---
+// /admin/clients — unique link generator, client list (revoke / restore) and the saves report from
+// Votes (docs/ADMIN_SPEC.md §2.1, §6, §8.3). The link is always regenerated from the runtime SITE_URL.
+// Wired by src/scripts/admin/clients.ts; the report is loaded through GET /api/admin/clients/report.
+export const prerender = false;
+
+import AdminLayout from '../../components/admin/AdminLayout.astro';
+import Button from '../../components/ui/Button.astro';
+import Modal from '../../components/ui/Modal.astro';
+import CredentialPanel from '../../components/ui/CredentialPanel.astro';
+import { clientLink, withoutSecrets } from '../../lib/admin/clients.ts';
+import EmptyState from '../../components/ui/EmptyState.astro';
+import CopyButton from '../../components/ui/CopyButton.astro';
+import { adminRuntime } from '../../lib/admin/http.ts';
+import { fetchAdminSnapshot, type AdminSnapshot , syncLabel } from '../../lib/admin/read.ts';
+import { getClient } from '../../lib/runtime.ts';
+import { consoleLogger, serializeError } from '../../lib/sheets/errors.ts';
+import { jsonForScript } from '../../lib/view.ts';
+
+let snapshot: AdminSnapshot | undefined;
+let error: string | undefined;
+try {
+  snapshot = await fetchAdminSnapshot(getClient(), { logger: consoleLogger });
+} catch (e) {
+  const safe = serializeError(e);
+  consoleLogger.error('admin clients read failed', { error: safe });
+  error = safe.message;
+}
+// `withoutSecrets` first: this object is serialised into the page as JSON (see `admin-data` below),
+// so a bare `...c` published every customer's stored scrypt hash to anything that could read the
+// admin HTML. The link is still regenerated from the runtime SITE_URL rather than trusted from the
+// sheet (ADMIN_SPEC 3.2).
+const clients = (snapshot?.clients ?? []).map((c) => ({
+  ...withoutSecrets(c),
+  link: clientLink(adminRuntime.siteUrl, c.code),
+}));
+const data = { clients, siteOrigin: new URL(adminRuntime.siteUrl).origin };
+
+// Figma 25:236 — the topbar's status line. Empty on every screen until now.
+const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
+---
+
+<AdminLayout title="Serio Ludere — Customers" active="clients" meta={syncLabel_}>
+  {error && <div class="msg err on">Could not read the sheet: {error}</div>}
+
+  {
+    /*
+      F3 · Customers — new customer link, Figma 112:2968.
+
+      PART OF F3 CANNOT BE BUILT, and this is the reason rather than an omission. The frame draws a
+      live "Their link will be" preview that "updates as you type", and errors with "hala-nasser is
+      already taken. Try hala-nasser-2" — both assume the route is DERIVED from the name. The owner's
+      requirement of 2026-09-13 replaced that with a scrambled, randomly generated route
+      (src/lib/admin/clients.ts): half the name's letters, shuffled, with digits and separators woven
+      in. There is nothing to preview, because the code does not exist until the server makes it, and
+      no "-2" to suggest, because a retry simply draws a different code.
+
+      So the preview row is replaced by a line that says what actually happens, and the taken-code
+      case is reported by the server's own 409 (see the create endpoint's precheck) rather than
+      guessed at while typing. F3's title, field and password guidance are used verbatim.
+    */
+  }
+  <Modal id="new-client" title="New customer link">
+    <p>
+      One name. The link is generated for you — a scrambled address that cannot be guessed from the name — and
+      the password is shown once, immediately after.
+    </p>
+    <div class="modal__fields">
+      <div class="row">
+        <div class="grow">
+          <input
+            id="cl_name"
+            placeholder="Client name — e.g. Nadia"
+            autocomplete="off"
+            aria-label="Client name"
+          />
+        </div>
+        <div class="grow">
+          <input id="cl_note" placeholder="Note (optional)" autocomplete="off" aria-label="Note" />
+        </div>
+        <div class="grow">
+          <input
+            id="cl_pw"
+            placeholder="Password (optional)"
+            autocomplete="off"
+            aria-label="Password"
+            maxlength="200"
+          />
+        </div>
+        <button class="go" id="btnGenerate" type="button">Generate link</button>
+      </div>
+      <p class="hint">
+        Generated on create, in a readable four-part format so it survives WhatsApp and can be read aloud.
+        Shown once, immediately after. Type your own instead if you would rather; eight characters or more.
+      </p>
+      <div id="m8" class="msg"></div>
+      {
+        /*
+          F4 · Customers — link created (reveal once), Figma 52:1115 / 20:91.
+
+          This replaces a pair of separate Copy and Copy-password buttons. The component
+          documentation is explicit that separating them is the failure mode the design removes:
+          one button copies BOTH, because a link and a password are pasted into one message, and
+          copying them one at a time is how half a credential gets sent.
+
+          Populated by src/scripts/admin/clients.ts after the create/reset response — the plaintext
+          exists only in that response body and is never re-read from the sheet.
+        */
+      }
+      <div id="linkOut" class="stack" hidden>
+        <CredentialPanel url="" password="" />
+        <p class="hint">
+          Code <span class="mono" id="linkCode"></span> — <span id="linkNote"></span>
+        </p>
+      </div>
+    </div>
+  </Modal>
+
+  <section class="stack" aria-labelledby="h-clients">
+    <div class="page-head">
+      <div class="page-head__titles">
+        <h1 class="page-head__title">Customers</h1>
+        <p class="page-head__count">
+          {clients.length}
+          {clients.length === 1 ? 'link' : 'links'}
+        </p>
+      </div>
+      <span class="page-head__rule"></span>
+      <Button icon="plus" data-open="new-client">New customer link</Button>
+    </div>
+    <div id="m9" class="msg"></div>
+    {
+      clients.length === 0 && (
+        <EmptyState
+          type="first-run"
+          title="No customer links yet"
+          message="A customer link is a private preview of the catalogue, opened with a password you give them."
+        />
+      )
+    }
+    <div class="table-wrap" hidden={clients.length === 0}>
+      <table id="clientTable">
+        <thead>
+          <tr>
+            <th>Customer</th>
+            <th>Link</th>
+            <th>Created</th>
+            <th>Visited</th>
+            <th>Last seen</th>
+            <th>Active</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            clients.map((c) => (
+              <tr data-code={c.code} data-version={c.version} data-status={c.status}>
+                {/* F5 (52:1207): the name is the way in to a buyer's detail screen. */}
+                <td>
+                  <a href={`/admin/clients/${encodeURIComponent(c.code)}`}>{c.name}</a>
+                </td>
+                <td class="mono">
+                  <a href={c.link} target="_blank" rel="noopener">
+                    {c.link}
+                  </a>
+                </td>
+                <td>{c.createdAt}</td>
+                <td>
+                  <span class="badge" data-visits>
+                    Not visited
+                  </span>
+                </td>
+                <td data-last-seen>—</td>
+                <td>
+                  <label class="toggle">
+                    <input
+                      type="checkbox"
+                      role="switch"
+                      class="toggle__track"
+                      data-act="toggle"
+                      checked={c.status === 'active'}
+                      aria-label={`Link active for ${c.name}`}
+                    />
+                  </label>
+                </td>
+                <td class="acts">
+                  <CopyButton value={c.link} label="Copy link" />
+                  <button type="button" class="btn btn--ghost" data-act="password">
+                    Reset password
+                  </button>
+                </td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+    {/* The caption describes the table, so it goes when the table does. The old empty state was a
+        `.msg busy` — the INFO/loading tone — printed under a live seven-column header with no rows
+        beneath it, so a first run looked like a screen still fetching rather than a screen waiting
+        for you to do something. */}
+    {clients.length > 0 && (
+      <p class="hint">
+        Copy-link is the most-used action here — the control changes icon, label and colour for 2 seconds. A
+        toast alone is missable when copying several in a row.
+      </p>
+    )}
+  </section>
+
+  <section class="stack" aria-labelledby="h-access">
+    <h3 id="h-access">Access log</h3>
+    <p class="hint">
+      Who has opened their link, and when. One entry per visit; repeat views inside half an hour count once.
+      The table above fills in from the same read.
+    </p>
+    <div class="actions">
+      <button class="go alt" id="btnVisits" type="button">Refresh</button>
+    </div>
+    <div id="m11" class="msg"></div>
+    <div id="visitsOut"></div>
+  </section>
+
+  <section class="stack" aria-labelledby="h-report">
+    <h3 id="h-report">Client saves</h3>
+    <div class="actions">
+      <button class="go alt" id="btnReport" type="button">Refresh</button>
+    </div>
+    <div id="m10" class="msg"></div>
+    <div id="reportOut"></div>
+  </section>
+
+  <dialog id="pwDialog">
+    <form method="dialog" class="stack">
+      <h3 id="pwDialogTitle">Reset password</h3>
+      <p class="hint">
+        Leave it blank to generate one. The new password is shown once and replaces the old one immediately;
+        the buyer stays signed in until their session expires.
+      </p>
+      <input
+        id="pwDialogInput"
+        placeholder="New password (optional)"
+        autocomplete="off"
+        aria-label="New password"
+        maxlength="200"
+      />
+      <p class="msg err" id="pwDialogErr" hidden></p>
+      <div class="actions">
+        <button class="go" id="pwDialogOk" type="button">Set password</button>
+        <button class="go alt" id="pwDialogCancel" type="button">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  {/* The row builder in scripts/admin/clients.ts rebuilds a whole <tr> after a toggle or a password
+      reset. It used to hand-roll the copy control with no icons and no `data-copied-label`, so the
+      icon swap this page's own caption promises had nothing to act on, and the rebuilt row silently
+      differed from the one the server sent. Cloning this template makes both paths the same DOM by
+      construction, and the SVG stays in the Icon component instead of being retyped in JS. */}
+  <template id="copyTpl"><CopyButton value="" label="Copy link" /></template>
+
+  <script is:inline type="application/json" id="admin-data" set:html={jsonForScript(data)} />
+  <script>
+    import { initClients } from '../../scripts/admin/clients.ts';
+    import { initOverlays } from '../../scripts/ui/overlay.ts';
+    import { initCopy } from '../../scripts/ui/copy.ts';
+    initClients();
+    initOverlays();
+    // Drives the Credential Panel's three copy controls. Bound once here: the panel is
+    // server-rendered (hidden) so its buttons already exist, and copy.ts reads data-copy at click
+    // time, which is what lets clients.ts re-point them when the response arrives.
+    initCopy();
+  </script>
+</AdminLayout>
+
+<style is:global>
+  [hidden] {
+    display: none !important;
+  }
+  .report .chips {
+    margin-top: 8px;
+  }
+  .report .status-archived {
+    color: var(--ink-soft);
+    text-decoration: line-through;
+  }
+</style>

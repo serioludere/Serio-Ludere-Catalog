@@ -3,10 +3,11 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import { loadCatalogue } from '../../lib/runtime.ts';
+import { publicCachePolicy } from '../../lib/site/http.ts';
 import { catalogueDto } from '../../lib/votes/dto.ts';
 
 export const GET: APIRoute = async (context) => {
-  context.cache.set({ maxAge: 60, swr: 60, tags: ['sheet'] });
+  context.cache.set(publicCachePolicy());
   const { snapshot, error } = await loadCatalogue();
   if (!snapshot) {
     context.cache.set(false);

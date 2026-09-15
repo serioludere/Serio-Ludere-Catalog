@@ -1,4 +1,5 @@
-/* The customer preview's design system — Figma "05 · Customer Preview", file Zzv9aXvSad5NTZc9rFRFxx.
+/* The customer preview's design system — Figma "05 · Customer Preview", file Zzv9aXvSad5NTZc9rFRFxx,
+ * with the 2026-09 UI refresh layered on it.
  *
  * This is a separate stylesheet on purpose. `catalogue.css` is the byte-for-byte parity record of the
  * original public catalogue page and `editorial.css` is the design pass layered over it; the private
@@ -6,7 +7,8 @@
  * of overrides. The public catalogue is untouched by anything in here.
  *
  * Values come from the Figma file's own variables (see src/styles/modes.css, which holds them as
- * tokens) and from measuring the frames. Nothing here is eyeballed from a screenshot.
+ * tokens) and from measuring the frames. The refresh adds states — hover, active, focus — and
+ * touch-target minimums; it does not add a colour that is not already in the token layer.
  *
  * Layout facts worth stating once, because every screen repeats them:
  *   - page gutter 48 desktop / 16 at 390;
@@ -25,9 +27,11 @@
   font-size: var(--text-base);
   line-height: var(--leading-body);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .pv *,
@@ -61,6 +65,16 @@
   color: inherit;
 }
 
+.pv ::selection {
+  background: var(--subtle);
+  color: var(--ink);
+}
+
+/* The user-agent `[hidden]` rule loses to any author `display`; state it once for the realm. */
+.pv [hidden] {
+  display: none !important;
+}
+
 /* The focus ring is ink, never the brand red: red next to a destructive action reads as an error. */
 .pv :focus-visible {
   outline: var(--focus-ring);
@@ -80,6 +94,7 @@
   line-height: var(--leading-heading);
   text-transform: uppercase;
   letter-spacing: 0;
+  text-wrap: balance;
 }
 
 .pv-h3 {
@@ -108,6 +123,8 @@
 .pv-lede {
   font-size: var(--text-lg);
   color: var(--ink-soft);
+  max-width: 60ch;
+  text-wrap: pretty;
 }
 
 .pv-muted {
@@ -134,37 +151,49 @@
 
 /* ---------- controls ---------- */
 
-/* Input: bg/surface on a hairline, padding 10.4 / 12.8, both deliberately off the 4pt grid.
+/* Input: bg/surface on a control edge, padding 10.4 / 12.8, both deliberately off the 4pt grid.
    Focus takes the brand red because the storefront has no other focus colour for form fields. */
 .pv-input {
   width: 100%;
   background: var(--surface);
-  border: var(--rule-width) solid var(--rule);
+  border: var(--rule-width) solid var(--border-control);
   border-radius: var(--radius);
   padding: var(--input-y) var(--input-x);
   font: inherit;
   font-size: var(--text-base);
   color: var(--ink);
+  transition: border-color var(--motion-quick) var(--motion-ease);
 }
 
 .pv-input::placeholder {
   color: var(--ink-muted);
+  opacity: 1;
 }
 
+.pv-input:hover {
+  border-color: var(--border-strong);
+}
+
+/* The red ring is drawn with an INSET OUTLINE, not a box-shadow. Forced-colors / Windows High
+   Contrast does not paint box-shadow at all, so the previous `outline: none` plus shadow left this
+   field — the one a buyer types their password into — with no focus indicator whatsoever in that
+   mode. An outline is repainted by the OS in its own highlight colour instead. Same total 2px
+   (1px border + 1px inset ring) and the same red everywhere else, so nothing changes visually. */
 .pv-input:focus-visible {
   border-color: var(--brand);
-  outline: none;
-  box-shadow: inset 0 0 0 1px var(--brand);
+  outline: var(--rule-width) solid var(--brand);
+  outline-offset: calc(-1 * var(--rule-width));
 }
 
 /* Button: Inter 700 / 12 / uppercase / square. Hover is the storefront's own primary hover, the
-   brand red, not a tint of black. */
+   brand red, not a tint of black; the press goes one step darker so a tap reads as a tap. */
 .pv-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--tight);
   width: 100%;
+  min-height: 44px;
   padding: var(--input-y) var(--control-x);
   border: 0;
   border-radius: var(--radius);
@@ -177,11 +206,15 @@
   text-transform: uppercase;
   letter-spacing: 0;
   cursor: pointer;
-  transition: background-color var(--motion-transition, 150ms) ease;
+  transition: background-color var(--motion-quick) var(--motion-ease);
 }
 
 .pv-btn:hover {
-  background: var(--brand);
+  background: var(--action-primary-hover);
+}
+
+.pv-btn:active {
+  background: var(--action-primary-active);
 }
 
 .pv-btn[aria-busy='true'] {
@@ -204,6 +237,12 @@
 .pv-header .pv-wordmark {
   text-decoration: none;
   white-space: nowrap;
+  letter-spacing: 0.02em;
+  transition: color var(--motion-quick) var(--motion-ease);
+}
+
+.pv-header .pv-wordmark:hover {
+  color: var(--brand);
 }
 
 /* `.pv-who` (Figma 53:37, the buyer's name on the right of the catalog header) was removed on
@@ -277,6 +316,7 @@
 .pv-footer a {
   color: var(--ink-soft);
   text-decoration: none;
+  text-underline-offset: 3px;
 }
 
 /* The email is the one footer link drawn in ink (130:281 / 131:297). Its `<p>` already carries --ink
@@ -289,6 +329,7 @@
 
 .pv-footer a:hover {
   color: var(--brand);
+  text-decoration: underline;
 }
 
 /* ---------- section heads ---------- */
@@ -303,6 +344,17 @@
   display: flex;
   align-items: center;
   gap: var(--stack-md);
+}
+
+/* ---------- empty / error states ---------- */
+
+.pv-state a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.pv-state a:hover {
+  color: var(--brand);
 }
 
 /* ---------- 390 ----------

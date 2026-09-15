@@ -36,15 +36,23 @@ const PRIMARY = [
 ] as const;
 
 const SECONDARY = [
-  { key: 'audit', href: '/admin/audit', icon: 'list', label: 'Audit log' },
+  { key: 'audit', href: '/admin/audit', icon: 'list', label: 'Activity log' },
   { key: 'google', href: '/admin/google', icon: 'refresh', label: 'Google' },
 ] as const;
 ---
 
 <div class:list={['shell', className]}>
   <nav class="shell__nav" aria-label="Admin sections">
+    {
+      /* The wordmark goes to /admin, which is what AdminLayout's own note has always claimed ("`/admin`
+        is reached from the wordmark, not from a nav tab") while this href pointed at /admin/rugs.
+        Nothing in the UI linked to /admin at all, so the dashboard — the only screen carrying the
+        health strip, the dropped-row count and the settings warnings — was reachable only by typing
+        the URL. The nav rail deliberately lights nothing there; that decision only works if there is
+        a way in. */
+    }
     <div class="shell__brand">
-      <a class="shell__wordmark" href="/admin/rugs">Serio Ludere</a>
+      <a class="shell__wordmark" href="/admin">Serio Ludere</a>
       <span class="shell__realm">preview admin</span>
     </div>
 
@@ -77,6 +85,17 @@ const SECONDARY = [
 
   <div class="shell__main">
     <header class="shell__topbar">
+      {
+        /* Mobile-only route back to the dashboard. The rail's wordmark above is the ONLY link to
+          /admin anywhere in the codebase, and the tab bar hides its container below 767px — so on a
+          phone the dashboard (health strip, dropped-row count, settings warnings, quick links) was
+          reachable only by typing the URL, and since login sends you to /admin by default
+          (src/lib/admin/login.ts:188) the first screen after signing in became a dead end.
+          It goes here rather than into the tab bar because that bar is drawn as exactly three cells;
+          a fourth would shrink every label below the size the file sets. Hidden at >=768, where the
+          rail already shows the wordmark and this would only duplicate it. */
+      }
+      <a class="shell__home" href="/admin">Serio Ludere</a>
       <h1 class="shell__title">{title}</h1>
       {meta && <span class="shell__meta">{meta}</span>}
       <slot name="topbar" />

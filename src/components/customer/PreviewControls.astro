@@ -81,7 +81,8 @@ const currencies = fromSheet.length
   .pv-seg {
     display: inline-flex;
     height: 36px;
-    border: var(--rule-width) solid var(--rule);
+    /* --border-control, not --rule: these are pressable edges, so WCAG 1.4.11's 3:1 applies. */
+    border: var(--rule-width) solid var(--border-control);
     border-radius: var(--radius);
     background: var(--surface);
     overflow: hidden;
@@ -120,7 +121,7 @@ const currencies = fromSheet.length
     display: inline-flex;
     align-items: center;
     min-height: 36px;
-    border: var(--rule-width) solid var(--rule);
+    border: var(--rule-width) solid var(--border-control);
     border-radius: var(--radius);
     background: var(--surface);
   }
@@ -157,8 +158,12 @@ const currencies = fromSheet.length
   /* The Unit Toggle documentation: at 390 the imperial segment abbreviates to "ft" so the toggle and
      the picker clear 358px beside the title without truncating it. */
   @media (max-width: 767px) {
+    /* Wraps for the same reason the title row does: three controls no longer fit the 358px the
+       two-control frame was measured against, and a select cannot shrink below its own label. */
     .pv-controls {
       gap: var(--stack-sm);
+      flex-wrap: wrap;
+      justify-content: flex-end;
     }
 
     .pv-seg-long {

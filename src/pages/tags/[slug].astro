@@ -9,6 +9,7 @@ import Header from '../../components/Header.astro';
 import Layout from '../../components/Layout.astro';
 import RugGrid from '../../components/RugGrid.astro';
 import { loadCatalogue, ratesFor } from '../../lib/runtime.ts';
+import { publicCachePolicy } from '../../lib/site/http.ts';
 import { activeRugs, cardView, rugsWithTag, SLUG_PARAM_RE } from '../../lib/view.ts';
 
 const slug = Astro.params.slug ?? '';
@@ -29,7 +30,7 @@ if (error || !snapshot) {
   Astro.response.status = 404;
   Astro.response.statusText = 'Not Found';
 } else {
-  Astro.cache.set({ maxAge: 60, swr: 60, tags: ['sheet'] });
+  Astro.cache.set(publicCachePolicy());
 }
 const cards = found ? found.rugs.map((r) => cardView(r, catalogue)) : [];
 const state =
@@ -53,6 +54,13 @@ const n = cards.length;
       </section>
     )
   }
-  <RugGrid cards={cards} rates={rates} state={state} error={Boolean(error)} eager={4} />
+  <RugGrid
+    cards={cards}
+    rates={rates}
+    state={state}
+    error={Boolean(error)}
+    eager={4}
+    heading={found ? `Tag · ${found.name}` : 'Catalogue'}
+  />
   <Footer />
 </Layout>

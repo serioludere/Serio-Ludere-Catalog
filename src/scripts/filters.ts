@@ -45,6 +45,7 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
   const cards = [...doc.querySelectorAll<HTMLElement>('[data-card]')];
   const countEl = nav.querySelector<HTMLElement>('[data-liked-count]');
   const likedChip = nav.querySelector<HTMLButtonElement>('button[data-filter="liked"]');
+  const live = doc.querySelector<HTMLElement>('[data-grid-live]');
 
   let active = 'all';
 
@@ -66,8 +67,33 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
       chip.classList.toggle('is-on', on);
       chip.setAttribute('aria-pressed', on ? 'true' : 'false');
     }
+    /* Carry the chosen chip onto every card link, so opening a rug and coming back lands on the
+       same filtered grid. The detail page reads `?tag=` and rebuilds its back link and its prev/next
+       run from it; without this the parameter only ever existed on the grid's own URL and any
+       in-page route out of the detail page silently dropped the buyer's filter. */
+    const q = active === 'all' ? '' : `?${PARAM}=${encodeURIComponent(active)}`;
+    for (const card of cards) {
+      for (const a of card.querySelectorAll<HTMLAnchorElement>('a[href]')) {
+        // Rebuilt from the base each time, so switching chips replaces rather than appends.
+        const base = (a.getAttribute('href') ?? '').split('?')[0];
+        if (base) a.setAttribute('href', base + q);
+      }
+    }
+
+    const shown = cards.filter((c) => !c.hidden).length;
     const empty = doc.querySelector<HTMLElement>('[data-grid-empty]');
-    if (empty) empty.hidden = cards.some((c) => !c.hidden);
+    if (empty) empty.hidden = shown > 0;
+    announce(shown);
+  };
+
+  /* Written only when the number actually moves. `apply()` also runs on load and on every reaction
+     while the shortlist is open, and re-setting identical text re-fires the live region — which is
+     how a status line turns into a screen reader repeating itself. */
+  let said: number | undefined;
+  const announce = (shown: number): void => {
+    if (!live || shown === said) return;
+    said = shown;
+    live.textContent = shown === 1 ? '1 rug shown' : `${shown} rugs shown`;
   };
 
   /** The shortlist count, and the chip itself, only exist when the visitor has liked something. */

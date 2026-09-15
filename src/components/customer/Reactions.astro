@@ -1,39 +1,33 @@
 ---
-// The Like / Dislike control (Figma 18:54, documented at 18:100).
+// The Like control (Figma 18:54, documented at 18:100; owner, 2026-09-15: the dislike half removed).
 //
-// Straight from the component documentation, because every line of it is load-bearing:
+// From the component documentation, because every line of it is load-bearing:
 //
 //   "Geometry is extracted, not designed: settings_data.blocks[wishlist-product-card] gives
 //    border_radius 100, icon_size 18, icon_thickness 1, #000000 on #ffffff. This is the storefront's
 //    own wishlist control."
-//
-//   showDislike is "OFF on catalogue and shortlist cards — scanning a grid deserves one clear
-//   positive action, and a row of X buttons reads as an invitation to reject. ON at product detail,
-//   where the buyer has actually looked and a negative signal is worth something."
 //
 //   "Syncing: the tapped circle keeps its filled state at 45% glyph opacity plus a 4px muted dot.
 //    Reactions buffer 2-3s and flush in batches, so this state is common — it must read as 'noted,
 //    not yet stored'. Failed: the optimistic state is HELD and a 12px alert glyph appears. Retry is
 //    automatic."
 //
-//   "Accessibility: real focusable buttons with text labels ('Like this rug' / 'Not for me'), never
-//    icon-only. Pressed maps to aria-pressed; the buffered pending state is deliberately NOT
-//    announced."
+//   "Accessibility: real focusable buttons with text labels ('Like this rug'), never icon-only.
+//    Pressed maps to aria-pressed; the buffered pending state is deliberately NOT announced."
 //
 // The last sentence is why the syncing dot and the alert glyph are `aria-hidden`: they are visible,
 // and silent. The label text is a visually hidden span rather than an aria-label so voice control
 // can address the button by the words the design gives it.
 //
-// The two glyphs are the exported 16×16 assets, unchanged except that the hard-coded stroke becomes
-// `currentColor` — which is what the icon documentation asks for: "Stroke binds to text/primary so
-// it inherits its surface." Each sits at the top-left of an 18×18 box, as drawn.
+// The glyph is the exported 16×16 asset, unchanged except that the hard-coded stroke becomes
+// `currentColor` — which is what the icon documentation asks for. It sits at the top-left of an
+// 18×18 box, as drawn.
 interface Props {
   rugId: string;
-  /** `card` renders the heart alone; `detail` adds the dismiss circle. */
+  /** Where the like is offered: `card` on the grid, `detail` on the rug's own page. */
   mode?: 'card' | 'detail';
 }
 const { rugId, mode = 'card' } = Astro.props;
-const showDislike = mode === 'detail';
 ---
 
 <div class="pv-react" data-react data-rug={rugId}>
@@ -56,27 +50,6 @@ const showDislike = mode === 'detail';
     </span>
     <span class="sr-only">Like this rug</span>
   </button>
-
-  {
-    showDislike && (
-      <button
-        type="button"
-        class="pv-circle"
-        data-vote="dislike"
-        data-source={mode}
-        data-rug={rugId}
-        aria-pressed="false"
-      >
-        <span class="pv-glyph" aria-hidden="true">
-          <svg viewBox="0 0 16 16" width="16" height="16" fill="none">
-            <path d="M4 4L12 12" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" />
-            <path d="M12 4L4 12" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-        </span>
-        <span class="sr-only">Not for me</span>
-      </button>
-    )
-  }
 
   <span class="pv-sync" data-react-sync aria-hidden="true"></span>
   <span class="pv-alert" data-react-alert aria-hidden="true">
@@ -107,7 +80,7 @@ const showDislike = mode === 'detail';
     width: 32px;
     height: 32px;
     padding: 0;
-    border: var(--rule-width) solid var(--rule);
+    border: var(--rule-width) solid var(--border-control);
     border-radius: var(--radius-pill);
     background: var(--surface-raised);
     color: var(--ink);
@@ -124,9 +97,7 @@ const showDislike = mode === 'detail';
      "the heart like button should transform to filled red when liked, and outlined with the normal
      one". Figma 18:54 fills the whole circle with ink; the owner wants the heart itself to fill.
      So the circle keeps its resting surface and only the glyph changes — which is also the idiom
-     every buyer already knows from every other wishlist they have used.
-
-     Scoped to [data-vote='like']: the dislike circle is not mentioned and keeps what is drawn. */
+     every buyer already knows from every other wishlist they have used. */
   .pv-circle[data-vote='like'][aria-pressed='true'] {
     background: var(--surface-raised);
     border-color: var(--brand);

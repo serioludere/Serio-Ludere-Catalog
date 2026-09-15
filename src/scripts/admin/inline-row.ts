@@ -101,12 +101,20 @@ function showMessage(row: HTMLElement, text: string | null): void {
   const el = row.querySelector<HTMLElement>('.irow__message');
   if (!el) return;
   if (text === null) {
-    el.hidden = true;
+    // Cleared before hiding: emptying a region that is already out of the tree leaves stale text
+    // behind for the next reveal to re-announce.
     el.textContent = '';
+    el.hidden = true;
     return;
   }
-  el.textContent = text;
+  // Un-hidden BEFORE the text is written. `.irow__message` carries aria-live, and a live region only
+  // announces mutations that happen while it is in the accessibility tree — `[hidden]` puts it
+  // outside. Writing first and revealing second (which is what this did) meant the region entered
+  // the tree already holding its text, so nothing was ever spoken: both inline-rename failures
+  // below, "That change was not saved.", were silent. Same ordering, and same reason, as msg().
   el.hidden = false;
+  void el.offsetHeight;
+  el.textContent = text;
 }
 
 export interface InlineRowBindings {

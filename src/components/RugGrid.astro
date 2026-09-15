@@ -20,8 +20,10 @@ interface Props {
   eager?: number;
   /** Card link builder; the private preview points cards at `/{customer}/{productId}` (brief §7). */
   hrefFor?: (card: CardView) => string;
+  /** A visually hidden page heading: the reference draws no title, and a page still needs one. */
+  heading?: string;
 }
-const { cards, rates, active, state, error = false, eager = 0, hrefFor } = Astro.props;
+const { cards, rates, active, state, error = false, eager = 0, hrefFor, heading } = Astro.props;
 let left = eager;
 const loadMode = cards.map((c) => {
   const visible = active === undefined || c.collectionSlugs.includes(active);
@@ -34,6 +36,7 @@ const ghosts = Array.from({ length: 8 }, (_, i) => i);
 ---
 
 <main>
+  {heading && <h1 class="sr-only">{heading}</h1>}
   {
     state && !error && cards.length === 0 && (
       <div class="plate-empty" data-plate data-empty data-ar="3-4" aria-hidden="true">

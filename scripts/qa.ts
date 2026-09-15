@@ -191,6 +191,35 @@ async function main(): Promise<void> {
     );
     check('reduced motion: no element named for a morph', named === 0);
     await ctx2.close();
+
+    // ---- 8: 390px, no sideways scroll ----
+    // Every check above runs at 1280 and the only mobile artefact this repo produced was a
+    // screenshot, so a row that outgrew the viewport was invisible to the whole toolchain. It did
+    // happen: the preview title row was measured for two controls and later given a third, against
+    // an h1 that cannot shrink. A page that scrolls sideways is the cheapest possible thing to
+    // assert and the most annoying one to meet by hand.
+    const ctx3 = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await ctx3.addInitScript(INIT);
+    const p3 = await ctx3.newPage();
+    for (const path of ['/', '/rugs']) {
+      const res = await p3.goto(site + path, { waitUntil: 'networkidle' }).catch(() => null);
+      // /rugs is only there when the public catalogue is on; a 404 is a skip, not a failure.
+      if (!res || res.status() >= 400) continue;
+      const over = await p3.evaluate(() => {
+        const el = document.scrollingElement ?? document.documentElement;
+        const widest = [...document.querySelectorAll<HTMLElement>('body *')]
+          .filter((n) => n.getBoundingClientRect().right > el.clientWidth + 1)
+          .map((n) => `${n.tagName.toLowerCase()}.${n.className || '?'}`)
+          .slice(0, 3);
+        return { scroll: el.scrollWidth, client: el.clientWidth, widest };
+      });
+      check(
+        `390px: ${path} does not scroll sideways`,
+        over.scroll <= over.client + 1,
+        over.scroll > over.client + 1 ? `${over.scroll}>${over.client} — ${over.widest.join(', ')}` : '',
+      );
+    }
+    await ctx3.close();
   } finally {
     await browser.close();
   }

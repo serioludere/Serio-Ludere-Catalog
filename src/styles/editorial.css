@@ -1,8 +1,31 @@
-/* Design pass (docs/DESIGN.md §3–§6): layout, typography and components layered over
-   catalogue.css by cascade order. catalogue.css stays byte-identical as the parity record.
-   No inline styles anywhere: per-element variation goes through data-* attributes and classes. */
+/* Design pass (docs/DESIGN.md §3–§6) and the 2026-09 UI refresh: layout, typography and components
+   layered over catalogue.css by cascade order. catalogue.css stays byte-identical as the parity
+   record and tokens.css keeps the reference palette untouched — everything here is rhythm, hierarchy,
+   states and touch targets, never a new hue. No inline styles anywhere (hash CSP): per-element
+   variation goes through data-* attributes and classes.
 
-/* ---- global ---- */
+   Sections: global · masthead + controls · collection tabs · lede · grid + card · vote pill · plates
+   · empty / ghost · detail page · lightbox · spec column · related · standfirst clamp · footer
+   · small screens. */
+
+/* ================================================================ global ==== */
+/* One page gutter for every band: 5vw as the reference draws it, but never under 20px on a phone
+   and never over 96px on a wide monitor, so the content keeps the width instead of the margins. */
+:root {
+  --page-x: clamp(20px, 5vw, 96px);
+}
+html {
+  scroll-padding-top: calc(var(--nav-h) + 12px);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+body {
+  text-rendering: optimizeLegibility;
+}
+::selection {
+  background: var(--paper-deep);
+  color: var(--ink);
+}
 :focus-visible {
   outline: var(--focus);
   outline-offset: 3px;
@@ -10,9 +33,6 @@
 }
 nav#nav button:focus-visible {
   outline-offset: -4px; /* not clipped by the nav's overflow-x */
-}
-html {
-  scroll-padding-top: calc(var(--nav-h) + 12px);
 }
 .sr-only {
   position: absolute;
@@ -25,13 +45,108 @@ html {
   white-space: nowrap;
   border: 0;
 }
+/* The user-agent `[hidden]` rule loses to any author `display`; state it once for the realm. */
+[hidden] {
+  display: none !important;
+}
 
-/* ---- collection tabs (sticky, with a sliding ink bar) ---- */
+/* ================================================= masthead + controls ==== */
+header {
+  padding: 44px var(--page-x) 22px;
+  gap: 20px 24px;
+}
+.masthead {
+  gap: 8px;
+}
+.home {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+.home .wordmark {
+  transition: opacity var(--dur-1) linear;
+}
+.home:hover .wordmark {
+  opacity: 0.72;
+}
+.eyebrow {
+  font-size: 10.5px;
+  letter-spacing: 0.3em;
+  line-height: 1.4;
+}
+.controls {
+  gap: 8px;
+  align-self: flex-end;
+}
+/* One control family: 34px tall, one hairline, the same softened corner. */
+.toggle {
+  height: 34px;
+  border-radius: var(--radius-1);
+  overflow: hidden;
+  align-items: stretch;
+}
+.toggle button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 42px;
+  padding: 0 13px;
+}
+.toggle button:not(.on):hover {
+  color: var(--ink);
+  background: rgba(0, 0, 0, 0.035);
+}
+.toggle button:focus-visible {
+  outline-offset: -3px;
+}
+.cur-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+}
+select.cur {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 34px;
+  padding: 0 30px 0 12px;
+  border-radius: var(--radius-1);
+  line-height: 1;
+}
+select.cur:hover {
+  border-color: var(--ink-soft);
+}
+.cur-chev {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  translate: 0 -50%;
+  color: var(--ink-soft);
+  pointer-events: none;
+}
+
+/* ======================================= collection tabs (sticky, ink bar) ==== */
+nav#nav,
+nav.nav-detail {
+  padding-inline: var(--page-x);
+}
 nav#nav {
   position: sticky;
   top: 0;
   z-index: 5;
-  background: var(--paper);
+  background: var(--paper-90);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+nav#nav::-webkit-scrollbar {
+  display: none;
+}
+nav#nav button {
+  padding: 14px 14px 13px;
+  letter-spacing: 0.14em;
 }
 nav#nav .ink {
   position: absolute;
@@ -50,17 +165,27 @@ nav#nav.has-ink button.on {
 nav button .n {
   font-size: 10px;
   opacity: 1;
+  margin-left: 6px;
   color: var(--ink-soft); /* was 9px at .5 opacity, about 2.3:1 */
+  font-variant-numeric: tabular-nums;
+}
+nav button.on .n {
+  color: var(--accent);
 }
 nav button:hover {
   color: var(--ink);
 }
+
+/* ============================================================== lede ==== */
 .lede {
-  padding: 34px 5vw 0;
+  padding: 30px var(--page-x) 0;
+}
+.lede .eyebrow {
+  font-variant-numeric: tabular-nums;
 }
 .lede .lede-text {
-  max-width: 52ch;
-  margin-top: 12px;
+  max-width: 56ch;
+  margin-top: 10px;
   font: 400 15px/1.6 var(--body);
   color: var(--ink);
   text-wrap: pretty;
@@ -69,13 +194,40 @@ nav button:hover {
   display: none;
 }
 
-/* ---- grid ---- */
+/* ======================================================= grid + card ==== */
 main {
-  padding: 34px 5vw 96px;
+  padding: 30px var(--page-x) 96px;
 }
+/* Explicit columns rather than auto-fill: auto-fill packed 236px cards at the left of a 1440 screen
+   and left the rest of the row empty, and the card size changed with every few pixels of viewport.
+   Four across at desktop, five on a wide monitor, three on a laptop, two on a tablet, one on a phone —
+   the cards share the width equally and a collection with fewer rugs simply leaves slots empty. */
 .grid {
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 52px 32px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 48px 28px;
+}
+@media (min-width: 1600px) {
+  .grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 56px 32px;
+  }
+}
+@media (max-width: 1199px) {
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 899px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 36px 20px;
+  }
+}
+@media (max-width: 599px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 40px 20px;
+  }
 }
 @media (min-width: 700px) {
   .card.lead {
@@ -87,19 +239,16 @@ main {
     --plate-n: 1.5;
   }
 }
-footer {
-  margin-top: 40px;
-  padding: 34px 5vw 56px;
-}
-
-/* ---- card ---- */
 .card {
   gap: 12px;
+  min-width: 0;
 }
 .photo {
   background: var(--paper-deep);
   border-radius: var(--radius-1);
   isolation: isolate;
+  /* a faint edge so the plate reads as mount board rather than a gap in the paper */
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.04);
 }
 .photo img {
   filter: drop-shadow(var(--shadow-plate)); /* static, never transitioned */
@@ -118,10 +267,21 @@ footer {
   scale: 0.9;
   pointer-events: none;
 }
+.photo-link {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
 .nm {
   font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  line-height: 1.35;
+  text-wrap: balance;
 }
 .nm-link {
+  color: inherit;
+  text-decoration: none;
   background-image: linear-gradient(var(--accent), var(--accent));
   background-size: 0% 1px;
   background-repeat: no-repeat;
@@ -131,31 +291,87 @@ footer {
 .card:focus-within .nm-link {
   background-size: 100% 1px;
 }
+/* The meta list runs on one line with middle dots, so a card is a plate, a name, one line of facts
+   and a price — instead of four ragged rows of mono that made every second row of the grid drift. */
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  row-gap: 2px;
+  font-size: 11px;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
+  margin-top: -4px;
+}
+.meta li {
+  display: inline;
+  white-space: nowrap;
+}
+/* The dot trails the item rather than leading the next one, so a wrapped line never starts with a
+   separator. `:has()` keeps it off the last visible item. */
+.meta li:not([hidden]):has(~ li:not([hidden]))::after {
+  content: '·';
+  margin: 0 7px;
+  color: var(--ink-soft);
+  opacity: 0.55;
+}
 .price-row {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: 4px 12px;
-  margin-top: 6px;
+  margin-top: 2px;
 }
 .price {
   margin-top: 0;
+  font-variant-numeric: tabular-nums;
 }
 .rating {
   margin-left: auto;
   line-height: 1.5;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
 }
 
-/* ---- vote pill ---- */
+/* Signed / Antique corner badge (owner, 2026-09-13/15): the same mark the preview card carries,
+   top-left of the plate, in the mono label idiom. Inert to the pointer so the card link below it
+   still takes the click. */
+.card-badges {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  pointer-events: none;
+}
+.card-badge {
+  padding: 5px 7px 4px;
+  background: var(--ink);
+  color: var(--paper);
+  font: 500 9.5px/1 var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border-radius: var(--radius-1);
+}
+
+/* ========================================================= vote pill ==== */
 .like {
-  padding: 2px;
+  right: 10px;
+  bottom: 10px;
+  padding: 3px;
   gap: 0;
   border: 1px solid var(--rule);
   background: var(--paper-90);
+  -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
   box-shadow: var(--shadow-pill);
 }
 .like button {
+  position: relative;
   width: 32px;
   height: 32px;
   padding: 0;
@@ -171,11 +387,32 @@ footer {
   color: var(--ink);
   background: var(--paper-deep);
 }
+.like button[aria-pressed='true']:hover {
+  color: var(--accent);
+}
+.like button:focus-visible {
+  outline-offset: 0;
+}
 .like button[aria-busy='true'] {
   opacity: 0.7;
 }
+.like-detail {
+  position: static;
+  display: inline-flex;
+  gap: 2px;
+}
+/* The circle stays 32 px on every device; on a coarse pointer the tap target is padded out to the
+   44 px WCAG 2.2 target size with a negative margin, so nothing moves visually. */
+@media (pointer: coarse) {
+  .like button::after {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: inherit;
+  }
+}
 
-/* ---- plates: loading is a silent beige plate, missing shows the proportion diagram ---- */
+/* ==== plates: loading is a silent beige plate, missing shows the proportion diagram ==== */
 .hero .ph,
 .thumb .ph,
 .lb-stage .ph,
@@ -262,7 +499,7 @@ footer {
   transform-origin: center;
 }
 
-/* ---- empty catalogue, ghost grids, retry ---- */
+/* ============================================ empty catalogue, ghosts, retry ==== */
 .plate-empty {
   position: relative;
   width: min(240px, 100%);
@@ -271,6 +508,11 @@ footer {
   background: var(--paper-deep);
   border-radius: var(--radius-1);
   overflow: hidden;
+}
+.state {
+  padding: 40px 0 60px;
+  max-width: 60ch;
+  line-height: 1.7;
 }
 .ghost .sk-plate {
   aspect-ratio: 3 / 4;
@@ -289,7 +531,9 @@ footer {
   margin-top: 18px;
 }
 .state .retry {
+  display: inline-block;
   margin-left: 12px;
+  padding: 2px 0;
   color: var(--ink);
   border-bottom: 1px solid var(--ink);
   text-decoration: none;
@@ -300,8 +544,8 @@ footer {
 }
 .ghost-spread {
   display: grid;
-  grid-template-columns: minmax(0, 7fr) minmax(300px, 5fr);
-  column-gap: clamp(40px, 6vw, 88px);
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 520px);
+  column-gap: clamp(40px, 6vw, 96px);
   align-items: start;
   margin-top: 24px;
 }
@@ -320,17 +564,20 @@ footer {
   }
 }
 
-/* ---- detail page: breadcrumb row + pager ---- */
+/* ======================================== detail page: breadcrumb row + pager ==== */
 .nav-detail {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 16px;
+  min-height: var(--nav-h);
 }
 .nav-detail .back,
 .pager a,
 .pager span {
-  padding: 12px 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   font: 500 11px/1 var(--mono);
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -338,14 +585,29 @@ footer {
   text-decoration: none;
   white-space: nowrap;
 }
+.nav-detail .back {
+  gap: 6px;
+  padding-right: 8px;
+}
 .nav-detail .back:hover,
 .pager a:hover {
   color: var(--accent);
 }
 .pager {
   display: flex;
-  gap: 18px;
+  gap: 6px;
   align-items: center;
+}
+.pager a {
+  padding: 0 10px;
+  border-radius: var(--radius-1);
+}
+.pager a:hover {
+  background: rgba(0, 0, 0, 0.035);
+}
+.pager .pos {
+  padding: 0 6px;
+  font-variant-numeric: tabular-nums;
 }
 .pager .is-off {
   visibility: hidden; /* the slot stays, the row never jumps */
@@ -354,22 +616,29 @@ footer {
   .pager .word {
     display: none;
   }
+  .pager a,
+  .pager .is-off {
+    min-width: 44px;
+    justify-content: center;
+  }
 }
 
-/* ---- detail page: the spread ---- */
+/* ============================================== detail page: the spread ==== */
 main.detail {
   display: grid;
-  grid-template-columns: minmax(0, 7fr) minmax(300px, 5fr);
-  column-gap: clamp(40px, 6vw, 88px);
+  /* The plate takes whatever is left; the spec column is a reading column and stops at 520px rather
+     than stretching every hairline row across half a wide monitor. */
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 520px);
+  column-gap: clamp(40px, 6vw, 96px);
   row-gap: 40px;
-  padding: 40px 5vw 96px;
+  padding: 36px var(--page-x) 96px;
   align-items: start;
 }
 @media (max-width: 899px) {
   main.detail {
     grid-template-columns: 1fr;
     row-gap: 28px;
-    padding-top: 24px;
+    padding-top: 20px;
   }
 }
 @media (min-width: 900px) and (min-height: 680px) {
@@ -392,6 +661,7 @@ main.detail {
   border-radius: var(--radius-1);
   overflow: hidden;
   isolation: isolate;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.04);
 }
 .hero img {
   position: absolute;
@@ -417,15 +687,20 @@ main.detail {
   border: 0;
   cursor: zoom-in;
 }
+.hero-open:focus-visible {
+  outline-offset: -3px;
+}
 .hero-cap {
   margin-top: 12px;
   font: 400 10px/1.6 var(--mono);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-soft);
+  text-align: center;
 }
 .thumbs {
   display: flex;
+  justify-content: center;
   gap: 10px;
   margin-top: 14px;
   overflow-x: auto;
@@ -433,7 +708,7 @@ main.detail {
   padding: 3px;
 }
 .thumb {
-  flex: 0 0 64px;
+  flex: 0 0 68px;
   aspect-ratio: 3 / 4;
   --plate: 3 / 4;
   --plate-n: 0.75;
@@ -454,6 +729,9 @@ main.detail {
   height: 100%;
   object-fit: contain;
 }
+.thumb:hover {
+  border-color: var(--ink-soft);
+}
 .thumb[aria-pressed='true'] {
   border-color: var(--ink);
   box-shadow:
@@ -461,7 +739,7 @@ main.detail {
     0 0 0 3px var(--ink);
 }
 
-/* ---- lightbox: a paper room, not a black box ---- */
+/* =========================================== lightbox: a paper room, not a black box ==== */
 .lb {
   border: 0;
   padding: 0;
@@ -509,6 +787,12 @@ main.detail {
   font: 400 22px/1 var(--body);
   color: var(--ink);
   cursor: pointer;
+  box-shadow: var(--shadow-pill);
+}
+.lb-close:hover,
+.lb-prev:hover,
+.lb-next:hover {
+  background: var(--paper-deep);
 }
 .lb-close {
   top: 16px;
@@ -536,24 +820,29 @@ html:has(dialog[open]) {
   overflow: hidden;
 }
 
-/* ---- detail page: the spec column ---- */
+/* ============================================= detail page: the spec column ==== */
 .info {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
   min-width: 0;
 }
 .info .eyebrow {
   text-decoration: none;
+  align-self: flex-start;
+}
+.info .eyebrow:hover {
+  color: var(--ink);
 }
 .info h1.nm {
-  font: 500 clamp(20px, 2.2vw, 26px) / 1.25 var(--body);
-  letter-spacing: -0.01em;
+  font: 500 clamp(22px, 2.4vw, 30px) / 1.2 var(--body);
+  letter-spacing: -0.015em;
   max-width: 22ch;
+  margin-top: -6px;
 }
 .info .price {
-  font-size: 16px;
-  margin-top: 0;
+  font-size: 17px;
+  margin-top: -4px;
 }
 .vote-row {
   display: flex;
@@ -568,7 +857,7 @@ html:has(dialog[open]) {
 }
 .specs {
   display: grid;
-  grid-template-columns: 96px 1fr;
+  grid-template-columns: 104px 1fr;
   margin-top: 6px;
   border-top: 1px solid var(--rule);
 }
@@ -577,12 +866,12 @@ html:has(dialog[open]) {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink-soft);
-  padding: 13px 0;
+  padding: 14px 0;
   border-bottom: 1px solid var(--rule);
 }
 .specs dd {
-  font: 400 13.5px/1.5 var(--body);
-  padding: 10px 0;
+  font: 400 14px/1.5 var(--body);
+  padding: 11px 0;
   border-bottom: 1px solid var(--rule);
 }
 .specs dd.ref {
@@ -599,11 +888,13 @@ html:has(dialog[open]) {
   list-style: none;
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
 }
 .tags a {
-  display: inline-block;
-  padding: 6px 10px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
   border: 1px solid var(--rule);
   border-radius: var(--radius-1);
   font: 500 10px/1 var(--mono);
@@ -637,18 +928,20 @@ html:has(dialog[open]) {
   border-color: var(--accent);
 }
 
-/* ---- related rugs ---- */
+/* ====================================================== related rugs ==== */
 .related {
-  margin: 0 5vw;
-  padding: 40px 0 72px;
+  margin: 0 var(--page-x);
+  padding: 36px 0 72px;
   border-top: 1px solid var(--rule);
 }
 .related .grid {
-  margin-top: 24px;
+  margin-top: 22px;
 }
 .related .back-all {
-  display: inline-block;
-  margin-top: 34px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 22px;
   font: 500 11px/1 var(--mono);
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -660,6 +953,7 @@ html:has(dialog[open]) {
 }
 @media (max-width: 700px) {
   .related .grid {
+    grid-template-columns: none;
     grid-auto-flow: column;
     grid-auto-columns: 72%;
     overflow-x: auto;
@@ -671,35 +965,8 @@ html:has(dialog[open]) {
   }
 }
 
-/* ---- reactions (brief §7) ----
-   The circle stays 32 px on every device; on a coarse pointer the tap target is padded out to the
-   44 px WCAG 2.2 target size with a negative margin, so nothing moves visually. The detail page
-   shows dislike + like side by side; a card shows the like alone. */
-.like button {
-  position: relative;
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  border-radius: 999px;
-}
-.like-detail {
-  position: static;
-  display: inline-flex;
-  gap: 4px;
-  background: var(--paper-deep, rgba(255, 253, 242, 0.9));
-}
-@media (pointer: coarse) {
-  .like button::after {
-    content: '';
-    position: absolute;
-    inset: -6px;
-    border-radius: inherit;
-  }
-}
-
-/* ---- collection standfirst clamp (brief §7) ----
-   One line by default with an inline "See more"; the class is toggled by src/scripts/lede.ts, never
+/* ============================================ collection standfirst clamp ==== */
+/* One line by default with an inline "See more"; the class is toggled by src/scripts/lede.ts, never
    an inline style (the CSP forbids those). Without JavaScript the button stays hidden and the full
    description is shown, which is the safer failure. */
 .lede-text[data-lede] {
@@ -726,5 +993,55 @@ html:has(dialog[open]) {
   font: inherit;
   color: var(--ink-soft);
   text-decoration: underline;
-  text-underline-offset: 2px;
+  text-underline-offset: 3px;
+}
+.lede-more:hover {
+  color: var(--accent);
+}
+
+/* ============================================================ footer ==== */
+footer {
+  display: grid;
+  gap: 14px;
+  margin-top: 48px;
+  padding: 30px var(--page-x) 56px;
+}
+.foot-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+}
+.foot-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border-bottom: 1px solid var(--rule);
+}
+.foot-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  color: var(--ink-soft);
+}
+
+/* ===================================================== small screens ==== */
+@media (max-width: 700px) {
+  header {
+    padding: 34px var(--page-x) 16px;
+    gap: 14px 20px;
+  }
+  .lede {
+    padding-top: 24px;
+  }
+  main {
+    padding-top: 24px;
+    padding-bottom: 72px;
+  }
+  .info h1.nm {
+    margin-top: -2px;
+  }
+  footer {
+    margin-top: 32px;
+    padding-bottom: 44px;
+  }
 }

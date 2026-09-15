@@ -70,8 +70,14 @@ html.is-navigating .card:not(.is-leaving) {
 
 /* ---- links, chips, buttons (R): never `all` ---- */
 footer a,
+.foot-links a,
 .tags a,
 .enquire a,
+select.cur,
+.lb-close,
+.lb-prev,
+.lb-next,
+.lede-more,
 nav button,
 .nav-detail .back,
 .pager a,

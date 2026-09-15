@@ -100,12 +100,12 @@ async function call<T>(
 export function describe(error: string, status: number, retryAfterSec?: number): string {
   if (status === 429) return `Too many requests — try again in ${retryAfterSec ?? 60} s.`;
   if (status === 413) return 'The request is too large.';
-  if (status === 415 || status === 403) return 'The request was refused (wrong origin or content type).';
+  if (status === 415 || status === 403) return 'The request was refused — reload the page and try again.';
   if (status === 404) return 'Not found.';
   if (status === 409) return 'Someone changed this row — reloaded the latest values; re-apply your edit.';
   if (status === 503)
     return `The sheet is unavailable${retryAfterSec ? ` — retry in ${retryAfterSec} s` : ''}.`;
-  if (status >= 500) return 'Server error — check the audit log and try again.';
+  if (status >= 500) return 'Something went wrong on the server — try again in a moment.';
   return error.replace(/_/g, ' ');
 }
 

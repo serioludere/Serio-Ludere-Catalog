@@ -64,7 +64,11 @@ describe('admin typography', () => {
   it('gives inputs and buttons an explicit line-height, so they share a height', () => {
     // Omitting it let the control inherit the ambient value and land 4.4px shorter than the
     // canonical `.input` in controls.css — three control heights on one row instead of two.
-    for (const sel of ['input,\nselect,\ntextarea', 'button.go', '.chip']) {
+    // `button.go` was the third entry here until the panel's 20 buttons moved onto the drawn `.btn`
+    // component and the legacy class was deleted. The rule it guarded now lives in controls.css:21,
+    // which sets `line-height: var(--leading-body)` there; this file only parses admin.css, so the
+    // selector is dropped rather than re-pointed.
+    for (const sel of ['input,\nselect,\ntextarea', '.chip']) {
       const rule = all.find(([s]) => s === sel.replace(/\s+/g, ' '));
       expect(rule, sel).toBeDefined();
       expect(rule![1], sel).toMatch(/line-height:\s*var\(--leading-body\)/);

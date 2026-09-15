@@ -43,6 +43,14 @@ const MESSAGES: Record<string, string> = {
   failed: 'The exchange with Google failed.',
 };
 const message = outcome ? (MESSAGES[outcome] ?? 'Something went wrong.') : undefined;
+// What happened to the catalogue sheet right after connecting (the callback creates it when none exists).
+const sheetOutcome = Astro.url.searchParams.get('sheet');
+const SHEET_MESSAGES: Record<string, string> = {
+  created: 'Your catalogue sheet was created in your Google Drive, and the site is reading it.',
+  failed: 'The catalogue sheet could not be created automatically.',
+  skipped: 'The catalogue sheet was not created automatically.',
+};
+const sheetMessage = sheetOutcome ? (SHEET_MESSAGES[sheetOutcome] ?? undefined) : undefined;
 
 // The catalogue sheet. `npm run sheet:init` assumes a developer with a terminal and a .env to write
 // the new id into; the person setting this site up is usually the studio. So when a Google account
@@ -55,10 +63,25 @@ const canProvision = Boolean(health?.connected) && !sheetId && sheetStore.durabl
 ---
 
 <AdminLayout title="Serio Ludere — Google" active="google">
+  <div class="page-head">
+    <div class="page-head__titles">
+      <h1 class="page-head__title">Google</h1>
+      <p class="page-head__count">
+        The account this site reads the sheet and Drive with, and the catalogue sheet itself.
+      </p>
+    </div>
+  </div>
   {
     message && (
       <div class:list={['msg', 'on', outcome === 'connected' ? 'ok' : 'err']}>
-        {message} {detail}
+        {message} {sheetOutcome ? '' : detail}
+      </div>
+    )
+  }
+  {
+    sheetMessage && (
+      <div class:list={['msg', 'on', sheetOutcome === 'created' ? 'ok' : 'err']}>
+        {sheetMessage} {detail}
       </div>
     )
   }
@@ -69,14 +92,12 @@ const canProvision = Boolean(health?.connected) && !sheetId && sheetStore.durabl
     {
       mode === 'service_account' ? (
         <p class="hint">
-          This deployment authenticates with a service-account key, so there is no account to connect. Switch{' '}
-          <span class="mono">GOOGLE_AUTH_MODE</span> to <span class="mono">oauth_refresh</span> to use a
-          Google account instead.
+          This site signs in to Google with a server key, so there is nothing to connect here.
         </p>
       ) : !configured ? (
         <p class="hint">
-          Set <span class="mono">GOOGLE_OAUTH_CLIENT_ID</span> and{' '}
-          <span class="mono">GOOGLE_OAUTH_CLIENT_SECRET</span> before connecting.
+          Google sign-in has not been set up on this server yet. Ask your developer to add the Google client
+          details.
         </p>
       ) : (
         <>
@@ -100,7 +121,7 @@ const canProvision = Boolean(health?.connected) && !sheetId && sheetStore.durabl
                   ? health.scopes.join(' ')
                   : scopesKnown
                     ? '—'
-                    : 'not recorded for a token from the environment'}
+                    : 'not recorded (connected on the server)'}
               </dd>
             </div>
             <div>
@@ -112,41 +133,39 @@ const canProvision = Boolean(health?.connected) && !sheetId && sheetStore.durabl
               <dd class="mono">{health?.lastRefreshAt ?? 'never'}</dd>
             </div>
             <div>
-              <dt>Token from</dt>
-              <dd class="mono">{health?.source}</dd>
+              <dt>Connected via</dt>
+              <dd>{health?.source === 'stored' ? 'this page' : 'the server'}</dd>
             </div>
           </dl>
 
-          {health?.lastError && <div class="msg err on">Last failure: {health.lastError}</div>}
+          {health?.lastError && <div class="msg err on">Last problem: {health.lastError}</div>}
 
           {missing.length > 0 && (
             <div class="msg err on">
-              Missing permission{missing.length === 1 ? '' : 's'}: {missing.join(' ')}. Connect again and
-              approve both.
+              Google did not grant everything the site needs. Connect again and approve both permissions.
             </div>
           )}
 
           {health?.connected && !scopesKnown && (
             <p class="hint">
-              This connection comes from <span class="mono">GOOGLE_OAUTH_REFRESH_TOKEN</span>, so the site did
-              not record which permissions it carries. Press Reconnect to authorise from here instead; the
-              stored authorisation then takes precedence and this page can show its state.
+              This connection was set up on the server, so the site cannot show which permissions it has.
+              Press Reconnect to connect from here instead.
             </p>
           )}
 
           {!store.durable && (
             <div class="msg busy on">
-              <span class="mono">DATA_DIR</span> is not set, so this connection is held in memory only and
-              will be lost when the server restarts. Set it to a writable directory to keep it.
+              This server cannot keep the connection after a restart. Ask your developer to enable persistent
+              storage.
             </div>
           )}
 
           <div class="actions">
-            <a class="go" href="/api/admin/google/start?next=/admin/google">
+            <a class="btn btn--primary" href="/api/admin/google/start?next=/admin/google">
               {health?.connected ? 'Reconnect' : 'Connect Google account'}
             </a>
             {health?.connected && (
-              <button class="go alt" id="btnDisconnect" type="button">
+              <button class="btn btn--destructive" id="btnDisconnect" type="button">
                 Disconnect
               </button>
             )}
@@ -160,16 +179,21 @@ const canProvision = Boolean(health?.connected) && !sheetId && sheetStore.durabl
             ))}
           </ul>
 
-          <h4>Before the first connection</h4>
+          <h4>First-time setup</h4>
           <p class="hint">
-            This exact address has to be listed as an authorised redirect URI on the OAuth client in the
-            Google Cloud console, or Google will refuse with <span class="mono">redirect_uri_mismatch</span>:
+            Before connecting for the first time, your developer must register this address with Google:
           </p>
           <div class="row">
-            <div class="grow">
-              <input id="redirectUri" readonly value={redirectUri} aria-label="Authorised redirect URI" />
+            {/* The value here has to be pasted into the Google Cloud console exactly, so the field
+                deserves a visible name rather than an aria-label the eye never sees. Wording is the
+                aria-label's, verbatim; the attribute goes, since it would override the label. */}
+            <div class="grow field">
+              <label class="field__label" for="redirectUri">
+                Authorised redirect URI
+              </label>
+              <input id="redirectUri" readonly value={redirectUri} />
             </div>
-            <button class="go alt" id="btnCopyRedirect" type="button">
+            <button class="btn btn--secondary" id="btnCopyRedirect" type="button">
               Copy
             </button>
           </div>
@@ -186,7 +210,7 @@ const canProvision = Boolean(health?.connected) && !sheetId && sheetStore.durabl
         <>
           <p class="hint">
             {sheetFromEnv
-              ? 'Set by GOOGLE_SHEET_ID on the server, which is where this site takes its catalogue from.'
+              ? 'The catalogue sheet is configured on the server.'
               : `Created ${storedSheet?.createdAt?.slice(0, 10) ?? ''}${storedSheet?.createdBy ? ` in ${storedSheet.createdBy}` : ''}.`}
           </p>
           <p class="hint">
@@ -202,14 +226,14 @@ const canProvision = Boolean(health?.connected) && !sheetId && sheetStore.durabl
            show this screen again and invite a SECOND sheet — leaving the first orphaned with the
            studio's data in it. Refusing is kinder than the silent version of that. */
         <div class="msg err on">
-          This server has no writable data directory, so a new sheet’s id would be forgotten when it
-          restarts. Set <span class="mono">DATA_DIR</span> and reload this page.
+          This server cannot remember a new sheet after a restart, so one cannot be created here. Ask your
+          developer to enable persistent storage.
         </div>
       ) : (
         <>
           <p class="hint">
-            No catalogue yet. This creates a spreadsheet in your Google account, builds every tab and
-            column, and installs the formulas. It imports no products — the catalogue starts empty.
+            No catalogue sheet yet. One is normally created the moment a Google account is connected; if that
+            did not happen, create it now. It starts empty.
           </p>
           <div class="row">
             <div class="grow">
@@ -242,19 +266,21 @@ const canProvision = Boolean(health?.connected) && !sheetId && sheetStore.durabl
 <style is:global>
   .kv {
     display: grid;
-    gap: 4px;
+    gap: var(--stack-xs);
     margin: 0;
   }
   .kv > div {
     display: flex;
-    gap: 12px;
+    gap: var(--stack-md);
   }
   .kv dt {
     flex: 0 0 140px;
-    color: var(--ink-soft);
+    color: var(--ink-muted);
+    font-family: var(--heading);
+    font-weight: var(--weight-label);
     text-transform: uppercase;
-    font-size: 11px;
-    letter-spacing: 0.06em;
+    font-size: var(--size-label);
+    letter-spacing: 0.02em;
     padding-top: 2px;
   }
   .kv dd {

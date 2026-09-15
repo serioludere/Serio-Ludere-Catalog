@@ -6,12 +6,8 @@ export const prerender = false;
 import AdminLayout from '../../../components/admin/AdminLayout.astro';
 import RugFields from '../../../components/admin/RugFields.astro';
 import { ID_RE } from '../../../lib/admin/dto.ts';
-import {
-  fetchAdminSnapshot,
-  findRugById,
-  type AdminRug,
-  type AdminSnapshot,
-} from '../../../lib/admin/read.ts';
+import { fetchAdminSnapshotWithLikes } from '../../../lib/admin/likes.ts';
+import { findRugById, type AdminRug, type AdminSnapshot } from '../../../lib/admin/read.ts';
 import { roundStepOf } from '../../../lib/admin/settings.ts';
 import { getClient } from '../../../lib/runtime.ts';
 import { consoleLogger, serializeError } from '../../../lib/sheets/errors.ts';
@@ -19,11 +15,14 @@ import { jsonForScript } from '../../../lib/view.ts';
 
 const id = Astro.params.id ?? '';
 let snapshot: AdminSnapshot | undefined;
+let likesById = new Map<string, number>();
 let error: string | undefined;
 let rug: AdminRug | undefined;
 if (ID_RE.test(id)) {
   try {
-    snapshot = await fetchAdminSnapshot(getClient(), { logger: consoleLogger });
+    const read = await fetchAdminSnapshotWithLikes(getClient(), { logger: consoleLogger });
+    snapshot = read.snapshot;
+    likesById = read.likesById;
     rug = findRugById(snapshot, id);
   } catch (e) {
     const safe = serializeError(e);
@@ -60,9 +59,18 @@ const data = rug
   {
     rug && (
       <>
-        <p class="hint">
-          <a href="/admin/rugs">← Catalogue</a> · editing <span class="mono">{rug.id}</span>
-        </p>
+        <div class="page-head">
+          <div class="page-head__titles">
+            <h1 class="page-head__title">{rug.name}</h1>
+            <p class="page-head__count">
+              <span class="mono">{rug.id}</span> · {rug.status}
+            </p>
+          </div>
+          <span class="page-head__rule" />
+          <a class="btn btn--secondary page-head__back" href="/admin/rugs">
+            Back to products
+          </a>
+        </div>
         <RugFields
           mode="edit"
           rug={rug}
@@ -71,6 +79,7 @@ const data = rug
           defaultStatus={rug.status === 'draft' ? 'draft' : 'active'}
           roundStep={roundStep}
           driveScopeOk={null}
+          likes={likesById.get(rug.id) ?? 0}
         />
         <script is:inline type="application/json" id="admin-data" set:html={jsonForScript(data)} />
         <script>import {initRugForm} from '../../../scripts/admin/rug-form.ts'; initRugForm();</script>

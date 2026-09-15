@@ -9,6 +9,8 @@ import { adminGate } from './lib/admin/gate.ts';
 import { gateConfig } from './lib/admin/http.ts';
 import { customerGate } from './lib/customer/gate.ts';
 import { customerGateConfig } from './lib/customer/http.ts';
+import { ENTER_PATH, siteGate } from './lib/site/gate.ts';
+import { siteGateConfig } from './lib/site/http.ts';
 
 const securityHeaders = defineMiddleware(async (_context, next) => {
   const response = await next();
@@ -19,6 +21,29 @@ const securityHeaders = defineMiddleware(async (_context, next) => {
 });
 
 const admin = defineMiddleware((context, next) => adminGate(context, () => next(), gateConfig()));
+
+// The site password (owner, 2026-09-15): the public catalogue opens only to a visitor who entered
+// it on /enter. The pages themselves switch the route cache off while the gate is on (a cache HIT
+// bypasses middleware, docs/ADR.md), so a page rendered for one visitor is never handed to another.
+const site = defineMiddleware(async (context, next) => {
+  const decision = siteGate(context, siteGateConfig());
+  if (decision.kind === 'login') {
+    return context.redirect(`${ENTER_PATH}?next=${encodeURIComponent(decision.next)}`, 303);
+  }
+  if (decision.kind === 'api-denied') {
+    return new Response(JSON.stringify({ ok: false, error: 'password required' }), {
+      status: 401,
+      headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
+    });
+  }
+  if (decision.kind === 'allowed') {
+    const response = await next();
+    response.headers.set('cache-control', 'private, no-store');
+    response.headers.set('x-robots-tag', 'noindex, nofollow');
+    return response;
+  }
+  return next();
+});
 
 const customer = defineMiddleware(async (context, next) => {
   const { route } = customerGate(context, customerGateConfig());
@@ -39,4 +64,4 @@ const customer = defineMiddleware(async (context, next) => {
   return next();
 });
 
-export const onRequest = sequence(securityHeaders, admin, customer);
+export const onRequest = sequence(securityHeaders, admin, site, customer);

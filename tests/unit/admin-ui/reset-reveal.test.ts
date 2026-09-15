@@ -54,8 +54,9 @@ function mount(): void {
     <!-- The page's other sections; initClients requires them to exist. -->
     <button id="btnReport"></button><div id="m10" class="msg"></div><div id="reportOut"></div>
     <button id="btnVisits"></button><div id="m11" class="msg"></div><div id="visitsOut"></div>
-    <dialog id="pwDialog"><h2 id="pwDialogTitle"></h2><input id="pwDialogInput">
-      <p id="pwDialogErr"></p><button id="pwDialogOk"></button><button id="pwDialogCancel"></button></dialog>
+    <dialog id="pwDialog"><form id="pwDialogForm"><h2 id="pwDialogTitle"></h2><input id="pwDialogInput">
+      <p id="pwDialogErr"></p><button id="pwDialogOk" type="submit"></button>
+      <button id="pwDialogCancel" type="button"></button></form></dialog>
     <table id="clientTable"><tbody>
       <tr data-code="nadia-k7m2pq" data-version="a1b2c3d4e5f60718" data-status="active">
         <td>Nadia</td><td class="acts"><button data-act="password">Reset password</button></td>
@@ -105,6 +106,50 @@ describe('resetting a password', () => {
     expect(document.querySelector('[data-credential-password]')!.textContent).toBe('reed-otter-lamp-9214');
     // The create form is noise here — F4 (52:1115) draws the panel alone.
     expect(form().hasAttribute('hidden')).toBe(true);
+  });
+
+  /**
+   * REGRESSION. The dialog was `<form method="dialog">` holding one field and no submit button —
+   * precisely the shape that triggers HTML implicit submission. Pressing Enter after typing a
+   * password submitted the dialog form, which closed the dialog with an empty returnValue and never
+   * ran the confirm handler: the password was discarded in silence, with no error and no reset.
+   * Enter is the expected key in a one-field dialog, so this was the likely path, not the edge case.
+   */
+  it('reaches the reset endpoint when the form is submitted, rather than discarding the password', async () => {
+    mount();
+    const calls: Array<{ url: string; body: string }> = [];
+    const fetchImpl = (async (url: string, init?: RequestInit) => {
+      calls.push({ url: String(url), body: String(init?.body ?? '') });
+      const u = String(url);
+      return new Response(
+        JSON.stringify(
+          u.includes('/visits')
+            ? { ok: true, byClient: [], recent: [], total: 0 }
+            : u.includes('/report') || u.includes('/saves')
+              ? { ok: true, byClient: [], rugs: [] }
+              : { ok: true, client: CLIENT, password: 'reed-otter-lamp-9214' },
+        ),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    }) as unknown as typeof fetch;
+
+    initClients(document, { fetchImpl });
+
+    // Opened the way the owner opens it: the control on the row, not the modal.
+    document.querySelector<HTMLButtonElement>('[data-act="password"]')!.click();
+    const pw = document.getElementById('pwDialog') as HTMLDialogElement;
+    expect(pw.open, 'the reset dialog should be open').toBe(true);
+
+    (document.getElementById('pwDialogInput') as HTMLInputElement).value = 'chosen-pass-1234';
+    const f = document.getElementById('pwDialogForm') as HTMLFormElement;
+    f.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await new Promise((r) => setTimeout(r, 0));
+
+    const reset = calls.find((c) => c.url.includes('/regenerate'));
+    expect(reset, 'submitting must call the regenerate endpoint').toBeDefined();
+    // The TYPED password has to be the one that travels — the old path dropped it entirely.
+    expect(reset!.body).toContain('chosen-pass-1234');
+    expect(pw.open, 'the dialog closes once the reset is away').toBe(false);
   });
 
   it('puts the create form back when the owner next adds a customer', async () => {

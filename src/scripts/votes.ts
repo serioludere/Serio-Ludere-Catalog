@@ -1,4 +1,5 @@
-// Like / dislike buttons and the reaction buffer (brief §3 rule 2, §7; Figma component 18:100).
+// Like buttons and the reaction buffer (dislikes removed 2026-09-15; the client still tolerates a
+// stored `disliked` state from before) (brief §3 rule 2, §7; Figma component 18:100).
 //
 // Every tap paints immediately from `localStorage` and drops the intent into a buffer keyed by
 // product id, so a visitor who changes their mind three times still sends one row. The buffer is
@@ -19,6 +20,8 @@
 //
 // The pending state is deliberately NOT announced: the dot and the alert are `aria-hidden`, so a
 // screen reader hears a button that is pressed or not, and nothing about the network.
+import { likesText } from '../lib/likes.ts';
+
 export type State = 'liked' | 'disliked' | 'none';
 export type Reaction = 'like' | 'dislike' | 'none';
 export type Source = 'card' | 'detail';
@@ -124,21 +127,26 @@ export function paintFailed(rugId: string, failed: boolean, doc: Document = docu
   });
 }
 
+/**
+ * Repaints a product's like line from the server's counts. The same threshold the server applies
+ * (src/lib/likes.ts): below five the line is hidden, never "3 likes". `dislikes` and `rating` are
+ * still in the response shape and ignored here.
+ */
 export function paintCounts(
   rugId: string,
   likes: number,
-  dislikes: number,
-  rating: number,
+  _dislikes: number,
+  _rating: number,
   doc: Document = document,
 ): void {
-  const votes = likes + dislikes;
+  const text = likesText(likes);
   doc.querySelectorAll<HTMLElement>(`[data-rating-for="${CSS.escape(rugId)}"]`).forEach((el) => {
-    if (votes === 0) {
+    if (!text) {
       el.hidden = true;
       el.textContent = '';
     } else {
       el.hidden = false;
-      el.textContent = `${rating.toFixed(1)} · ${votes} ${votes === 1 ? 'vote' : 'votes'}`;
+      el.textContent = text;
       el.classList.remove('tick');
       void el.offsetWidth;
       el.classList.add('tick');

@@ -195,7 +195,6 @@ describe('/admin/rugs', () => {
     expect(html).toContain('$576');
     expectCspClean(html);
   });
-
 });
 
 describe('/admin/rugs/new', () => {
@@ -245,7 +244,7 @@ describe('/admin/rugs/[id]', () => {
     expect(html).toContain('<dialog id="confirm">');
     expect(html).toContain('my &lt;note&gt;');
     expect(html).toContain('"supplierRef":"1389"');
-    expect(html).toContain('❤ 0 · 👎 0'); // counts come from Reactions, not the admin read
+    expect(html).toContain('0 likes ·'); // counts come from Reactions, not the admin read
     expect(html).not.toContain('id="yourName"');
     expectCspClean(html);
   });
@@ -317,7 +316,7 @@ describe('/admin/audit', () => {
     const { status, html } = await render(AuditPage, '/admin/audit');
     expect(status).toBe(200);
     expect(html).toContain('<tr data-action="rug.update" data-target="sl-021" data-row="2">');
-    expect(html).toContain('<option value="rug.update">rug.update</option>');
+    expect(html).toContain('<option value="rug.update">Product updated</option>');
     expect(html).toContain('&lt;script&gt;x&lt;/script&gt;');
     expect(html).not.toContain('<script>x</script>');
     expect(html).toContain('&quot;name&quot;: &quot;&lt;b&gt;&quot;');

@@ -128,19 +128,8 @@ export function badgesFor(tagNames: readonly string[]): string[] {
   return BADGE_TAG_NAMES.filter((name) => have.has(normaliseKey(name)));
 }
 
-/**
- * Like counts are shown only from five (owner, 2026-09-13): "the like count should be only visible
- * on the products that has 5 likes count or more".
- *
- * Below the threshold the number is hidden rather than shown as zero — "1 like" on a private preview
- * tells a buyer who else has been looking, and an empty heart says everything a lone like would.
- */
-export const MIN_VISIBLE_LIKES = 5;
-
-/** The like count to display, or undefined when it has not yet earned its place on the card. */
-export function visibleLikes(likes: number | undefined): number | undefined {
-  return likes !== undefined && likes >= MIN_VISIBLE_LIKES ? likes : undefined;
-}
+/** The buyer-facing like threshold lives in ./likes.ts (Node-free, shared with the browser bundle). */
+export { MIN_VISIBLE_LIKES, visibleLikes, likesText } from './likes.ts';
 
 export function cardView(rug: Rug, catalogue: Catalogue): CardView {
   const photoUrls = rug.photos.map((id) => driveImageUrl(id, 1600));

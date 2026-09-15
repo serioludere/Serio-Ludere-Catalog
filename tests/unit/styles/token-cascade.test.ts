@@ -16,7 +16,12 @@
  * only; Part B is what keeps the breakpoints honest.
  *
  * Every expected value below is quoted from Figma `07 · Handoff` frame 66:367 ("02 Semantic"),
- * whose columns are Token / Preview / Admin / Admin Dark.
+ * whose columns are Token / Preview / Admin / Admin Dark — EXCEPT the four marked `a11y deviation`,
+ * which deliberately depart from the handoff and must not be "corrected" back to it. Prestige pairs
+ * each feedback hue with a tint of itself and none of those pairs clears WCAG 4.5:1 (warning 2.29,
+ * danger 3.65, success 4.00), and neutral-500 fails on every ground it is read on (3.19-3.40). The
+ * light modes now take darkened values; Admin Dark keeps the handoff's, because on that canvas
+ * darker is worse. See the DERIVED blocks in src/styles/modes.css for the measured ratios.
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 import fs from 'node:fs';
@@ -38,7 +43,8 @@ const EXPECTED: Record<string, [preview: string, admin: string, dark: string]> =
   // text
   '--ink': ['#000000', '#000000', '#fefcf0'],
   '--ink-soft': ['#403f3c', '#403f3c', '#d8d6cc'],
-  '--ink-muted': ['#8c8b84', '#8c8b84', '#8c8b84'],
+  // a11y deviation: light modes darkened to clear 4.5:1; dark keeps the handoff value.
+  '--ink-muted': ['#73726c', '#73726c', '#8c8b84'],
   '--text-on-action': ['#fffff5', '#fffff5', '#000000'],
   '--text-on-brand': ['#fffff5', '#fffff5', '#fffff5'],
   // action
@@ -46,18 +52,27 @@ const EXPECTED: Record<string, [preview: string, admin: string, dark: string]> =
   '--action-primary-hover': ['#b80d09', '#b80d09', '#b80d09'],
   '--action-danger': ['#b80d09', '#b80d09', '#b80d09'],
   '--action-danger-hover': ['#9c0b08', '#9c0b08', '#9c0b08'],
+  // Same value as --action-danger-hover, different job: the primary button's :active. Asserted so
+  // the two cannot silently drift into one another again.
+  '--action-primary-active': ['#9c0b08', '#9c0b08', '#9c0b08'],
   '--brand': ['#b80d09', '#b80d09', '#b80d09'],
   // border — focus is ink in every mode, deliberately NOT the brand red: red is the error colour,
   // and a red focus ring on a red-bordered invalid field is unreadable (handoff 66:440).
   '--rule': ['#d8d6cc', '#d8d6cc', '#403f3c'],
+  // a11y deviation: control edges are split from the decorative hairline so they can meet WCAG
+  // 1.4.11's 3:1 against the DARKEST ground they touch, not the lightest — 3.24:1 on the admin
+  // canvas, 3.01:1 on --subtle. Light modes darken; dark LIGHTENS (5.39:1 on its canvas).
+  '--border-control': ['#8b8a83', '#8b8a83', '#8c8b84'],
   '--border-strong': ['#1c1c1c', '#1c1c1c', '#8c8b84'],
   '--border-focus': ['#000000', '#000000', '#fffff5'],
   // feedback — dark mode falls back to surface and carries meaning on the hue alone
-  '--success': ['#307a07', '#307a07', '#307a07'],
+  // a11y deviation (x3): light modes darkened to clear 4.5:1 on their own tint; dark keeps the
+  // handoff hue, which it reads on --surface rather than on a tint.
+  '--success': ['#2c7106', '#2c7106', '#307a07'],
   '--success-bg': ['#d4e3cb', '#d4e3cb', '#1c1c1c'],
-  '--warning': ['#ed8a00', '#ed8a00', '#ed8a00'],
+  '--warning': ['#a15d00', '#a15d00', '#ed8a00'],
   '--warning-bg': ['#fdf1e0', '#fdf1e0', '#1c1c1c'],
-  '--danger': ['#cb2b2b', '#cb2b2b', '#cb2b2b'],
+  '--danger': ['#b02525', '#b02525', '#cb2b2b'],
   '--danger-bg': ['#f3cccc', '#f3cccc', '#1c1c1c'],
   '--info': ['#1c1c1c', '#1c1c1c', '#d8d6cc'],
   '--info-bg': ['#efefef', '#efefef', '#1c1c1c'],

@@ -16,10 +16,11 @@ import Specs from '../../components/Specs.astro';
 import VoteButtons from '../../components/VoteButtons.astro';
 import { money } from '../../lib/currency.ts';
 import { baseCurrency, loadCatalogue, ratesFor } from '../../lib/runtime.ts';
+import { publicCachePolicy } from '../../lib/site/http.ts';
 import {
   activeRugs,
   cardView,
-  ratingText,
+  likesText,
   relatedCards,
   siblings,
   SLUG_PARAM_RE,
@@ -44,11 +45,11 @@ if (error || !snapshot) {
   Astro.response.status = 404;
   Astro.response.statusText = 'Not Found';
 } else {
-  Astro.cache.set({ maxAge: 60, swr: 60, tags: ['sheet'] });
+  Astro.cache.set(publicCachePolicy());
 }
 
 const priceText = card ? money(card.priceUsd, baseCurrency, rates, 'en-US') : '';
-const rating = card ? ratingText(card.likes, card.dislikes, card.rating) : null;
+const likes = card ? likesText(card.likes) : null;
 const sib = card ? siblings(cards, card.slug) : undefined;
 const related = card ? relatedCards(cards, card.slug, 4) : [];
 const title = card ? `${card.name} — Serio Ludere` : 'Serio Ludere — Catalogue';
@@ -112,9 +113,9 @@ const ghostLines = [60, 40, 30, 50, 35, 45, 20];
             {priceText}
           </div>
           <div class="vote-row">
-            <VoteButtons rugId={card.id} name={card.name} mode="detail" />
-            <div class="rating" data-rating-for={card.id} hidden={!rating}>
-              {rating}
+            <VoteButtons rugId={card.id} mode="detail" />
+            <div class="rating" data-rating-for={card.id} hidden={!likes}>
+              {likes}
             </div>
           </div>
           <Specs card={card} />

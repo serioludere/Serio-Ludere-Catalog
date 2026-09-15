@@ -12,7 +12,7 @@ import { clientLink, withoutSecrets } from '../../lib/admin/clients.ts';
 import EmptyState from '../../components/ui/EmptyState.astro';
 import CopyButton from '../../components/ui/CopyButton.astro';
 import { adminRuntime } from '../../lib/admin/http.ts';
-import { fetchAdminSnapshot, type AdminSnapshot , syncLabel } from '../../lib/admin/read.ts';
+import { fetchAdminSnapshot, type AdminSnapshot, syncLabel } from '../../lib/admin/read.ts';
 import { getClient } from '../../lib/runtime.ts';
 import { consoleLogger, serializeError } from '../../lib/sheets/errors.ts';
 import { jsonForScript } from '../../lib/view.ts';
@@ -35,6 +35,13 @@ const clients = (snapshot?.clients ?? []).map((c) => ({
   link: clientLink(adminRuntime.siteUrl, c.code),
 }));
 const data = { clients, siteOrigin: new URL(adminRuntime.siteUrl).origin };
+/** "1 Sep 2026" in the table; the stored value is an ISO timestamp. */
+const day = (iso: string): string => {
+  const t = Date.parse(iso);
+  return Number.isFinite(t)
+    ? new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+    : iso;
+};
 
 // Figma 25:236 — the topbar's status line. Empty on every screen until now.
 const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
@@ -62,36 +69,39 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
   }
   <Modal id="new-client" title="New customer link">
     <p>
-      One name. The link is generated for you — a scrambled address that cannot be guessed from the name — and
-      the password is shown once, immediately after.
+      Enter the customer's name. We create a private link and a password for them; the password is shown once,
+      right after.
     </p>
     <div class="modal__fields">
+      {
+        /* These three were labelled by placeholder alone: the name of the field vanished on the
+           first keystroke, so the moment you were filling one in was the moment you could no longer
+           see what it was. `.row` was already built for this — `align-items: flex-end` with the note
+           "labels differ in height; the CONTROLS are what must line up" — and `.field` is the drawn
+           wrapper (controls.css:173), so the label sits 8px above its control with no new CSS.
+           The placeholders keep only what the label does not already say: "e.g. Nadia" is a genuine
+           example, whereas "Note (optional)" and "Password (optional)" merely repeated the name and
+           now live in the labels. `aria-label` is dropped from all three — with a real <label for>
+           it would override the visible text and silently let the two drift apart. */
+      }
       <div class="row">
-        <div class="grow">
-          <input
-            id="cl_name"
-            placeholder="Client name — e.g. Nadia"
-            autocomplete="off"
-            aria-label="Client name"
-          />
+        <div class="grow field">
+          <label class="field__label" for="cl_name">Client name</label>
+          <input class="input" id="cl_name" placeholder="e.g. Nadia" autocomplete="off" required />
         </div>
-        <div class="grow">
-          <input id="cl_note" placeholder="Note (optional)" autocomplete="off" aria-label="Note" />
+        <div class="grow field">
+          <label class="field__label" for="cl_note">Note (optional)</label>
+          <input class="input" id="cl_note" autocomplete="off" />
         </div>
-        <div class="grow">
-          <input
-            id="cl_pw"
-            placeholder="Password (optional)"
-            autocomplete="off"
-            aria-label="Password"
-            maxlength="200"
-          />
+        <div class="grow field">
+          <label class="field__label" for="cl_pw">Password (optional)</label>
+          <input class="input" id="cl_pw" autocomplete="off" maxlength="200" />
         </div>
-        <button class="go" id="btnGenerate" type="button">Generate link</button>
+        <button class="btn btn--primary" id="btnGenerate" type="button">Generate link</button>
       </div>
       <p class="hint">
-        Generated on create, in a readable four-part format so it survives WhatsApp and can be read aloud.
-        Shown once, immediately after. Type your own instead if you would rather; eight characters or more.
+        Leave the password blank and one is generated that is easy to read out. If you type your own, use at
+        least eight characters.
       </p>
       <div id="m8" class="msg"></div>
       {
@@ -162,15 +172,18 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
                 <td class="mono">
                   <a href={c.link} target="_blank" rel="noopener">
                     {c.link}
+                    <span class="sr-only"> (opens in a new tab)</span>
                   </a>
                 </td>
-                <td>{c.createdAt}</td>
+                <td>{day(c.createdAt)}</td>
                 <td>
                   <span class="badge" data-visits>
                     Not visited
                   </span>
                 </td>
-                <td data-last-seen>—</td>
+                <td data-last-seen data-label="Last seen">
+                  —
+                </td>
                 <td>
                   <label class="toggle">
                     <input
@@ -185,7 +198,7 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
                 </td>
                 <td class="acts">
                   <CopyButton value={c.link} label="Copy link" />
-                  <button type="button" class="btn btn--ghost" data-act="password">
+                  <button type="button" class="btn btn--secondary" data-act="password">
                     Reset password
                   </button>
                 </td>
@@ -195,67 +208,82 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
         </tbody>
       </table>
     </div>
-    {/* The caption describes the table, so it goes when the table does. The old empty state was a
+    {
+      /* The caption describes the table, so it goes when the table does. The old empty state was a
         `.msg busy` — the INFO/loading tone — printed under a live seven-column header with no rows
         beneath it, so a first run looked like a screen still fetching rather than a screen waiting
-        for you to do something. */}
-    {clients.length > 0 && (
-      <p class="hint">
-        Copy-link is the most-used action here — the control changes icon, label and colour for 2 seconds. A
-        toast alone is missable when copying several in a row.
-      </p>
-    )}
+        for you to do something. */
+    }
+    {
+      clients.length > 0 && (
+        <p class="hint">
+          Send the link together with the password. Use the switch to pause a link, and Reset password if a
+          customer loses theirs.
+        </p>
+      )
+    }
   </section>
 
   <section class="stack" aria-labelledby="h-access">
-    <h3 id="h-access">Access log</h3>
-    <p class="hint">
-      Who has opened their link, and when. One entry per visit; repeat views inside half an hour count once.
-      The table above fills in from the same read.
-    </p>
+    <h3 id="h-access">Visits</h3>
+    <p class="hint">Every time a customer opens their link. Repeat visits within half an hour count once.</p>
     <div class="actions">
-      <button class="go alt" id="btnVisits" type="button">Refresh</button>
+      <button class="btn btn--secondary" id="btnVisits" type="button">Refresh</button>
     </div>
     <div id="m11" class="msg"></div>
     <div id="visitsOut"></div>
   </section>
 
   <section class="stack" aria-labelledby="h-report">
-    <h3 id="h-report">Client saves</h3>
+    <h3 id="h-report">Likes and dislikes</h3>
     <div class="actions">
-      <button class="go alt" id="btnReport" type="button">Refresh</button>
+      <button class="btn btn--secondary" id="btnReport" type="button">Refresh</button>
     </div>
     <div id="m10" class="msg"></div>
     <div id="reportOut"></div>
   </section>
 
   <dialog id="pwDialog">
-    <form method="dialog" class="stack">
+    {
+      /* NOT `method="dialog"`. That form had one field and no submit button, which is exactly the
+        shape that triggers HTML implicit submission: pressing Enter in the field submitted the
+        dialog form, closed the dialog with an empty returnValue, and silently discarded the typed
+        password — the confirm handler never ran. A real submit button makes Enter and the click do
+        the same thing, and clients.ts cancels the navigation. */
+    }
+    <form id="pwDialogForm" class="stack">
       <h3 id="pwDialogTitle">Reset password</h3>
-      <p class="hint">
-        Leave it blank to generate one. The new password is shown once and replaces the old one immediately;
-        the buyer stays signed in until their session expires.
+      <p class="hint" id="pwDialogHint">
+        Leave blank to generate one. The new password replaces the old one straight away and is shown once.
       </p>
+      {
+        /* A real visible label, not a placeholder standing in for one: the placeholder vanished on
+          first keystroke, leaving the field unlabelled exactly while it was being filled in. */
+      }
+      <label class="field__label" for="pwDialogInput">New password (optional)</label>
       <input
+        class="input"
         id="pwDialogInput"
-        placeholder="New password (optional)"
+        type="text"
         autocomplete="off"
-        aria-label="New password"
+        aria-describedby="pwDialogHint"
         maxlength="200"
       />
       <p class="msg err" id="pwDialogErr" hidden></p>
       <div class="actions">
-        <button class="go" id="pwDialogOk" type="button">Set password</button>
-        <button class="go alt" id="pwDialogCancel" type="button">Cancel</button>
+        <button class="btn btn--destructive" id="pwDialogOk" type="submit">Set password</button>
+        <button class="btn btn--secondary" id="pwDialogCancel" type="button">Cancel</button>
       </div>
     </form>
   </dialog>
 
-  {/* The row builder in scripts/admin/clients.ts rebuilds a whole <tr> after a toggle or a password
+  {
+    /* The row builder in scripts/admin/clients.ts rebuilds a whole <tr> after a toggle or a password
       reset. It used to hand-roll the copy control with no icons and no `data-copied-label`, so the
       icon swap this page's own caption promises had nothing to act on, and the rebuilt row silently
       differed from the one the server sent. Cloning this template makes both paths the same DOM by
-      construction, and the SVG stays in the Icon component instead of being retyped in JS. */}
+      construction, and the SVG stays in the Icon component instead of being retyped in JS. */
+  }
   <template id="copyTpl"><CopyButton value="" label="Copy link" /></template>
 
   <script is:inline type="application/json" id="admin-data" set:html={jsonForScript(data)} />
@@ -277,7 +305,7 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
     display: none !important;
   }
   .report .chips {
-    margin-top: 8px;
+    margin-top: var(--stack-sm);
   }
   .report .status-archived {
     color: var(--ink-soft);

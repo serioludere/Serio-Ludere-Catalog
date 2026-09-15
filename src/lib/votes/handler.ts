@@ -3,8 +3,9 @@
 // The client buffers reactions for 2–3 s and flushes them as ONE batch, so a burst of taps costs a
 // single append against the 60 writes/min quota. Every row is append-only: clearing a like appends a
 // `none` event rather than editing a row, and the current state is the newest event per
-// (customer_slug, product_id). `source` records whether the reaction came from a grid card (like
-// only) or the detail page (like and dislike).
+// (customer_slug, product_id). `source` records whether the like came from a grid card or the
+// detail page. Dislikes were removed on 2026-09-15: the value stays in the schema so a stale client
+// is refused clearly, and rows that carry it still parse.
 import * as z from 'zod';
 import type { CatalogueCache } from '../sheets/cache.ts';
 import { serializeError, type Logger } from '../sheets/errors.ts';
@@ -106,9 +107,9 @@ export async function handleReactions(input: VoteInput, deps: VoteDeps): Promise
   if (!parsed.success) return { status: 400, body: { ok: false, error: 'bad request' } };
   const items = parsed.data.items;
 
-  // The card asks one question: a dislike can only come from the detail page (brief §7).
-  if (items.some((i) => i.source === 'card' && i.reaction === 'dislike'))
-    return { status: 400, body: { ok: false, error: 'a card cannot dislike' } };
+  // Dislikes were removed (owner, 2026-09-15).
+  if (items.some((i) => i.reaction === 'dislike'))
+    return { status: 400, body: { ok: false, error: 'dislikes are not accepted' } };
 
   const ids = [...new Set(items.map((i) => i.productId))];
   const keys: Array<[string, { limit: number; windowMs: number }]> = [

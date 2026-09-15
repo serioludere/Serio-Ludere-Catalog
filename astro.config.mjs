@@ -115,6 +115,11 @@ export default defineConfig({
       // Keeps the public catalogue (/, /rugs/*, /tags/*) reachable without a customer session. Set
       // it to false for the brief's posture, where the site serves only /{slug} and /admin (§10).
       PUBLIC_CATALOGUE: envField.boolean({ context: 'server', access: 'secret', default: true }),
+      // Owner, 2026-09-15: one shared password in front of the public catalogue (/, /rugs/*, /tags/*).
+      // The default hash lives in src/lib/site/http.ts; this overrides it, and `none` turns the gate
+      // off. Generate with `npm run admin:password -- --site`. The cookie is signed with AUTH_SECRET
+      // (or ADMIN_SESSION_SECRET).
+      SITE_PASSWORD_HASH: envField.string({ context: 'server', access: 'secret', optional: true }),
       BASE_CURRENCY: envField.string({ context: 'server', access: 'secret', default: 'USD' }),
       FX_API_URL: envField.string({
         context: 'server',

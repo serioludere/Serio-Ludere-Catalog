@@ -21,8 +21,10 @@ import type { Collection } from '../../lib/sheets/types.ts';
 interface Props {
   rug: AdminRug;
   collections: readonly Collection[];
+  /** Distinct customers currently liking the rug; 0 renders as a dash. */
+  likes?: number;
 }
-const { rug, collections } = Astro.props;
+const { rug, collections, likes = 0 } = Astro.props;
 
 const slug = rug.collection.trim() ? collectionSlug(rug.collection, collections) : '';
 // Every slug the rug belongs to, so one chip filter drives cards and rows alike.
@@ -38,8 +40,17 @@ const search = [rug.name, rug.id, rug.supplierRef, rug.slug, rug.supplier]
   .replace(/[<>]/g, ' ');
 ---
 
+{
+  /* RugTable declares role="table", but this row carried no role at all — so the catalogue was
+    exposed as a table holding one header row and no data, whether it contains four products or four
+    hundred, and table navigation was dead. The row role goes on `.irow` rather than on `.irow__line`
+    because `.irow` is the table's direct descendant; `.irow__line` is pure layout and says so, which
+    leaves the cells owned by the row. `.irow__spacer` is presentational in both head and row, so the
+    column count matches at six. */
+}
 <div
   class="irow"
+  role="row"
   data-card
   data-row
   data-id={rug.id}
@@ -49,14 +60,15 @@ const search = [rug.name, rug.id, rug.supplierRef, rug.slug, rug.supplier]
   data-attention={rug.commitStatus === 'pending' ? 'photos' : ''}
   data-search={search}
 >
-  <div class="irow__line">
-    <span class="irow__id">{rug.id}</span>
-    <span class="irow__title" data-cell="name">{rug.name}</span>
-    <span class="irow__collection">{rug.collection}</span>
-    <span class="irow__size">{size}</span>
-    <span class="irow__price">{price}</span>
-    <span class="irow__spacer"></span>
-    <span class="irow__action">
+  <div class="irow__line" role="presentation">
+    <span class="irow__id" role="cell">{rug.id}</span>
+    <span class="irow__title" role="cell" data-cell="name">{rug.name}</span>
+    <span class="irow__collection" role="cell">{rug.collection}</span>
+    <span class="irow__size" role="cell">{size}</span>
+    <span class="irow__price" role="cell">{price}</span>
+    <span class="irow__likes" role="cell">{likes > 0 ? likes : '—'}</span>
+    <span class="irow__spacer" role="presentation"></span>
+    <span class="irow__action" role="cell">
       {
         /* Brief §12: a row whose photo import did not finish says so, and the list offers to finish
            it. RugCardAdmin has rendered this since it shipped; the ROW did not — and the row is the
@@ -73,5 +85,12 @@ const search = [rug.name, rug.id, rug.supplierRef, rug.slug, rug.supplier]
       <button type="button" data-edit={rug.id}>Edit</button>
     </span>
   </div>
-  <p class="irow__message" hidden></p>
+  {
+    /* Per-row status. A row may own only cells, so it is one. No `aria-colspan`: an earlier pass set
+      it to 6, but with no aria-colindex to anchor it this cell is implicitly column 7, so the span
+      read as columns 7-12 — off the end of a six-column table. A plain trailing cell is ragged but
+      valid; a span pointing past the table is not. It carries its own live region because the
+      page-level banner sits nowhere near the row whose save just failed. */
+  }
+  <p class="irow__message" role="cell" aria-live="polite" hidden></p>
 </div>

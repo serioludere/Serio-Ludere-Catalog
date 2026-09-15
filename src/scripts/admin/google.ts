@@ -27,7 +27,7 @@ export function initGoogle(doc: Document = document, api: ApiOptions = {}): Goog
     redirect.select();
     void navigator.clipboard
       .writeText(redirect.value)
-      .then(() => out && msg(out, 'Copied. Paste it into the OAuth client in the Google console.', 'ok'))
+      .then(() => out && msg(out, 'Copied — paste it into the Google Cloud console.', 'ok'))
       .catch(() => out && msg(out, 'Select the address and copy it with Ctrl/⌘+C.', 'busy'));
   });
 

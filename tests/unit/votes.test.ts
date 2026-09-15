@@ -80,13 +80,9 @@ describe('handleReactions', () => {
       },
     ]);
 
-    r = await handleReactions({ body: one('SL-021', 'dislike'), ...v }, deps); // flip
-    expect(r.body.results?.[0]).toMatchObject({ state: 'disliked', likes: 2, dislikes: 2 });
-    expect(inserted[1]?.[0]?.reaction).toBe('dislike');
-
     r = await handleReactions({ body: one('SL-021', 'none'), ...v }, deps); // clear
     expect(r.body.results?.[0]).toMatchObject({ state: 'none', likes: 2, dislikes: 1 });
-    expect(inserted[2]?.[0]?.reaction).toBe('none');
+    expect(inserted[1]?.[0]?.reaction).toBe('none');
     expect(cache.currentVote(v.visitorHash, 'SL-021')).toBe('none');
   });
 
@@ -110,10 +106,10 @@ describe('handleReactions', () => {
     expect(r.body.results?.map((x) => x.productId)).toEqual(['SL-021', 'SL-022']);
   });
 
-  it('refuses a dislike from a card: the card asks one question (brief §7)', async () => {
+  it('refuses a dislike from anywhere: dislikes were removed (owner, 2026-09-15)', async () => {
     const { deps, inserted } = setup();
-    const r = await handleReactions({ body: one('SL-021', 'dislike', 'card'), ...visitor(3) }, deps);
-    expect(r).toMatchObject({ status: 400, body: { error: 'a card cannot dislike' } });
+    const r = await handleReactions({ body: one('SL-021', 'dislike'), ...visitor(3) }, deps);
+    expect(r).toMatchObject({ status: 400, body: { error: 'dislikes are not accepted' } });
     expect(inserted).toHaveLength(0);
   });
 

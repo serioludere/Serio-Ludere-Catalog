@@ -1,7 +1,7 @@
 ---
 // Product Card / Preview (Figma 53:62 and the 358-wide mobile variant).
 //
-// 300 × 457 on desktop: a 4:5 image box on the surface with the like control pinned to its top
+// 300 × 457 on desktop: a 4:5 image box on the surface with the like control pinned to its bottom
 // right, then a 12px gap, then three lines 4px apart — title, size, price. No rating line, no meta
 // list, no collection label: the design strips the card back to what a buyer scanning a grid needs.
 //
@@ -9,6 +9,11 @@
 // frame actually draws is a rug floating clear of the box edges on the surface colour, and a rug is
 // judged on its border — cropping one to fill a box cuts off the thing the buyer is looking at. The
 // 4:5 box is the crop; the artwork inside it is never trimmed.
+//
+// 2026-09 refresh: the image box takes a hairline so it reads as a plate (surface on canvas is
+// 1.02:1 — without an edge the grid was floating rugs with nothing to align them), the whole card
+// responds to hover with the storefront's own 600ms ease-out on the photo, and the name steps up to
+// the lead size in medium weight so a row of cards can be scanned by name rather than by picture.
 import { money, type RateTable } from '../../lib/currency.ts';
 import { dims, PREVIEW_SEP } from '../../lib/units.ts';
 import { badgesFor, visibleLikes, type CardView } from '../../lib/view.ts';
@@ -58,11 +63,13 @@ const likes = visibleLikes(card.likes);
     }
     <a class="pv-card-hit" href={href} tabindex="-1" aria-hidden="true"></a>
     <div class="pv-card-react">
-      {/* Rendered server-side, and THRESHOLDED — `likes` is visibleLikes(card.likes), so a rug under
+      {
+        /* Rendered server-side, and THRESHOLDED — `likes` is visibleLikes(card.likes), so a rug under
           MIN_VISIBLE_LIKES has no count in the attribute, not merely a hidden one. Emitting
           `card.likes` here shipped the exact sub-5 number to every buyer in the page source while
           the badge was correctly blank, which defeated the requirement it was meant to implement.
-          Astro drops an undefined attribute, so `hidden` and the attribute now agree. */}
+          Astro drops an undefined attribute, so `hidden` and the attribute now agree. */
+      }
       <span class="pv-card-likes" data-like-count={likes} hidden={likes === undefined}>
         {likes ?? ''}
       </span>
@@ -93,13 +100,16 @@ const likes = visibleLikes(card.likes);
     display: flex;
     flex-direction: column;
     gap: var(--tight);
+    min-width: 0;
   }
 
   .pv-card-image {
     position: relative;
     aspect-ratio: 4 / 5;
     background: var(--surface);
+    border: var(--rule-width) solid var(--rule);
     overflow: hidden;
+    transition: border-color var(--motion-quick) var(--motion-ease);
   }
   .pv-card-image img {
     width: 100%;
@@ -107,12 +117,30 @@ const likes = visibleLikes(card.likes);
     object-fit: contain;
     padding: 12%;
   }
+  .pv-card:hover .pv-card-image,
+  .pv-card:focus-within .pv-card-image {
+    border-color: var(--border-control);
+  }
+  /* The storefront's own image hover, at a gentler amount: 600ms ease-out (product_card_image_zoom),
+     but 4% rather than 30% — a rug is `contain`ed with 12% of air, and a 30% zoom would push its
+     border out of the box, which is the one thing the buyer is looking at. Pointer devices only. */
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .pv-card-image img {
+      transition: transform var(--motion-transition) var(--motion-ease);
+    }
+    .pv-card:hover .pv-card-image img,
+    .pv-card:focus-within .pv-card-image img {
+      transform: scale(1.04);
+    }
+  }
   .pv-card-empty {
     position: absolute;
     inset: 0;
     display: grid;
     place-items: center;
-    font-size: var(--text-sm);
+    font-size: var(--text-xs);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
     color: var(--ink-muted);
   }
 
@@ -165,8 +193,11 @@ const likes = visibleLikes(card.likes);
     padding: 2px 6px;
     background: var(--ink);
     color: var(--surface);
-    font-size: var(--text-sm);
-    line-height: 1.4;
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    line-height: 1.5;
     white-space: nowrap;
   }
 
@@ -175,8 +206,15 @@ const likes = visibleLikes(card.likes);
     flex-direction: column;
     gap: var(--stack-xs);
   }
+  .pv-card-name {
+    font-size: var(--text-lg);
+    font-weight: 500;
+    line-height: 1.35;
+    text-wrap: balance;
+  }
   .pv-card-name a {
     text-decoration: none;
+    transition: color var(--motion-quick) var(--motion-ease);
   }
   .pv-card-name a:hover {
     color: var(--brand);
@@ -184,9 +222,12 @@ const likes = visibleLikes(card.likes);
   .pv-card-size {
     font-size: var(--text-sm);
     color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
   }
   .pv-card-price {
     font-size: var(--text-base);
+    font-weight: 500;
     color: var(--ink);
+    font-variant-numeric: tabular-nums;
   }
 </style>

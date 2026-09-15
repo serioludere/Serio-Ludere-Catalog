@@ -12,6 +12,7 @@ import Header from '../components/Header.astro';
 import Layout from '../components/Layout.astro';
 import RugGrid from '../components/RugGrid.astro';
 import { loadCatalogue, ratesFor } from '../lib/runtime.ts';
+import { publicCachePolicy } from '../lib/site/http.ts';
 import { activeRugs, cardView, navTabs, withLeads } from '../lib/view.ts';
 
 const { snapshot, error } = await loadCatalogue();
@@ -22,7 +23,7 @@ if (error || !snapshot) {
   Astro.response.headers.set('retry-after', '60');
   Astro.response.headers.set('cache-control', 'no-store');
 } else {
-  Astro.cache.set({ maxAge: 60, swr: 60, tags: ['sheet'] });
+  Astro.cache.set(publicCachePolicy());
 }
 const catalogue = snapshot?.catalogue ?? { rugs: [], collections: [], tags: [], rates: [], customers: [] };
 const rugs = snapshot ? activeRugs(catalogue) : [];
@@ -37,6 +38,14 @@ const state = error ?? (rugs.length === 0 ? 'No rugs published yet.' : undefined
   <Header rates={rates} />
   {tabs.length > 0 && <CollectionNav tabs={tabs} active={active} />}
   {tabs.length === 0 && <nav id="nav" aria-label="Collections" />}
-  <RugGrid cards={cards} rates={rates} active={active} state={state} error={Boolean(error)} eager={4} />
+  <RugGrid
+    cards={cards}
+    rates={rates}
+    active={active}
+    state={state}
+    error={Boolean(error)}
+    eager={4}
+    heading="Catalogue"
+  />
   <Footer />
 </Layout>

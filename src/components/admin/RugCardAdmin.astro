@@ -13,8 +13,10 @@ import type { Collection } from '../../lib/sheets/types.ts';
 interface Props {
   rug: AdminRug;
   collections: readonly Collection[];
+  /** Distinct customers currently liking the rug; hidden at zero. */
+  likes?: number;
 }
-const { rug, collections } = Astro.props;
+const { rug, collections, likes = 0 } = Astro.props;
 const photo = rug.photos[0] ? driveImageUrl(rug.photos[0], 800) : undefined;
 // Size only. With material, age and origin here too, a fully-filled rug ran four lines longer than
 // a sparse one, so the grid rows went ragged and the plates below them never lined up. Figma's card
@@ -50,6 +52,7 @@ const badges = badgesFor(rug.tags);
   <div class="ph">
     {photo ? <img src={photo} alt="" loading="lazy" data-rot={dataRot(rug.rotate)} /> : <span>no photo</span>}
     {rug.photos.length > 1 && <span class="cnt">{rug.photos.length}</span>}
+    {likes > 0 && <span class="lk">♥ {likes}</span>}
     {
       badges.length > 0 && (
         <ul class="badges">

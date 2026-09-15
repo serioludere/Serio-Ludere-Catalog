@@ -3,6 +3,7 @@
 //   npm run admin:password             prompt (echo off), print ADMIN_PASSWORD_HASH=scrypt.131072.8.1.<salt>.<key>
 //   npm run admin:password -- --write  also store it in .env (upsertEnv)
 //   echo 'p@ss…' | npm run admin:password   piped: the whole stdin (trailing newline stripped) is the password
+//   npm run admin:password -- --site   the SITE password instead (SITE_PASSWORD_HASH, the public catalogue)
 //
 // The password never leaves the process: nothing is logged but the hash. Requires ≥ 12 characters.
 import { createInterface } from 'node:readline';
@@ -69,19 +70,20 @@ async function main(): Promise<void> {
     if (again !== password) throw new Error('the two entries differ');
   }
   const started = Date.now();
+  const name = flag('site') === 'true' ? 'SITE_PASSWORD_HASH' : 'ADMIN_PASSWORD_HASH';
   const hash = hashPassword(password);
   const ms = Date.now() - started;
   if (!verifyPassword(hash, password)) throw new Error('self-check failed');
-  console.log(`ADMIN_PASSWORD_HASH=${hash}`);
+  console.log(`${name}=${hash}`);
   console.error(`(scrypt N=2^17 r=8 p=1, derived in ${ms} ms; verification costs the same on every login)`);
   if (flag('write') === 'true') {
-    upsertEnv('ADMIN_PASSWORD_HASH', hash);
+    upsertEnv(name, hash);
     console.error(
-      'Wrote ADMIN_PASSWORD_HASH to .env. Set ADMIN_SESSION_SECRET (≥ 32 chars) as well to enable /admin.',
+      `Wrote ${name} to .env. A signing secret of ≥ 32 chars (ADMIN_SESSION_SECRET or AUTH_SECRET) is needed too.`,
     );
   } else {
     console.error(
-      'Add it to .env (or re-run with --write). ADMIN_SESSION_SECRET (≥ 32 chars) is needed too.',
+      `Add ${name} to .env (or re-run with --write). A signing secret of ≥ 32 chars is needed too.`,
     );
   }
 }

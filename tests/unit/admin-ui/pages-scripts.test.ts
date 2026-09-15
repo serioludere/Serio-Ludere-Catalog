@@ -244,8 +244,9 @@ describe('clients.ts', () => {
   };
   const markup = (): string => `
     <input id="cl_name" /><input id="cl_note" /><input id="cl_pw" /><button id="btnGenerate"></button><div id="m8" class="msg"></div>
-    <dialog id="pwDialog"><h3 id="pwDialogTitle"></h3><input id="pwDialogInput" /><p id="pwDialogErr" hidden></p>
-      <button id="pwDialogOk"></button><button id="pwDialogCancel"></button></dialog>
+    <dialog id="pwDialog"><form id="pwDialogForm"><h3 id="pwDialogTitle"></h3><input id="pwDialogInput" />
+      <p id="pwDialogErr" hidden></p>
+      <button id="pwDialogOk" type="submit"></button><button id="pwDialogCancel" type="button"></button></form></dialog>
     <div id="linkOut" hidden>
       <section class="credential">
         <div class="credential__value"><span data-credential-url></span>
@@ -361,8 +362,8 @@ describe('clients.ts', () => {
                   code: 'anon',
                   name: 'anonymous',
                   known: false,
-                  liked: [],
-                  disliked: [{ rugId: 'SL-022', name: 'Old', slug: 'old', status: 'archived' }],
+                  liked: [{ rugId: 'SL-022', name: 'Old', slug: 'old', status: 'archived' }],
+                  disliked: [],
                 },
               ],
             },
@@ -415,14 +416,14 @@ describe('clients.ts', () => {
     expect(row.querySelector<HTMLInputElement>('[data-act="toggle"]')?.checked).toBe(false);
     await page.loadReport();
     const out = document.getElementById('reportOut')!;
-    expect(out.textContent).toContain('Most saved');
+    expect(out.textContent).toContain('Most liked');
     expect(out.textContent).toContain('Winks <b>x</b>');
     expect(out.innerHTML).not.toContain('<b>x</b>');
-    expect(out.textContent).toContain('Nadia — 1 saved');
-    expect(out.textContent).toContain('anonymous — 0 saved');
+    expect(out.textContent).toContain('Nadia — 1 liked');
+    expect(out.textContent).toContain('anonymous — 1 liked');
     expect(out.querySelector('.status-archived')?.textContent).toBe('Old (SL-022)');
-    // The saves count lives in the "Most saved" report, not in a column — F1 does not draw one.
-    expect(out.textContent).toContain('Nadia — 1 saved');
+    // The like count lives in the "Most liked" report, not in a column — F1 does not draw one.
+    expect(out.textContent).toContain('Nadia — 1 liked');
     expect(document.body.innerHTML).not.toMatch(/\son[a-z]+=/i);
   });
   it('renderReport handles an empty report', () => {
@@ -478,7 +479,7 @@ describe('audit.ts', () => {
     await page.loadMore();
     expect(visible()).toEqual(['sl-021', 'sl-022']);
     expect((document.getElementById('btnMore') as HTMLButtonElement).disabled).toBe(true);
-    expect(text('m11')).toBe('All 3 rows loaded.');
+    expect(text('m11')).toBe('Everything is loaded.');
     const target = document.getElementById('f_target') as HTMLInputElement;
     target.value = '022';
     target.dispatchEvent(new Event('input'));

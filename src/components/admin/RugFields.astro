@@ -24,6 +24,8 @@ interface Props {
    * id across the whole document, so it does not care which of the two rendered it.
    */
   fetchButton?: boolean;
+  /** Distinct customers currently liking the rug (edit mode); the admin read itself has no counts. */
+  likes?: number;
 }
 const {
   mode,
@@ -35,8 +37,18 @@ const {
   driveScopeOk,
   nextId,
   fetchButton = true,
+  likes = 0,
 } = Astro.props;
 const edit = mode === 'edit';
+/** "4 Sep 2026" for the meta line; the sheet stores ISO timestamps nobody should have to read. */
+const day = (iso: string | undefined): string => {
+  const t = iso ? Date.parse(iso) : Number.NaN;
+  return Number.isFinite(t)
+    ? new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+    : '—';
+};
+/** The read-only footer under the edit form, one string so it never wraps mid-phrase. */
+const metaLine = rug ? `${likes} ${likes === 1 ? 'like' : 'likes'} · added ${day(rug.scrapedAt)}` : '';
 const v = (s: string | number | undefined): string => (s === undefined ? '' : String(s));
 const pressed = new Set(rug?.tags.map((t) => t.toLowerCase()) ?? []);
 const tagChips = tags.map((t) => ({
@@ -50,26 +62,30 @@ const openSite = rug ? `/rugs/${rug.slug}` : '#';
 const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().toLowerCase()));
 ---
 
-{/* The add strip. Every control carries a VISIBLE label: these were placeholder-only, and a
+{
+  /* The add strip. Every control carries a VISIBLE label: these were placeholder-only, and a
     placeholder disappears the moment you type — so the one time you need to know what a field is
     (checking what you just entered) is the one time nothing tells you. The revealed `.fields` grid
-    below always had labels; this brings the top of the form up to the same standard. */}
+    below always had labels; this brings the top of the form up to the same standard. */
+}
 <div class="addform">
-  {/* P3 (80:1480) opens the drawer on the rug number. It used to live in `#preview`, which is
+  {
+    /* P3 (80:1480) opens the drawer on the rug number. It used to live in `#preview`, which is
       `display: none` until a scrape succeeds (admin.css `.preview`) — so the server allocated the
       next id, rendered it, and then hid it, and the drawer opened on "Your name for this rug" with
-      its primary field nowhere on screen. */}
+      its primary field nowhere on screen. */
+  }
   <div class="f">
-    <label for="f_id">Rug number (id)</label>
+    <label for="f_id">Product number</label>
     <input id="f_id" value={rug?.id ?? nextId ?? ''} readonly={edit} autocomplete="off" />
-    <p class="hint">Must be unique. It names the Drive folder and keys the sheet row.</p>
+    <p class="hint">Must be unique — it becomes the product's reference number.</p>
   </div>
 
   <div class="row">
     {
       !edit && (
         <div class="f grow">
-          <label for="yourName">Your name for this rug</label>
+          <label for="yourName">Product name</label>
           <input id="yourName" placeholder="e.g. Khal Mohammadi" autocomplete="off" />
         </div>
       )
@@ -98,54 +114,52 @@ const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().t
       <div class="newtag">
         <label class="sr-only" for="newTag">New tag name</label>
         <input id="newTag" placeholder="New tag" autocomplete="off" />
-        <button class="chip" id="btnNewTag" type="button">
-          Add tag
-        </button>
+        <button class="chip" id="btnNewTag" type="button"> Add tag </button>
       </div>
     </div>
   </div>
-{
-  !edit && (
-    <>
-      <div class="f">
-        <label for="url">Supplier product link</label>
-        <div class="row">
-          <div class="grow">
-            <input
-              id="url"
-              placeholder="ecarpetgallery.com or karavanrug.com"
-              inputmode="url"
-              autocomplete="off"
-            />
-          </div>
-          {
-            fetchButton && (
-              <button class="go" id="btnFetch" type="button">
+  {
+    !edit && (
+      <>
+        <div class="f">
+          <label for="url">Supplier product link</label>
+          <div class="row">
+            <div class="grow">
+              <input
+                id="url"
+                placeholder="ecarpetgallery.com or karavanrug.com"
+                inputmode="url"
+                autocomplete="off"
+              />
+            </div>
+            {fetchButton && (
+              <button class="btn btn--primary" id="btnFetch" type="button">
                 Fetch
               </button>
-            )
-          }
+            )}
+          </div>
         </div>
-      </div>
-      <p class="hint">Your name is what clients see. The link only supplies size, material, age and price.</p>
-      <p class="hint" id="supplierTitle" hidden />
-      <div id="m1" class="msg" />
-    </>
-  )
-}
+        <p class="hint">
+          The name is what customers see. The supplier link fills in size, material, age and price.
+        </p>
+        <p class="hint" id="supplierTitle" hidden />
+        <div id="m1" class="msg" />
+      </>
+    )
+  }
 </div>
 
 <div id="preview" class:list={['preview', { on: edit }]}>
   <div class="fields">
     <div class="f">
-      <label for="f_slug">Slug (URL)</label>
+      <label for="f_slug">Web address</label>
       <div class="pair">
         <input id="f_slug" value={rug?.slug ?? ''} autocomplete="off" />
         <button class="chip" id="btnSlug" type="button" title="Regenerate from the name">↻</button>
       </div>
     </div>
     <div class="f">
-      <label for="f_name">Name (what clients see)</label>
+      <label for="f_name">Name (shown to customers)</label>
       <input id="f_name" value={rug?.name ?? ''} autocomplete="off" />
     </div>
     <div class="f wide">
@@ -187,19 +201,19 @@ const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().t
       </div>
     </div>
     <div class="f">
-      <label for="f_rotate">Rotate</label>
+      <label for="f_rotate">Rotate photo</label>
       <select id="f_rotate">
-        <option value="false" selected={(rug?.rotate ?? 'false') === 'false'}>no</option>
-        <option value="true" selected={rug?.rotate === 'true'}>portrait (turn a landscape file)</option>
-        <option value="force" selected={rug?.rotate === 'force'}>force</option>
+        <option value="false" selected={(rug?.rotate ?? 'false') === 'false'}>No</option>
+        <option value="true" selected={rug?.rotate === 'true'}>Turn to portrait</option>
+        <option value="force" selected={rug?.rotate === 'force'}>Always turn</option>
       </select>
     </div>
     <div class="f">
       <label for="f_status">Status</label>
       <select id="f_status">
-        <option value="active" selected={status === 'active'}>active</option>
-        <option value="draft" selected={status === 'draft'}>draft</option>
-        <option value="archived" selected={status === 'archived'}>archived</option>
+        <option value="active" selected={status === 'active'}>Active</option>
+        <option value="draft" selected={status === 'draft'}>Draft</option>
+        <option value="archived" selected={status === 'archived'}>Archived</option>
       </select>
     </div>
     <div class="f">
@@ -214,7 +228,7 @@ const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().t
     <div class="f">
       <label for="f_supplier">Supplier</label>
       <select id="f_supplier">
-        <option value="" selected={!rug?.supplier}>— owned / other</option>
+        <option value="" selected={!rug?.supplier}>Owned / other</option>
         <option value="ecarpetgallery" selected={rug?.supplier === 'ecarpetgallery'}>ecarpetgallery</option>
         <option value="karavanrug" selected={rug?.supplier === 'karavanrug'}>karavanrug</option>
       </select>
@@ -251,10 +265,10 @@ const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().t
       }
     </div>
     <p class="hint" id="photoHint" hidden>
-      Drive is not authorised — photos are not saved; paste Drive ids below instead (SHEET_SETUP §6).
+      Photo storage is not connected, so photos cannot be uploaded. Paste Google Drive links below instead.
     </p>
     <div class="f wide">
-      <label for="f_photos">Drive photo ids or links — one per line, first = card image</label>
+      <label for="f_photos">Photo links (Google Drive) — one per line; the first is the card image</label>
       <textarea id="f_photos" rows="3">{rug?.photos.join('\n') ?? ''}</textarea>
     </div>
   </div>
@@ -269,7 +283,7 @@ const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().t
             checked={driveScopeOk === true}
             disabled={driveScopeOk !== true}
           />
-          Save photos to Drive
+          Save photos to Google Drive
         </label>
       )
     }
@@ -280,10 +294,10 @@ const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().t
     {
       !edit && (
         <>
-          <button class="go" id="btnAdd" type="button">
-            Add to sheet
+          <button class="btn btn--primary" id="btnAdd" type="button">
+            Save product
           </button>
-          <button class="go alt" id="btnClear" type="button">
+          <button class="btn btn--secondary" id="btnClear" type="button">
             Clear
           </button>
         </>
@@ -292,13 +306,13 @@ const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().t
     {
       edit && (
         <>
-          <button class="go" id="btnSave" type="button">
+          <button class="btn btn--primary" id="btnSave" type="button">
             Save
           </button>
-          <button class="go alt" id="btnArchive" type="button" hidden={status === 'archived'}>
+          <button class="btn btn--destructive" id="btnArchive" type="button" hidden={status === 'archived'}>
             Archive
           </button>
-          <button class="go alt" id="btnRestore" type="button" hidden={status !== 'archived'}>
+          <button class="btn btn--secondary" id="btnRestore" type="button" hidden={status !== 'archived'}>
             Restore
           </button>
           <a
@@ -317,14 +331,7 @@ const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().t
   </div>
   <div id="m2" class="msg"></div>
   <input type="hidden" id="f_version" value={rug?.version ?? ''} />
-  {
-    edit && rug && (
-      <p class="hint mono">
-        ❤ {rug.likes} · 👎 {rug.dislikes} · rating {rug.rating.toFixed(2)} · row {rug.row} · created{' '}
-        {rug.scrapedAt || '—'} · updated {rug.scrapedAt || '—'}
-      </p>
-    )
-  }
+  {edit && rug && <p class="hint mono">{metaLine}</p>}
 </div>
 
 {
@@ -332,10 +339,13 @@ const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().t
     <dialog id="confirm">
       <p id="confirmText" />
       <div class="actions">
-        <button class="go" id="confirmYes" type="button">
+        {/* Neutral by default on purpose. This dialog is shared by Archive and Restore, and
+            confirmStatus() in rug-form.ts swaps this to btn--destructive for the archive path only —
+            so a Restore prompt never renders its affirmative button in warning red. */}
+        <button class="btn btn--primary" id="confirmYes" type="button">
           Yes
         </button>
-        <button class="go alt" id="confirmNo" type="button">
+        <button class="btn btn--secondary" id="confirmNo" type="button">
           Cancel
         </button>
       </div>
@@ -349,7 +359,7 @@ const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().t
   }
   .tagrow {
     align-items: flex-start;
-    margin-top: 8px;
+    margin-top: var(--stack-sm);
   }
   .tagrow .chips {
     margin-top: 0;
@@ -357,30 +367,28 @@ const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().t
   }
   .newtag {
     display: flex;
-    gap: 6px;
+    gap: var(--stack-sm);
     align-items: center;
   }
   .newtag input {
     width: 160px;
-    padding: 6px 10px;
-    font-size: 12px;
   }
   .pair {
     display: flex;
-    gap: 6px;
+    gap: var(--stack-sm);
     align-items: stretch;
   }
   .pair .chip {
     white-space: nowrap;
   }
   .warnings {
-    padding-left: 18px;
-    margin: 8px 0 0;
+    padding-left: var(--stack-lg);
+    margin: var(--stack-sm) 0 0;
   }
   .photos {
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 12px;
-    margin-top: 12px;
+    gap: var(--stack-md);
+    margin-top: var(--stack-md);
   }
   .photos .tile .ph {
     aspect-ratio: 3 / 4;
@@ -404,16 +412,5 @@ const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().t
   a.chip[aria-disabled='true'] {
     opacity: 0.45;
     pointer-events: none;
-  }
-  dialog {
-    border: 1px solid var(--rule);
-    background: var(--paper);
-    color: var(--ink);
-    padding: 20px 24px;
-    max-width: 420px;
-    font-family: var(--body);
-  }
-  dialog::backdrop {
-    background: rgba(0, 0, 0, 0.35);
   }
 </style>

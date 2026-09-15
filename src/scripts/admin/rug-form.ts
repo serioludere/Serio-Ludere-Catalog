@@ -181,6 +181,12 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
   const confirmImpl =
     opts.confirmImpl ?? ((text: string) => (typeof confirm === 'function' ? confirm(text) : true));
 
+  /* Unsaved-work guard. This screen is a <div class="addform">, not a <form>: there is no native
+     submit, so the browser offers none of its own protection, and a click on the nav rail with half
+     a rug typed in discarded the lot without a word. Armed by the first real edit and disarmed by
+     fill() and reset() — the two places where what is on screen is what the server already has. */
+  let dirty = false;
+
   /* ---------- elements ---------- */
   const input = (id: string): HTMLInputElement => byId<HTMLInputElement>(id, doc);
   const yourName = maybe<HTMLInputElement>('yourName', doc);
@@ -274,7 +280,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
   };
 
   const auditLink = (audit: { row: number; action?: string } | undefined): Array<string | Node> =>
-    audit ? [' · ', el('a', { href: '/admin/audit' }, `audit row ${audit.row}`, doc)] : [];
+    audit ? [' · ', el('a', { href: '/admin/audit' }, 'see activity', doc)] : [];
 
   const hasTag = (name: string): string | undefined => {
     const key = name.trim().toLowerCase();
@@ -342,6 +348,8 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
   /* ---------- fill / collect ---------- */
 
   const fill = (rug: RugLike): void => {
+    // The server's values are now the form's, so there is nothing unsaved to warn about.
+    dirty = false;
     rugId = rug.id;
     f.id.value = rug.id;
     f.slug.value = rug.slug;
@@ -527,7 +535,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     // nowhere to land. It is the drawer's first field (P3 80:1480) and was previously checked only
     // on save — by which point the fetch had already run and the modal had already been reviewed.
     if (!f.id.value.trim()) {
-      msg(m1, 'Give the rug a number first — it keys the sheet row and names the Drive folder.', 'err');
+      msg(m1, 'Give the product a number first.', 'err');
       f.id.focus();
       return;
     }
@@ -579,7 +587,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     applyScrape(fetched);
     msg(
       m1,
-      `Found it${n ? ` — ${n} photo${n > 1 ? 's' : ''} on the page` : ''}${r.data.cached ? ' (cached)' : ''}. Check the fields, then add.`,
+      `Found it${n ? ` — ${n} photo${n > 1 ? 's' : ''} on the page` : ''}. Check the fields, then save.`,
       'ok',
     );
     f.name.focus();
@@ -656,7 +664,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     }
     const { bad } = parsePhotoLines(f.photos.value);
     if (bad.length) {
-      msg(m2, `Not a Drive id or link: ${bad[0]}`, 'err');
+      msg(m2, `This is not a Google Drive link: ${bad[0]}`, 'err');
       f.photos.focus();
       return false;
     }
@@ -682,7 +690,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     // The row goes in first, marked pending, so a failure half-way leaves something visible and
     // retryable rather than orphaned files in Drive.
     if (urls.length) {
-      msg(m2, `Saving ${urls.length} photo${urls.length > 1 ? 's' : ''} to Drive…`, 'busy');
+      msg(m2, `Saving ${urls.length} photo${urls.length > 1 ? 's' : ''}…`, 'busy');
       const prefix = (f.slug.value.trim() || slugify(f.name.value.trim()) || f.id.value.trim() || 'rug')
         .replace(/[^A-Za-z0-9_-]+/g, '-')
         .slice(0, 60);
@@ -719,8 +727,8 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
       imported = outcome.filter((x) => x.id && !x.error).map((x) => x.id!);
       const failed = outcome.filter((x) => x.error).length;
       if (p.ok)
-        photoNote = `${imported.length} photo${imported.length === 1 ? '' : 's'} saved to Drive${failed ? `, ${failed} failed` : ''}.`;
-      else if (p.status === 409) photoNote = 'Drive is not authorised — no photos saved.';
+        photoNote = `${imported.length} photo${imported.length === 1 ? '' : 's'} saved${failed ? `, ${failed} failed` : ''}.`;
+      else if (p.status === 409) photoNote = 'Photo storage is not connected — the photos were not saved.';
       else photoNote = `Photos not saved: ${p.message}`;
     }
     const body = collect();
@@ -729,7 +737,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     body.commitStatus = urls.length === 0 ? '' : allLanded ? 'complete' : 'pending';
     body.driveFolderId = folderId;
     body.driveFolderUrl = folderUrl;
-    msg(m2, 'Writing the row…', 'busy');
+    msg(m2, 'Saving…', 'busy');
     const r = await post<{ rug: RugLike; row: number; audit: { row: number; action: string } }>(
       '/api/admin/rugs',
       body,
@@ -742,11 +750,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
       return;
     }
     const link = el('a', { href: `/admin/rugs/${encodeURIComponent(r.data.rug.id)}` }, r.data.rug.id, doc);
-    msg(
-      m2,
-      ['Added ', link, ` at row ${r.data.row}. ${photoNote}`.trimEnd(), ...auditLink(r.data.audit)],
-      'ok',
-    );
+    msg(m2, ['Added ', link, `. ${photoNote}`.trimEnd(), ...auditLink(r.data.audit)], 'ok');
     reset(true);
   };
 
@@ -813,6 +817,12 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     const no = maybe<HTMLButtonElement>('confirmNo', doc);
     if (dialog && confirmText && yes && no && typeof dialog.showModal === 'function') {
       confirmText.textContent = text;
+      // One #confirmYes serves BOTH flows (btnArchive and btnRestore below both land here), so the
+      // button's emphasis has to follow the action instead of sitting in the markup: archiving is
+      // destructive and takes the red, restoring is a recovery and must not be dressed as a warning.
+      // Toggling a class rather than writing a style keeps this inside the hash-based CSP.
+      yes.classList.toggle('btn--destructive', status === 'archived');
+      yes.classList.toggle('btn--primary', status !== 'archived');
       const onYes = (): void => {
         cleanup();
         dialog.close();
@@ -835,6 +845,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
   };
 
   const reset = (keepCollection = false): void => {
+    dirty = false;
     manual = false;
     scraped = undefined;
     lastManual = undefined;
@@ -974,7 +985,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
           if (m1) {
             msg(
               m1,
-              `Using the fetched values${n ? ` — ${n} photo${n > 1 ? 's' : ''} will upload on save` : ''}. Check the fields, then add.`,
+              `Using the fetched values${n ? ` — ${n} photo${n > 1 ? 's' : ''} will upload on save` : ''}. Check the fields, then save.`,
               'ok',
             );
           }
@@ -994,6 +1005,21 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
       doc,
     );
   }
+
+  /* Scoped to the form container and to trusted events: programmatic writes (fill, applyScrape,
+     the fetch modal handing values over) set .value directly and fire nothing, which is exactly the
+     behaviour wanted — only a person typing counts as unsaved work. */
+  const formEl = doc.querySelector<HTMLElement>('.addform');
+  const markDirty = (e: Event): void => {
+    if (e.isTrusted) dirty = true;
+  };
+  formEl?.addEventListener('input', markDirty);
+  formEl?.addEventListener('change', markDirty);
+  const view = doc.defaultView;
+  view?.addEventListener('beforeunload', (e: BeforeUnloadEvent) => {
+    // preventDefault is the modern spelling; the browser supplies its own wording.
+    if (dirty) e.preventDefault();
+  });
 
   return {
     mode,

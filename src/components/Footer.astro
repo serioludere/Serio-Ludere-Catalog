@@ -3,6 +3,10 @@
 // on the site is converted from the base currency at an approximate daily rate, and the buyer has
 // to be told so before they quote a number back to the studio. The year is rendered on the server;
 // the contacts come from src/lib/studio.ts.
+//
+// Two rows rather than one run of links: the studio's addresses first, then the small print. The
+// one-row version wrapped the copyright and the disclaimer between links at some widths, so the
+// disclaimer read as a link and the links read as fine print.
 import {
   STUDIO_EMAIL,
   STUDIO_INSTAGRAM,
@@ -23,29 +27,33 @@ const year = new Date().getFullYear();
 ---
 
 <footer>
-  {
-    !minimal && (
-      <>
-        <a href={STUDIO_SITE} target="_blank" rel="noopener">
-          {STUDIO_SITE_LABEL}
-        </a>
-        <a href={STUDIO_INSTAGRAM} target="_blank" rel="noopener">
-          {STUDIO_INSTAGRAM_LABEL}
-        </a>
-        <a href={`https://wa.me/${STUDIO_WHATSAPP}`} target="_blank" rel="noopener">
-          {STUDIO_PHONE_LABEL}
-        </a>
-      </>
-    )
-  }
-  <a href={`mailto:${STUDIO_EMAIL}`}>{STUDIO_EMAIL}</a>
-  <span>&copy; <span id="yr">{year}</span> {STUDIO_NAME}</span>
-  <span class="fx-note">Prices are indicative and convert at an approximate rate.</span>
+  <nav class="foot-links" aria-label="Studio">
+    {
+      !minimal && (
+        <>
+          {/* Each of these leaves the catalogue for a new tab. Sighted users find their Back button
+              gone and no longer where they thought they were; a screen reader announces nothing at
+              all unless the link says so. The note is visually hidden because the visible labels are
+              set as a typographic row and an icon would break it. */}
+          <a href={STUDIO_SITE} target="_blank" rel="noopener">
+            {STUDIO_SITE_LABEL}
+            <span class="sr-only"> (opens in a new tab)</span>
+          </a>
+          <a href={STUDIO_INSTAGRAM} target="_blank" rel="noopener">
+            {STUDIO_INSTAGRAM_LABEL}
+            <span class="sr-only"> (opens in a new tab)</span>
+          </a>
+          <a href={`https://wa.me/${STUDIO_WHATSAPP}`} target="_blank" rel="noopener">
+            {STUDIO_PHONE_LABEL}
+            <span class="sr-only"> (opens in a new tab)</span>
+          </a>
+        </>
+      )
+    }
+    <a href={`mailto:${STUDIO_EMAIL}`}>{STUDIO_EMAIL}</a>
+  </nav>
+  <div class="foot-meta">
+    <span>&copy; <span id="yr">{year}</span> {STUDIO_NAME}</span>
+    <span class="fx-note">Prices are indicative and convert at an approximate rate.</span>
+  </div>
 </footer>
-
-<style>
-  .fx-note {
-    display: block;
-    width: 100%;
-  }
-</style>

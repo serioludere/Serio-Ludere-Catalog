@@ -18,6 +18,7 @@ export const RESERVED_SLUGS: readonly string[] = [
   'api',
   'login',
   'logout',
+  'enter', // the site password page (src/lib/site/gate.ts)
   '_astro',
   '_image',
   'assets',

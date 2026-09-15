@@ -1,6 +1,8 @@
 // /admin/audit (docs/ADMIN_SPEC.md §8.3): client-side filter by action / target id over the
 // server-rendered rows, "Load more" through GET /api/admin/audit (offset paging), rows built as text.
+import { auditLabel } from '../../lib/admin/audit-labels.ts';
 import { get, type ApiOptions } from './api.ts';
+import { relativeTime } from './dashboard.ts';
 import { byId, el, maybe } from './dom.ts';
 import { hide, msg } from './msg.ts';
 
@@ -33,7 +35,7 @@ export function auditRow(a: AuditEntryLike, doc: Document = document): HTMLTable
         'details',
         {},
         [
-          el('summary', {}, 'before → after', doc),
+          el('summary', {}, 'Show changes', doc),
           a.before ? el('pre', {}, pretty(a.before), doc) : null,
           a.after ? el('pre', {}, pretty(a.after), doc) : null,
         ],
@@ -45,9 +47,14 @@ export function auditRow(a: AuditEntryLike, doc: Document = document): HTMLTable
     'tr',
     { 'data-action': a.action, 'data-target': a.targetId.toLowerCase(), 'data-row': a.row },
     [
-      el('td', { class: 'mono' }, a.timestamp, doc),
+      el(
+        'td',
+        { class: 'mono', 'data-ts': a.timestamp, title: a.timestamp },
+        relativeTime(a.timestamp) || a.timestamp,
+        doc,
+      ),
       el('td', {}, a.actor, doc),
-      el('td', { class: 'mono' }, a.action, doc),
+      el('td', {}, auditLabel(a.action), doc),
       el('td', { class: 'mono' }, `${a.targetTab} ${a.targetId}`, doc),
       change,
       el('td', { class: 'mono' }, a.note, doc),
@@ -98,7 +105,7 @@ export function initAudit(doc: Document = document, api: ApiOptions = {}): Audit
     more.dataset.offset = String(offset + r.data.rows.length);
     if (offset + r.data.rows.length >= r.data.total || r.data.rows.length === 0) {
       more.disabled = true;
-      msg(m, `All ${r.data.total} rows loaded.`, 'busy');
+      msg(m, 'Everything is loaded.', 'busy');
     } else hide(m);
     apply();
   };

@@ -79,7 +79,7 @@ describe('votes.ts', () => {
     const fetchImpl = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
       bodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
       return okResponse([
-        { productId: 'SL-1', state: 'liked', likes: 3, dislikes: 1, rating: 3.75 },
+        { productId: 'SL-1', state: 'liked', likes: 7, dislikes: 1, rating: 3.75 },
         { productId: 'SL-2', state: 'disliked', likes: 0, dislikes: 1, rating: 0 },
       ]);
     }) as unknown as typeof fetch;
@@ -102,7 +102,7 @@ describe('votes.ts', () => {
       ],
     });
     await vi.waitFor(() =>
-      expect(document.querySelector('[data-rating-for="SL-1"]')?.textContent).toBe('3.8 · 4 votes'),
+      expect(document.querySelector('[data-rating-for="SL-1"]')?.textContent).toBe('7 likes'),
     );
     expect(readSaved()).toEqual({ 'SL-1': 'liked', 'SL-2': 'disliked' });
   });

@@ -42,7 +42,8 @@ export function collectionRow(c: CollectionLike, index: number, doc: Document = 
    */
   const moveButton = (act: 'up' | 'down', aria: string, d: Document): HTMLButtonElement => {
     const tpl = d.getElementById('moveTpl');
-    const node = tpl instanceof HTMLTemplateElement ? tpl.content.firstElementChild?.cloneNode(true) : undefined;
+    const node =
+      tpl instanceof HTMLTemplateElement ? tpl.content.firstElementChild?.cloneNode(true) : undefined;
     if (node instanceof HTMLButtonElement) {
       node.setAttribute('data-act', act);
       node.setAttribute('aria-label', aria);
@@ -52,7 +53,12 @@ export function collectionRow(c: CollectionLike, index: number, doc: Document = 
     // No template (an older page, or a test fixture): still a working, labelled control.
     return el(
       'button',
-      { type: 'button', class: `btn btn--ghost crow__move${act === 'up' ? ' crow__move--up' : ''}`, 'data-act': act, 'aria-label': aria },
+      {
+        type: 'button',
+        class: `btn btn--ghost crow__move${act === 'up' ? ' crow__move--up' : ''}`,
+        'data-act': act,
+        'aria-label': aria,
+      },
       '',
       d,
     );
@@ -255,7 +261,7 @@ export function initCollections(doc: Document = document, api: ApiOptions = {}):
     }
     collections = new Map(r.data.collections.map((x) => [x.id, x]));
     renderCollections();
-    msg(m5, r.data.audit ? `Order saved. Audit row ${r.data.audit.row}.` : 'Order unchanged.', 'ok');
+    msg(m5, r.data.audit ? 'Order saved.' : 'Order unchanged.', 'ok');
     list.querySelector<HTMLButtonElement>(`[data-id="${CSS.escape(id)}"] button[data-act="${dir}"]`)?.focus();
   };
 
@@ -296,7 +302,7 @@ export function initCollections(doc: Document = document, api: ApiOptions = {}):
     const detached = r.data.detached ?? 0;
     msg(
       m5,
-      `Saved ${r.data.collection.name}. Audit row ${r.data.audit?.row ?? '?'}.` +
+      `Saved ${r.data.collection.name}.` +
         (detached > 0
           ? ` ${detached} rug${detached === 1 ? '' : 's'} still store the old name "${current.name}".`
           : ''),
@@ -328,11 +334,7 @@ export function initCollections(doc: Document = document, api: ApiOptions = {}):
     cName.value = '';
     cDescription.value = '';
     cCover.value = '';
-    msg(
-      m6,
-      `Added ${r.data.collection.name} (row ${r.data.collection.row}). Audit row ${r.data.audit.row}.`,
-      'ok',
-    );
+    msg(m6, `Added ${r.data.collection.name}.`, 'ok');
   };
 
   const openTag = (id: string): void => {
@@ -389,7 +391,7 @@ export function initCollections(doc: Document = document, api: ApiOptions = {}):
     const detached = r.data.detached ?? 0;
     msg(
       m7,
-      `Saved ${r.data.tag.name}. Audit row ${r.data.audit?.row ?? '?'}.` +
+      `Saved ${r.data.tag.name}.` +
         (detached > 0 ? ` ${detached} rug${detached === 1 ? '' : 's'} still store "${t.name}".` : ''),
       detached > 0 ? 'busy' : 'ok',
     );
@@ -415,7 +417,7 @@ export function initCollections(doc: Document = document, api: ApiOptions = {}):
     tagCounts.set(r.data.tag.id, 0);
     renderTags();
     ntName.value = '';
-    msg(m8, `Added ${r.data.tag.name}. Audit row ${r.data.audit.row}.`, 'ok');
+    msg(m8, `Added ${r.data.tag.name}.`, 'ok');
   };
 
   list.addEventListener('click', (e) => {

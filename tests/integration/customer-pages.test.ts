@@ -118,7 +118,7 @@ describe('/{slug} — the gate', () => {
     expect(html).toContain('autocomplete="current-password"');
     expect(html).toContain('data-gate-reveal');
     // The buyer is told, on the gate itself, that their reactions are shared.
-    expect(html).toContain('The rugs you like and dislike are shared with Serio Ludere.');
+    expect(html).toContain('The rugs you like are shared with Serio Ludere.');
     // No username, no reset, no account: the brief's one-field form (§10).
     expect(html).not.toContain('name="email"');
     expect(html).not.toContain('Forgot');
@@ -224,12 +224,7 @@ describe('the buyer’s name never reaches the customer realm', () => {
     [
       'the detail page',
       () =>
-        render(
-          CustomerDetail,
-          '/hala/SL-021',
-          { slug: 'hala', productId: 'SL-021' },
-          { customer: 'hala' },
-        ),
+        render(CustomerDetail, '/hala/SL-021', { slug: 'hala', productId: 'SL-021' }, { customer: 'hala' }),
     ],
   ])('%s never prints the display name', async (_label, go) => {
     state.down = false;
@@ -244,7 +239,7 @@ describe('the buyer’s name never reaches the customer realm', () => {
 });
 
 describe('/{slug}/{productId} — the detail page', () => {
-  it('offers like AND dislike, records the source, and shows no enquiry action', async () => {
+  it('offers a like only, records the source, and shows no enquiry action', async () => {
     state.down = false;
     const { status, html } = await render(
       CustomerDetail,
@@ -255,7 +250,7 @@ describe('/{slug}/{productId} — the detail page', () => {
     expect(status).toBe(200);
     expect(html).toContain('Winks');
     expect(html).toMatch(/class="sr-only"[^>]*>Like this rug</);
-    expect(html).toMatch(/class="sr-only"[^>]*>Not for me</);
+    expect(html).not.toContain('Not for me'); // dislikes were removed (owner, 2026-09-15)
     expect(html).toContain('data-source="detail"');
     expect(html).toContain('Specification');
     expect(html).toContain('135 · 190 cm'); // a middle dot, as drawn, not the reference's cross

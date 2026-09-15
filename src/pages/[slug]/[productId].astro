@@ -17,11 +17,13 @@ import PreviewHeader from '../../components/customer/PreviewHeader.astro';
 import PreviewLayout from '../../components/customer/PreviewLayout.astro';
 import Reactions from '../../components/customer/Reactions.astro';
 import SpecTable from '../../components/customer/SpecTable.astro';
+import Pager from '../../components/Pager.astro';
 import { money } from '../../lib/currency.ts';
 import { findCustomer } from '../../lib/customer/http.ts';
 import { baseCurrency, loadCatalogue, ratesFor } from '../../lib/runtime.ts';
 import { dims, PREVIEW_SEP } from '../../lib/units.ts';
-import { activeRugs, cardView } from '../../lib/view.ts';
+import { driveImageUrl } from '../../lib/images.ts';
+import { activeRugs, cardView, tagSlug, type CardView } from '../../lib/view.ts';
 
 const slug = (Astro.params.slug ?? '').toLowerCase();
 const productId = Astro.params.productId ?? '';
@@ -51,9 +53,36 @@ if (error || !snapshot) {
   Astro.response.statusText = 'Not Found';
 }
 
+/* Where the buyer came from. The grid writes its active chip to `?tag=` (scripts/filters.ts) and
+   the card links carry it here, so every way OUT of this page — the back link, prev/next, the
+   recovery link on a missing rug — returns them to the grid they were actually looking at. Without
+   it, filtering to Kilim, opening a rug and pressing Back dropped them into the unfiltered grid
+   with their place lost; only the browser's own Back button happened to work. */
+const TAG_RE = /^[a-z0-9-]{1,80}$/;
+const rawTag = Astro.url.searchParams.get('tag');
+const fromTag = rawTag && TAG_RE.test(rawTag) ? rawTag : undefined;
+const q = fromTag ? `?tag=${encodeURIComponent(fromTag)}` : '';
+const gridHref = `/${slug}${q}`;
+const hrefForCard = (c: CardView): string => `/${slug}/${encodeURIComponent(c.id)}${q}`;
+
+/* Prev/next run the flat grid order, not a collection run: the preview grid is one ungrouped wall
+   filtered by TAG, so `siblings()` — which walks the same-collection run the public catalogue is
+   built from — would step through rugs the buyer cannot currently see. `liked` is per-visitor and
+   lives only in their browser, so it cannot narrow a server-rendered run; it still rides along in
+   the href so returning to the grid restores the shortlist. */
+const inTag = (c: CardView): boolean =>
+  c.tags.some((t) => (t.slug || tagSlug(t.name, catalogue.tags)) === fromTag);
+const tagged = fromTag && fromTag !== 'liked' ? cards.filter(inTag) : [];
+const run = card && tagged.includes(card) ? tagged : cards;
+const at = card ? run.indexOf(card) : -1;
+const sib = at >= 0 ? { index: at, total: run.length, prev: run[at - 1], next: run[at + 1] } : undefined;
+
 const priceText = card ? money(card.priceUsd, baseCurrency, rates, 'en-US') : '';
 const sizeText = card ? dims(card.widthCm, card.lengthCm, 'cm', PREVIEW_SEP) : '';
 const photos = card?.photoUrls?.length ? card.photoUrls : card?.photoUrl ? [card.photoUrl] : [];
+// The thumbnails paint a 96×120 box, so they take the 400 tier; the 1600 stays on data-full for the
+// hero swap. Before this every thumbnail fetched the full-size file to fill a thumbnail.
+const thumbs = (card?.photoIds ?? []).map((id) => driveImageUrl(id, 400));
 const specRows = card
   ? [
       { key: 'Size', value: sizeText },
@@ -73,7 +102,7 @@ const title = card ? `${card.name} — Serio Ludere` : 'Serio Ludere';
     customer && (
       <PreviewHeader
         home={`/${slug}`}
-        back={{ href: `/${slug}`, label: 'Back to the collection', shortLabel: 'Back' }}
+        back={{ href: gridHref, label: 'Back to the collection', shortLabel: 'Back' }}
       />
     )
   }
@@ -97,7 +126,7 @@ const title = card ? `${card.name} — Serio Ludere` : 'Serio Ludere';
         </p>
         {customer && (
           <p class="pv-lede">
-            <a href={`/${slug}`}>Back to the collection</a>
+            <a href={gridHref}>Back to the collection</a>
           </p>
         )}
       </main>
@@ -129,7 +158,7 @@ const title = card ? `${card.name} — Serio Ludere` : 'Serio Ludere';
                   data-alt={`${card.name}, photograph ${i + 1}`}
                   aria-current={i === 0 ? 'true' : undefined}
                 >
-                  <img src={src} alt={`Photograph ${i + 1}`} loading="lazy" decoding="async" />
+                  <img src={thumbs[i] ?? src} alt={`Photograph ${i + 1}`} loading="lazy" decoding="async" />
                 </button>
               ))}
             </div>
@@ -158,6 +187,22 @@ const title = card ? `${card.name} — Serio Ludere` : 'Serio Ludere';
 
           <SpecTable rows={specRows} widthCm={card.widthCm} lengthCm={card.lengthCm} />
         </section>
+
+        {/* Until this existed the only way on from a rug was back to the grid, so reviewing forty
+            of them meant forty round trips. The public catalogue has had prev/next since the first
+            brief; the preview — the realm the buyer actually uses — shipped without it, though
+            Pager's own `hrefFor` was written for exactly this. */}
+        {sib && sib.total > 1 && (
+          <nav class="pv-wrap pv-pager" aria-label="Rugs in this view">
+            <Pager
+              prev={sib.prev}
+              next={sib.next}
+              index={sib.index + 1}
+              total={sib.total}
+              hrefFor={hrefForCard}
+            />
+          </nav>
+        )}
       </main>
     )
   }
@@ -173,10 +218,13 @@ const title = card ? `${card.name} — Serio Ludere` : 'Serio Ludere';
     place-items: center;
     min-height: 620px;
     background: var(--surface);
+    border-bottom: var(--rule-width) solid var(--rule);
   }
   .pv-hero img {
-    max-width: 560px;
-    max-height: 400px;
+    /* The drawn 560×400 cap left a small rug adrift in a 620 band; the photo is the page, so it
+       takes the room the band already reserves for it. */
+    max-width: min(760px, calc(100% - 2 * var(--gutter)));
+    max-height: 520px;
     object-fit: contain;
   }
   .pv-hero-empty {
@@ -198,11 +246,14 @@ const title = card ? `${card.name} — Serio Ludere` : 'Serio Ludere';
     width: 96px;
     height: 120px;
     padding: 0;
-    border: var(--rule-width) solid var(--rule);
+    border: var(--rule-width) solid var(--border-control);
     border-radius: var(--radius);
     background: var(--surface);
     cursor: pointer;
     overflow: hidden;
+  }
+  .pv-thumb:hover {
+    border-color: var(--border-strong);
   }
   .pv-thumb.is-on {
     border: var(--border-width-focus) solid var(--border-strong);
@@ -222,8 +273,11 @@ const title = card ? `${card.name} — Serio Ludere` : 'Serio Ludere';
     padding: var(--section-gap) var(--gutter);
   }
   .pv-detail-text {
-    flex: 0 0 620px;
-    max-width: 620px;
+    /* Grows with the screen to a readable 760, shrinks below 620 when it must; the panel takes the
+       rest of the row. */
+    flex: 1 1 620px;
+    max-width: 760px;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: var(--section-gap);
@@ -265,13 +319,72 @@ const title = card ? `${card.name} — Serio Ludere` : 'Serio Ludere';
     text-align: center;
   }
 
+  /* Pager carries no styles of its own — `.pager` lives in editorial.css, which the preview realm
+     deliberately does not import — so the strip is dressed here in this realm's own idiom: the
+     Label style, a hairline above it, brand red on hover like every other preview link. */
+  .pv-pager {
+    padding-top: var(--section-gap);
+    border-top: var(--rule-width) solid var(--rule);
+  }
+  .pv-pager :global(.pager) {
+    display: flex;
+    align-items: center;
+    gap: var(--stack-md);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    line-height: var(--leading-body);
+    text-transform: uppercase;
+    letter-spacing: 0;
+  }
+  .pv-pager :global(.pager a) {
+    color: var(--ink);
+    text-decoration: none;
+  }
+  .pv-pager :global(.pager a:hover) {
+    color: var(--brand);
+  }
+  /* The absent neighbour keeps its slot so the row never jumps, and is hidden from assistive tech
+     by the component itself (aria-hidden). */
+  .pv-pager :global(.pager .is-off) {
+    visibility: hidden;
+  }
+  /* The position sits in the middle and takes the slack, so prev hugs left and next hugs right. */
+  .pv-pager :global(.pager .pos) {
+    flex: 1 1 auto;
+    text-align: center;
+    font-family: var(--mono);
+    font-weight: 400;
+    color: var(--ink-soft);
+  }
+  @media (max-width: 767px) {
+    .pv-pager {
+      padding-inline: var(--stack-lg);
+    }
+    .pv-pager :global(.pager .word) {
+      display: none;
+    }
+  }
+
+  /* Between the two drawn frames the fixed 620 column plus the panel minimum overran the viewport
+     (768–1100 scrolled sideways), so the body stacks one step before the mobile frame needs it. */
+  @media (max-width: 1023px) {
+    .pv-body {
+      flex-direction: column;
+    }
+    .pv-detail-text {
+      flex-basis: auto;
+      max-width: none;
+      width: 100%;
+    }
+  }
+
   @media (max-width: 767px) {
     .pv-hero {
       min-height: 488px;
     }
     .pv-hero img {
-      max-width: 240px;
-      max-height: 300px;
+      max-width: min(320px, calc(100% - 2 * var(--stack-lg)));
+      max-height: 360px;
     }
     .pv-hero-react {
       top: var(--stack-lg);

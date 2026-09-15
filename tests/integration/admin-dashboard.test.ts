@@ -112,21 +112,21 @@ describe('/admin dashboard', () => {
     expect(res.status).toBe(200);
     const html = await res.text();
     expect(html).not.toContain('aria-current="page"'); // the dashboard is the wordmark link, not a tab
-    expect(html).toContain('Active rugs');
-    expect(html).toMatch(/Active rugs<\/div>\s*<div class="v">1<\/div>/);
+    expect(html).toContain('Active products');
+    expect(html).toMatch(/Active products<\/div>\s*<div class="v">1<\/div>/);
     expect(html).toMatch(/Drafts<\/div>\s*<div class="v">1<\/div>/);
     expect(html).toMatch(/Archived<\/div>\s*<div class="v">1<\/div>/);
     expect(html).toMatch(/Collections<\/div>\s*<div class="v">1<\/div>/);
     expect(html).toMatch(/Tags<\/div>\s*<div class="v">2<\/div>/);
-    expect(html).toMatch(/Clients<\/div>\s*<div class="v">\s*1\s*<small>\+1 revoked<\/small>/);
+    expect(html).toMatch(/Customers<\/div>\s*<div class="v">\s*1\s*<small>\+1 paused<\/small>/);
     expect(html).toContain('12 s');
     expect(html).toContain('not checked');
-    expect(html).toMatch(/Rows dropped by validation<\/div>\s*<div class="v">1<\/div>/);
-    expect(html).toContain('<td class="mono">rug.update</td>');
+    expect(html).toMatch(/Rows skipped by the sheet<\/div>\s*<div class="v">1<\/div>/);
+    expect(html).toContain('<td>Product updated</td>');
     expect(html).toContain('&lt;script&gt;x&lt;/script&gt;');
     expect(html).not.toContain('<script>x</script>');
     expect(html).toContain('price_round_step must be a positive whole number');
-    expect(html).not.toContain('npm run sheet:init');
+    expect(html).not.toContain('missing its admin columns');
     expect(html).not.toMatch(/\sstyle="/);
   });
   it('tells the owner to run sheet:init when W1:Z1 are blank', async () => {
@@ -139,9 +139,9 @@ describe('/admin dashboard', () => {
     });
     const html = await res.text();
     expect(res.status).toBe(200);
-    expect(html).toContain('npm run sheet:init');
+    expect(html).toContain('missing its admin columns');
     // No header row means no parsable products, so the tiles read zero, not stale.
-    expect(html).toMatch(/Active rugs<\/div>\s*<div class="v">0<\/div>/);
+    expect(html).toMatch(/Active products<\/div>\s*<div class="v">0<\/div>/);
   });
   it('renders the shell with a scrubbed error (never a 500, never a secret) when the sheet is unreachable', async () => {
     state.mode = 'down';
@@ -156,7 +156,7 @@ describe('/admin dashboard', () => {
     expect(html).toContain('Could not read the sheet');
     expect(html).toContain('[redacted]');
     expect(html).not.toContain('refresh_token=secret');
-    expect(html).toMatch(/Active rugs<\/div>\s*<div class="v">—<\/div>/);
+    expect(html).toMatch(/Active products<\/div>\s*<div class="v">—<\/div>/);
     expect(html).toContain('<a href="/admin/rugs/new"');
   });
 });

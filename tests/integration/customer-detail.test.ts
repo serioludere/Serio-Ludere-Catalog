@@ -143,17 +143,16 @@ describe('/admin/clients/[code]', () => {
     expect((await render('z9q-4w')).status).toBe(404);
   });
 
-  it('shows the four stat blocks with the drawn tones', async () => {
+  it('shows the stat blocks with the drawn tones', async () => {
     const { status, html } = await render('a1b-2c');
     expect(status).toBe(200);
     expect(html).toContain('Hala Nasser');
-    // Sessions comes from Visits, liked/disliked from Reactions — the join this page exists for.
+    // Sessions comes from Visits, liked from Reactions — the join this page exists for.
     expect(stats(html)).toMatchObject({
       Sessions: '2',
       Liked: '1',
-      Disliked: '1',
-      // Derived, not read: 3 active rugs − 1 liked − 1 disliked.
-      'Not yet reviewed': '1',
+      // Derived, not read: 3 active rugs − 1 liked. Dislikes were removed (owner, 2026-09-15).
+      'Not yet reviewed': '2',
     });
     expect(html).toContain('statblock--positive');
     expect(html).toContain('statblock--muted');

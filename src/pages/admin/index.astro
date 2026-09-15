@@ -5,6 +5,8 @@
 export const prerender = false;
 
 import AdminLayout from '../../components/admin/AdminLayout.astro';
+import Button from '../../components/ui/Button.astro';
+import { auditLabel } from '../../lib/admin/audit-labels.ts';
 import { adminHealth } from '../../lib/admin/http.ts';
 import { adminCounts, fetchAdminSnapshot, type AdminSnapshot } from '../../lib/admin/read.ts';
 import { getCache, getClient } from '../../lib/runtime.ts';
@@ -33,25 +35,32 @@ const health = adminHealth();
 const audit = snapshot?.audit.slice(0, 10) ?? [];
 const droppedRows = snapshot?.report.dropped.length ?? 0;
 const settingsWarnings = snapshot?.settings.warnings ?? [];
-const drive = health.driveScopeOk === null ? 'not checked' : health.driveScopeOk ? 'ok' : 'not authorised';
+const drive =
+  health.driveScopeOk === null ? 'not checked' : health.driveScopeOk ? 'connected' : 'not connected';
 const links: Array<[string, string]> = [
-  ['/admin/rugs/new', 'Add a rug'],
-  ['/admin/rugs', 'Catalogue'],
+  ['/admin/rugs/new', 'Add product'],
+  ['/admin/rugs', 'Products'],
   ['/admin/collections', 'Collections & tags'],
-  ['/admin/clients', 'Client links'],
-  ['/admin/audit', 'Audit log'],
-  ['/api/health', 'Site health (JSON)'],
+  ['/admin/clients', 'Customers'],
+  ['/admin/audit', 'Activity log'],
 ];
 ---
 
 <AdminLayout title="Serio Ludere — Admin" active="dashboard">
+  <div class="page-head">
+    <div class="page-head__titles">
+      <h1 class="page-head__title">Dashboard</h1>
+      <p class="page-head__count">What is live, what needs attention, and what changed last.</p>
+    </div>
+    <span class="page-head__rule"></span>
+    <Button href="/admin/rugs/new" icon="plus">Add product</Button>
+  </div>
   {error && <div class="msg err on">Could not read the sheet: {error}</div>}
   {
     snapshot?.report.adminHeaders === 'missing' && (
       <div class="msg err on">
-        Rugs W1:Z1 are blank (source_url, supplier, supplier_ref, notes). Run{' '}
-        <span class="kbd">npm run sheet:init</span>
-        to add the admin columns and tabs before editing.
+        The catalogue sheet is missing its admin columns, so products cannot be edited yet. Ask your developer
+        to run the sheet setup.
       </div>
     )
   }
@@ -61,7 +70,7 @@ const links: Array<[string, string]> = [
     <h3 id="h-counts">Catalogue</h3>
     <div class="stats">
       <div class="stat">
-        <div class="k">Active rugs</div>
+        <div class="k">Active products</div>
         <div class="v">{counts ? counts.rugs.active : '—'}</div>
       </div>
       <div class="stat">
@@ -81,35 +90,35 @@ const links: Array<[string, string]> = [
         <div class="v">{counts ? counts.tags : '—'}</div>
       </div>
       <div class="stat">
-        <div class="k">Clients</div>
+        <div class="k">Customers</div>
         <div class="v">
           {counts ? counts.clients.active : '—'}
-          {counts && counts.clients.revoked > 0 && <small>+{counts.clients.revoked} revoked</small>}
+          {counts && counts.clients.revoked > 0 && <small>+{counts.clients.revoked} paused</small>}
         </div>
       </div>
     </div>
   </section>
 
   <section class="stack" aria-labelledby="h-health">
-    <h3 id="h-health">Health</h3>
+    <h3 id="h-health">Site health</h3>
     <div class="stats">
       <div class="stat">
-        <div class="k">Public snapshot age</div>
+        <div class="k">Catalogue refreshed</div>
         <div class="v">
-          {snapshotAgeSec === null ? '—' : `${snapshotAgeSec} s`}
+          {snapshotAgeSec === null ? '—' : `${snapshotAgeSec} s ago`}
           {lastRefreshOk === false && <small>last refresh failed</small>}
         </div>
       </div>
       <div class="stat">
-        <div class="k">Drive scope</div>
+        <div class="k">Photo storage</div>
         <div class="v">{drive}</div>
       </div>
       <div class="stat">
-        <div class="k">Admin write failures</div>
+        <div class="k">Failed saves</div>
         <div class="v">{health.adminWriteFailures}</div>
       </div>
       <div class="stat">
-        <div class="k">Rows dropped by validation</div>
+        <div class="k">Rows skipped by the sheet</div>
         <div class="v">{snapshot ? droppedRows : '—'}</div>
       </div>
     </div>
@@ -140,8 +149,8 @@ const links: Array<[string, string]> = [
   </section>
 
   <section class="stack" aria-labelledby="h-audit">
-    <h3 id="h-audit">Newest audit rows</h3>
-    {audit.length === 0 && <div class="msg busy on">No audit rows yet.</div>}
+    <h3 id="h-audit">Recent activity</h3>
+    {audit.length === 0 && <div class="msg busy on">Nothing has changed yet.</div>}
     {
       audit.length > 0 && (
         <div class="table-wrap">
@@ -149,9 +158,9 @@ const links: Array<[string, string]> = [
             <thead>
               <tr>
                 <th>Time</th>
-                <th>Actor</th>
-                <th>Action</th>
-                <th>Target</th>
+                <th>Who</th>
+                <th>What</th>
+                <th>Item</th>
                 <th>Note</th>
               </tr>
             </thead>
@@ -162,7 +171,7 @@ const links: Array<[string, string]> = [
                     {a.timestamp}
                   </td>
                   <td>{a.actor}</td>
-                  <td class="mono">{a.action}</td>
+                  <td>{auditLabel(a.action)}</td>
                   <td class="mono">
                     {a.targetTab} {a.targetId}
                   </td>
@@ -175,7 +184,7 @@ const links: Array<[string, string]> = [
       )
     }
     <p class="hint">
-      <a href="/admin/audit">Open the full log</a>
+      <a href="/admin/audit">See all activity</a>
     </p>
   </section>
 

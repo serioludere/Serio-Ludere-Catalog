@@ -111,8 +111,7 @@ const title = 'Serio Ludere';
               <PreviewControls rates={rates} sort />
             </div>
             <p class="pv-lede">
-              <span class="pv-wide-only">Every rug we have available. </span>Mark what draws you — and what
-              doesn&rsquo;t.
+              <span class="pv-wide-only">Every rug we have available. </span>Mark what draws you.
             </p>
           </section>
 
@@ -149,6 +148,11 @@ const title = 'Serio Ludere';
             <p class="pv-lede" data-grid-empty hidden>
               Nothing matches that filter yet.
             </p>
+            {/* Pressing a chip changes what is on screen and, until this existed, said nothing: the
+                public catalogue announces its result count through RugGrid's #grid-live and the
+                preview announced nothing at all. One atomic status ("12 rugs shown"), never a bare
+                number, and polite so it waits its turn behind the chip's own pressed state. */}
+            <p class="sr-only" role="status" aria-live="polite" aria-atomic="true" data-grid-live />
           </section>
         </main>
         <PreviewFooter />
@@ -160,13 +164,14 @@ const title = 'Serio Ludere';
 </PreviewLayout>
 
 <style>
-  /* Fixed 300px cards with a 16px column gap and a 64px row gap, left-aligned with whatever slack is
-     left over: the design is explicit that the cards do not flex, so the grid drops from four to
-     three to two columns as the window narrows rather than stretching each card. */
+  /* Explicit columns sharing the full width: four across at desktop, five on a wide monitor, three
+     on a laptop, two on a tablet, one on a phone. The drawn 300 fixed width left up to 96px of dead
+     space at the right edge of every row on a 1440 screen, and auto-fill changed the card size with
+     every few pixels of viewport; a buyer judging rugs wants the same plate size across the row. */
   .pv-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, 300px);
-    column-gap: var(--stack-lg);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    column-gap: var(--stack-xl);
     row-gap: var(--section-gap);
     align-items: start;
     /* The grid band's own bottom padding. --space-section is 112 at >=1024 and 64 at <=767, which is
@@ -174,6 +179,23 @@ const title = 'Serio Ludere';
        --section-gap (64 at both widths) that is 176 of clearance on desktop and 128 at 390 — Figma
        58:230: grid ends y=2026, footer starts y=2090. */
     padding-bottom: var(--space-section);
+  }
+
+  @media (min-width: 1800px) {
+    .pv-grid {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 1199px) {
+    .pv-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 899px) {
+    .pv-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: var(--stack-lg);
+    }
   }
 
   .pv-state {
@@ -198,9 +220,16 @@ const title = 'Serio Ludere';
     }
     /* At 390 the title steps down a size and the row gaps tighten from 12 to 8, which is what the
        mobile frame measures; together with the abbreviated "ft" that keeps the title, the toggle and
-       the picker on one row inside 358px. */
+       the picker on one row inside 358px.
+
+       That budget was drawn for TWO controls. The sort select (owner, 2026-09-13) is a third, and
+       the title below cannot shrink — `nowrap` plus flex items that refuse to go under their content
+       width is exactly the recipe for a row wider than the viewport, which scrolls the whole page
+       sideways. Wrapping costs one line in the worst case and nothing when it still fits: the spacer
+       has no base width, so it only takes up slack and never forces the break itself. */
     .pv-title-row {
       gap: var(--stack-sm);
+      flex-wrap: wrap;
     }
     .pv-title-row .pv-h1 {
       white-space: nowrap;

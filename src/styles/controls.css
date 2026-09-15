@@ -74,7 +74,7 @@
   color: var(--text-on-brand);
 }
 .btn--primary:active:not(:disabled):not([aria-disabled='true']) {
-  background: var(--action-danger-hover);
+  background: var(--action-primary-active);
   color: var(--text-on-brand);
 }
 .btn--primary:disabled:not(.is-loading),
@@ -98,8 +98,8 @@
   color: var(--text-on-brand);
 }
 .btn--secondary:active:not(:disabled):not([aria-disabled='true']) {
-  background: var(--action-danger-hover);
-  border-color: var(--action-danger-hover);
+  background: var(--action-primary-active);
+  border-color: var(--action-primary-active);
   color: var(--text-on-brand);
 }
 .btn--secondary:disabled:not(.is-loading),
@@ -218,7 +218,9 @@
   box-sizing: border-box;
   width: 100%;
   padding: calc(var(--input-y) - var(--rule-width)) calc(var(--input-x) - var(--rule-width));
-  border: var(--rule-width) solid var(--rule);
+  /* --border-control, not --rule: a field sits on --surface over --canvas at 1.02:1, so this edge is
+     the only thing that says "you can type here" and has to clear WCAG 1.4.11's 3:1. */
+  border: var(--rule-width) solid var(--border-control);
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--ink);

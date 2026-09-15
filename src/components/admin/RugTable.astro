@@ -15,8 +15,10 @@ import RugRow from './RugRow.astro';
 interface Props {
   rugs: readonly AdminRug[];
   collections: readonly Collection[];
+  /** Product id → distinct customers currently liking it (src/lib/admin/likes.ts). */
+  likesById?: Map<string, number>;
 }
-const { rugs, collections } = Astro.props;
+const { rugs, collections, likesById } = Astro.props;
 ---
 
 <div class="rugtable" role="table" aria-label="Products">
@@ -26,8 +28,15 @@ const { rugs, collections } = Astro.props;
     <span class="irow__collection" role="columnheader">Collection</span>
     <span class="irow__size" role="columnheader">Size</span>
     <span class="irow__price" role="columnheader">Price</span>
-    <span class="irow__spacer"></span>
-    <span class="irow__action"></span>
+    <span class="irow__likes" role="columnheader">Likes</span>
+    {
+      /* A role="row" may own only cells, and these two were plain spans — the same defect the body
+        rows had. The spacer is pure layout so it says so; the action column is a real column and
+        needs a name, which is visually hidden because the header cell is drawn empty. Head and body
+        now agree at six columns. */
+    }
+    <span class="irow__spacer" role="presentation"></span>
+    <span class="irow__action" role="columnheader"><span class="sr-only">Actions</span></span>
   </div>
-  {rugs.map((rug) => <RugRow rug={rug} collections={collections} />)}
+  {rugs.map((rug) => <RugRow rug={rug} collections={collections} likes={likesById?.get(rug.id) ?? 0} />)}
 </div>

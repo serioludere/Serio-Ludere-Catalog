@@ -4,6 +4,7 @@
 export const prerender = false;
 
 import AdminLayout from '../../components/admin/AdminLayout.astro';
+import { auditLabel } from '../../lib/admin/audit-labels.ts';
 import { AUDIT_ACTIONS } from '../../lib/admin/audit.ts';
 import { fetchAdminSnapshot, type AdminSnapshot } from '../../lib/admin/read.ts';
 import { getClient } from '../../lib/runtime.ts';
@@ -29,22 +30,34 @@ const pretty = (s: string): string => {
 };
 ---
 
-<AdminLayout title="Serio Ludere — Audit log" active="audit">
+<AdminLayout title="Serio Ludere — Activity log" active="audit">
   {error && <div class="msg err on">Could not read the sheet: {error}</div>}
+  <div class="page-head">
+    <div class="page-head__titles">
+      <h1 class="page-head__title">Activity log</h1>
+      <p class="page-head__count">
+        The newest {rows.length}
+        {rows.length === 1 ? 'change' : 'changes'} made in this admin, latest first
+      </p>
+    </div>
+  </div>
   <div class="row">
-    <div class="narrow">
-      <select id="f_action" aria-label="Filter by action">
-        <option value="">Any action</option>
-        {AUDIT_ACTIONS.map((a) => <option value={a}>{a}</option>)}
+    {
+      /* Both filters were labelled by `aria-label` alone, so the only on-screen clue to what the
+        target box filtered was a placeholder that disappeared as soon as you typed into it. The
+        visible labels reuse the aria-label wording verbatim and those attributes come off, since a
+        real <label for> would otherwise be overridden by them. */
+    }
+    <div class="narrow field">
+      <label class="field__label" for="f_action">Show</label>
+      <select id="f_action">
+        <option value="">Everything</option>
+        {AUDIT_ACTIONS.map((a) => <option value={a}>{auditLabel(a)}</option>)}
       </select>
     </div>
-    <div class="grow">
-      <input
-        id="f_target"
-        placeholder="Target id — e.g. SL-021"
-        autocomplete="off"
-        aria-label="Filter by target id"
-      />
+    <div class="grow field">
+      <label class="field__label" for="f_target">Product or customer</label>
+      <input id="f_target" placeholder="e.g. SL-021" autocomplete="off" />
     </div>
   </div>
   <p class="hint" id="count" role="status" aria-live="polite"></p>
@@ -53,10 +66,10 @@ const pretty = (s: string): string => {
       <thead>
         <tr>
           <th>Time</th>
-          <th>Actor</th>
-          <th>Action</th>
-          <th>Target</th>
-          <th>Change</th>
+          <th>Who</th>
+          <th>What</th>
+          <th>Item</th>
+          <th>Changes</th>
           <th>Note</th>
         </tr>
       </thead>
@@ -64,16 +77,18 @@ const pretty = (s: string): string => {
         {
           rows.map((a) => (
             <tr data-action={a.action} data-target={a.targetId.toLowerCase()} data-row={a.row}>
-              <td class="mono">{a.timestamp}</td>
+              <td class="mono" data-ts={a.timestamp}>
+                {a.timestamp}
+              </td>
               <td>{a.actor}</td>
-              <td class="mono">{a.action}</td>
+              <td>{auditLabel(a.action)}</td>
               <td class="mono">
                 {a.targetTab} {a.targetId}
               </td>
               <td>
                 {(a.before || a.after) && (
                   <details>
-                    <summary>before → after</summary>
+                    <summary>Show changes</summary>
                     {a.before && <pre>{pretty(a.before)}</pre>}
                     {a.after && <pre>{pretty(a.after)}</pre>}
                   </details>
@@ -86,14 +101,16 @@ const pretty = (s: string): string => {
       </tbody>
     </table>
   </div>
-  {rows.length === 0 && <div class="msg busy on">No audit rows yet.</div>}
+  {rows.length === 0 && <div class="msg busy on">Nothing has changed yet.</div>}
   <div class="actions">
-    <button class="go alt" id="btnMore" type="button" data-offset={rows.length}>Load more</button>
+    <button class="btn btn--secondary" id="btnMore" type="button" data-offset={rows.length}>Load more</button>
   </div>
   <div id="m11" class="msg"></div>
   <script>
     import { initAudit } from '../../scripts/admin/audit.ts';
+    import { initDashboard } from '../../scripts/admin/dashboard.ts';
     initAudit();
+    initDashboard();
   </script>
 </AdminLayout>
 

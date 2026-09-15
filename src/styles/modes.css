@@ -33,8 +33,26 @@
   --color-neutral-100: #f8f7f5; /* scheme-3.background */
   --color-neutral-200: #efefef; /* product_sold_out_badge_background */
   --color-neutral-300: #d8d6cc; /* Prestige's own --border-color: text mixed 15% background */
+  /* DERIVED (accessibility, not Prestige): neutral-300 darkened until a control's edge clears the
+     3:1 that WCAG 1.4.11 asks of a boundary. It is needed because --surface #fffff5 on --canvas
+     #fefcf0 is 1.02:1 — a field is indistinguishable from the page except by its border, so that
+     border is doing all the work at 1.45:1. Decorative hairlines keep 300.
+
+     Measured against the DARKEST ground a control edge meets, not the lightest: the inner side of
+     the border sits on --surface but the outer side sits on the canvas, and the admin canvas
+     (#f8f7f5) and --subtle (#efefef, the ghost-button hover wash) are darker still. Derived against
+     surface alone this was #95938c, which passed there (3.06) and quietly missed on both canvases
+     (2.99 / 2.87) — a floor met on the one ground nobody was going to check by eye.
+     Now: 3.44 on surface, 3.37 preview canvas, 3.24 admin canvas, 3.01 on subtle. */
+  --color-neutral-350: #8b8a83;
   --color-neutral-400: #b2b0a8;
   --color-neutral-500: #8c8b84;
+  /* DERIVED (accessibility, not Prestige): neutral-500 darkened to the first value that clears 4.5:1
+     on all three grounds it is read on — surface #fffff5 (4.80), preview canvas #fefcf0 (4.69) and
+     admin canvas #f8f7f5 (4.51). The ramp jumps 3.4:1 to 10.5:1 between 500 and 700 with nothing
+     usable in between, and --ink-muted carries real copy — form hints, placeholders, spec keys,
+     footer fine print — not decoration. 500 itself is untouched; admin-dark still reads it. */
+  --color-neutral-550: #73726c;
   --color-neutral-600: #666560;
   --color-neutral-700: #403f3c;
   --color-neutral-800: #1c1c1c; /* product_custom_badge_background, product_rating_color — the ink */
@@ -57,6 +75,15 @@
   --color-feedback-danger-bg: #f3cccc; /* DERIVED by Prestige: error mixed 24% #ffffff */
   --color-feedback-info: #1c1c1c; /* NO SOURCE — mapped onto the ink */
   --color-feedback-info-bg: #efefef; /* NO SOURCE — reuses the sold-out badge grey */
+
+  /* DERIVED (accessibility, not Prestige): Prestige pairs each feedback hue with a tint of itself and
+     none of the three pairs clears 4.5:1 — warning 2.29, danger 3.65, success 4.00. These are the
+     same hues darkened to the first value that passes ON THEIR OWN TINT, which is the tightest ground
+     each one is read on; every other use (text or border on surface/canvas, and the near-white label
+     on the .step--failed marker) sits on a lighter ground and only gains. The tints are unchanged. */
+  --color-feedback-success-text: #2c7106; /* 4.51:1 on success-bg */
+  --color-feedback-warning-text: #a15d00; /* 4.62:1 on warning-bg */
+  --color-feedback-danger-text: #b02525; /* 4.56:1 on danger-bg */
 
   /* ---- type · families ----
      There is no display serif. The store runs Inter 700 for headings and Inter 400 for body — one
@@ -175,20 +202,27 @@
   /* ---- text ---- */
   --ink: var(--color-neutral-950); /* body and headings */
   --ink-soft: var(--color-neutral-700); /* supporting copy, spec labels, table meta */
-  --ink-muted: var(--color-neutral-500); /* placeholders, timestamps, quiet chrome */
+  --ink-muted: var(--color-neutral-550); /* placeholders, timestamps, quiet chrome */
   --text-on-action: var(--color-neutral-0); /* text on action/primary */
   --text-on-brand: var(--color-neutral-0); /* text on the brand red, exactly as scheme-4 sets it */
 
   /* ---- action ---- */
   --action-primary: var(--color-neutral-950);
   --action-primary-hover: var(--color-brand-red); /* the storefront's real hover */
+  /* Same value as --action-danger-hover and drawn that way (12:44), but named for the state it
+     serves: a Save button's :active must not read from the DANGER token, or the next person to
+     retint danger silently repaints every primary press. */
+  --action-primary-active: var(--color-brand-red-dark);
   --action-danger: var(--color-brand-red);
   --action-danger-hover: var(--color-brand-red-dark);
 
   /* ---- border ----
      Focus is ink, deliberately NOT the brand red: red is the error colour, and a red focus ring on
      a red-bordered invalid field is unreadable. They differ in hue AND in weight. */
-  --rule: var(--color-neutral-300);
+  --rule: var(--color-neutral-300); /* decorative hairlines: section rules, table row separators */
+  /* The edge of anything you can type in, pick from or press. Split from --rule because the two have
+     different jobs and only one of them has a contrast floor to meet (WCAG 1.4.11, 3:1). */
+  --border-control: var(--color-neutral-350);
   --border-strong: var(--color-neutral-800); /* selected rows, focused cards */
   --border-focus: var(--color-neutral-950);
   --rule-width: var(--border-hairline);
@@ -197,11 +231,11 @@
   --focus-offset: 2px;
 
   /* ---- feedback ---- */
-  --success: var(--color-feedback-success);
+  --success: var(--color-feedback-success-text);
   --success-bg: var(--color-feedback-success-bg);
-  --warning: var(--color-feedback-warning);
+  --warning: var(--color-feedback-warning-text);
   --warning-bg: var(--color-feedback-warning-bg);
-  --danger: var(--color-feedback-danger);
+  --danger: var(--color-feedback-danger-text);
   --danger-bg: var(--color-feedback-danger-bg);
   --info: var(--color-feedback-info);
   --info-bg: var(--color-feedback-info-bg);
@@ -353,13 +387,29 @@
 
   --ink: var(--color-neutral-50);
   --ink-soft: var(--color-neutral-300);
+  /* Pinned to 500 for the same reason the feedback hues below are: neutral-550 is darkened to clear
+     4.5:1 on the LIGHT grounds, and on this canvas darker is strictly worse — it would take muted
+     copy from 5.39:1 down to 3.82:1. Dark mode wants a lighter step, not a darker one. */
+  --ink-muted: var(--color-neutral-500);
   --text-on-action: var(--color-neutral-950);
 
   --action-primary: var(--color-neutral-0); /* paper on dark */
+  --action-primary-active: var(--color-brand-red-dark);
   --rule: var(--color-neutral-700);
+  /* neutral-700 is 1.75:1 on this canvas, so control edges take 500 (5.39:1) here rather than the
+     hairline. Same split as the light modes, opposite direction. */
+  --border-control: var(--color-neutral-500);
   --border-strong: var(--color-neutral-500);
   --border-focus: var(--color-neutral-0);
 
+  /* The three feedback hues are pinned back to Prestige's originals here. The light-mode values are
+     darkened to pass on their light tints, and on this canvas darker is strictly worse — so pinning
+     keeps this mode exactly where it was rather than letting the light fix drag it down. Dark mode
+     needs its own LIGHTENED pair and has never had one: success and danger are 3.18:1 on surface
+     today, which is why nothing should set data-mode="admin-dark" until they exist. */
+  --success: var(--color-feedback-success);
+  --warning: var(--color-feedback-warning);
+  --danger: var(--color-feedback-danger);
   --success-bg: var(--color-neutral-800);
   --warning-bg: var(--color-neutral-800);
   --danger-bg: var(--color-neutral-800);

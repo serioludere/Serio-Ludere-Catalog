@@ -104,7 +104,7 @@ describe('votes.ts design feedback', () => {
       new Response(
         JSON.stringify({
           ok: true,
-          results: [{ productId: 'SL-1', state: 'liked', likes: 1, dislikes: 0, rating: 5 }],
+          results: [{ productId: 'SL-1', state: 'liked', likes: 5, dislikes: 0, rating: 5 }],
         }),
         { status: 200 },
       )) as unknown as typeof fetch;
@@ -113,7 +113,7 @@ describe('votes.ts design feedback', () => {
     const like = document.querySelector<HTMLButtonElement>('button')!;
     like.click();
     expect(like.classList.contains('just')).toBe(true);
-    await vi.waitFor(() => expect(document.querySelector('.rating')?.textContent).toBe('5.0 · 1 vote'));
+    await vi.waitFor(() => expect(document.querySelector('.rating')?.textContent).toBe('5 likes'));
     expect(document.querySelector('.rating')?.classList.contains('tick')).toBe(true);
     paintCounts('SL-1', 0, 0, 0);
     expect(document.querySelector<HTMLElement>('.rating')?.hidden).toBe(true);

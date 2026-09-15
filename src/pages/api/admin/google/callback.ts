@@ -21,7 +21,12 @@ import {
 import { HANDSHAKE_COOKIE } from '../../../../lib/google/handshake.ts';
 import { handshakes } from '../../../../lib/google/runtime.ts';
 import { describeToken, exchangeCode, GoogleAuthError, sameState } from '../../../../lib/google/oauth.ts';
-import { getGoogleConnection, getGoogleStore } from '../../../../lib/runtime.ts';
+import {
+  DEFAULT_SHEET_TITLE,
+  provisionBlocker,
+  provisionCatalogueSheet,
+} from '../../../../lib/admin/provision-sheet.ts';
+import { getGoogleConnection, getGoogleStore, sheetIdIfAny } from '../../../../lib/runtime.ts';
 import { consoleLogger, serializeError } from '../../../../lib/sheets/errors.ts';
 
 /** Sends the owner back to the status page with a message rather than showing raw JSON. */
@@ -29,6 +34,27 @@ function back(context: Parameters<APIRoute>[0], next: string, params: Record<str
   const url = new URL(next, adminRuntime.siteUrl);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   return context.redirect(`${url.pathname}${url.search}`, 303);
+}
+
+/**
+ * The catalogue sheet, created the moment an account is connected and none exists (owner,
+ * 2026-09-15: "after successful integration create the sheet if it does not exist" — not behind a
+ * second button). Returns the query parameters the status page turns into a sentence. A server
+ * that cannot keep the sheet id (no DATA_DIR) skips rather than creating a sheet it would forget.
+ */
+async function autoProvision(context: Parameters<APIRoute>[0]): Promise<Record<string, string>> {
+  if (sheetIdIfAny()) return {};
+  const blocked = provisionBlocker();
+  if (blocked) return { sheet: 'skipped', detail: blocked.message.slice(0, 200) };
+  try {
+    const result = await provisionCatalogueSheet(DEFAULT_SHEET_TITLE, (event) =>
+      recordAuditEvent({ ...auditBase(context), ...event }),
+    );
+    return result.ok ? { sheet: 'created' } : { sheet: 'failed', detail: result.message.slice(0, 200) };
+  } catch (e) {
+    consoleLogger.error('automatic sheet creation failed', { error: serializeError(e) });
+    return { sheet: 'failed', detail: (e instanceof Error ? e.message : String(e)).slice(0, 200) };
+  }
 }
 
 export const GET: APIRoute = async (context) => {
@@ -88,7 +114,7 @@ export const GET: APIRoute = async (context) => {
       after: { account: ('email' in info && info.email) || 'unknown', scopes: info.scopes },
     });
 
-    return back(context, next, { google: 'connected' });
+    return back(context, next, { google: 'connected', ...(await autoProvision(context)) });
   } catch (e) {
     consoleLogger.error('google authorisation failed', { error: serializeError(e) });
     const detail =

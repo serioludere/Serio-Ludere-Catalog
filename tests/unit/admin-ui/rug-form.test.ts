@@ -270,7 +270,10 @@ describe('add mode', () => {
     // — by which point the scrape had already run and the owner had already reviewed the modal.
     // It also used to be rendered inside `#preview`, which is display:none until a scrape succeeds,
     // so the field the drawer opens on was not on screen at all.
-    form = mount(() => ({ status: 200, body: { ok: true, data: scraped, via: 'impit', cached: false, ms: 5 } }));
+    form = mount(() => ({
+      status: 200,
+      body: { ok: true, data: scraped, via: 'impit', cached: false, ms: 5 },
+    }));
     const id = document.getElementById('f_id') as HTMLInputElement;
     const url = document.getElementById('url') as HTMLInputElement;
     id.value = '';
@@ -278,7 +281,7 @@ describe('add mode', () => {
     (document.getElementById('btnFetch') as HTMLButtonElement).click();
 
     expect(cls('m1')).toBe('msg on err');
-    expect(text('m1')).toContain('rug a number');
+    expect(text('m1')).toContain('product a number');
     expect(calls).toHaveLength(0); // nothing was sent
     expect(document.activeElement).toBe(id); // and the cursor is in the field that needs filling
   });
@@ -461,7 +464,7 @@ describe('add mode', () => {
     });
     expect(calls.map((c) => c.url)).toEqual(['/api/admin/scrape', '/api/admin/photos', '/api/admin/rugs']);
     expect(cls('m2')).toBe('msg on ok');
-    expect(text('m2')).toContain('Added SL-030 at row 31. 1 photo saved to Drive, 1 failed.');
+    expect(text('m2')).toContain('Added SL-030. 1 photo saved, 1 failed.');
     expect(document.querySelector('#m2 a')?.getAttribute('href')).toBe('/admin/rugs/SL-030');
     // reset: name/url cleared, collection kept, preview closed
     expect(val('yourName')).toBe('');

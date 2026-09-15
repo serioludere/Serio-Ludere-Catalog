@@ -55,11 +55,22 @@ const data = {
 ---
 
 <AdminLayout title="Serio Ludere — Add rug" active="add">
+  <div class="page-head">
+    <div class="page-head__titles">
+      <h1 class="page-head__title">Add product</h1>
+      <p class="page-head__count">
+        Paste a supplier link and fetch, or fill the fields by hand; nothing is written until you save.
+      </p>
+    </div>
+    <span class="page-head__rule"></span>
+    <a class="btn btn--secondary page-head__back" href="/admin/rugs">Back to products</a>
+  </div>
   {error && <div class="msg err on">Could not read the sheet: {error}</div>}
   {
     snapshot?.report.adminHeaders === 'missing' && (
       <div class="msg err on">
-        Rugs W1:Z1 are blank — run <span class="kbd">npm run sheet:init</span> before adding rugs.
+        The catalogue sheet is missing its admin columns, so products cannot be added yet. Ask your developer
+        to run the sheet setup.
       </div>
     )
   }

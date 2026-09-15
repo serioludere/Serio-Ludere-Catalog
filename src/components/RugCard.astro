@@ -7,7 +7,7 @@
 import { money, type RateTable } from '../lib/currency.ts';
 import { baseCurrency } from '../lib/runtime.ts';
 import { dims } from '../lib/units.ts';
-import { ratingText, type CardView } from '../lib/view.ts';
+import { badgesFor, likesText, type CardView } from '../lib/view.ts';
 import RugPhoto from './RugPhoto.astro';
 import VoteButtons from './VoteButtons.astro';
 
@@ -34,7 +34,9 @@ const {
 } = Astro.props;
 const dimText = dims(card.widthCm, card.lengthCm, 'cm');
 const priceText = money(card.priceUsd, baseCurrency, rates, 'en-US');
-const rating = ratingText(card.likes, card.dislikes, card.rating);
+const likes = likesText(card.likes);
+// Owner, 2026-09-13/15: Signed / Antique earn a corner badge on the public card as on the preview.
+const badges = badgesFor(card.tags.map((t) => t.name));
 const hasMeta = Boolean(dimText || card.material || card.age || card.origin);
 const href = hrefProp ?? `/rugs/${card.slug}`;
 ---
@@ -59,7 +61,16 @@ const href = hrefProp ?? `/rugs/${card.slug}`;
       priority={priority}
     />
     <a class="photo-link" href={href} tabindex="-1" aria-hidden="true"></a>
-    <VoteButtons rugId={card.id} name={card.name} />
+    <VoteButtons rugId={card.id} />
+    {
+      badges.length > 0 && (
+        <ul class="card-badges" aria-label="Provenance">
+          {badges.map((b) => (
+            <li class="card-badge">{b}</li>
+          ))}
+        </ul>
+      )
+    }
   </div>
   <div class="nm"><a class="nm-link" href={href}>{card.name}</a></div>
   {
@@ -76,7 +87,7 @@ const href = hrefProp ?? `/rugs/${card.slug}`;
   }
   <div class="price-row">
     <div class="price" data-price data-usd={card.priceUsd ?? ''} hidden={!priceText}>{priceText}</div>
-    <div class="rating" data-rating-for={card.id} hidden={!rating}>{rating}</div>
+    <div class="rating" data-rating-for={card.id} hidden={!likes}>{likes}</div>
   </div>
 </div>
 

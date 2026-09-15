@@ -85,7 +85,7 @@ export function clientRow(c: ClientLike, doc: Document = document): HTMLTableRow
         el('a', { href: c.link, target: '_blank', rel: 'noopener' }, c.link, doc),
         doc,
       ),
-      el('td', {}, c.createdAt, doc),
+      el('td', {}, dayText(c.createdAt), doc),
       // Filled by the visits loader: a Badge reading "Opened" or "Not visited", never a bare count.
       el('td', {}, el('span', { class: 'badge', 'data-visits': '' }, 'Not visited', doc), doc),
       el('td', { 'data-last-seen': '' }, '—', doc),
@@ -123,7 +123,7 @@ export function clientRow(c: ClientLike, doc: Document = document): HTMLTableRow
           copyControl(c.link, doc),
           el(
             'button',
-            { type: 'button', class: 'btn btn--ghost', 'data-act': 'password' },
+            { type: 'button', class: 'btn btn--secondary', 'data-act': 'password' },
             'Reset password',
             doc,
           ),
@@ -146,26 +146,14 @@ function rugLine(r: RugRef, doc: Document): HTMLElement {
 export function renderReport(out: HTMLElement, report: ReportLike, doc: Document = document): void {
   clear(out);
   out.classList.add('report');
-  const most = el('div', { class: 'stack' }, [el('h3', {}, 'Most saved', doc)], doc);
+  const most = el('div', { class: 'stack' }, [el('h3', {}, 'Most liked', doc)], doc);
   if (report.mostSaved.length === 0)
     most.appendChild(el('p', { class: 'hint' }, 'No saves logged yet.', doc));
   else {
     const table = el(
       'table',
       {},
-      [
-        el(
-          'thead',
-          {},
-          el(
-            'tr',
-            {},
-            [el('th', {}, 'Rug', doc), el('th', {}, 'Saves', doc), el('th', {}, 'Dislikes', doc)],
-            doc,
-          ),
-          doc,
-        ),
-      ],
+      [el('thead', {}, el('tr', {}, [el('th', {}, 'Rug', doc), el('th', {}, 'Likes', doc)], doc), doc)],
       doc,
     );
     const tbody = el('tbody', {}, [], doc);
@@ -174,11 +162,7 @@ export function renderReport(out: HTMLElement, report: ReportLike, doc: Document
         el(
           'tr',
           {},
-          [
-            el('td', {}, rugLine(r, doc), doc),
-            el('td', { class: 'n' }, String(r.saves), doc),
-            el('td', { class: 'n' }, String(r.dislikes), doc),
-          ],
+          [el('td', {}, rugLine(r, doc), doc), el('td', { class: 'n' }, String(r.saves), doc)],
           doc,
         ),
       );
@@ -193,18 +177,15 @@ export function renderReport(out: HTMLElement, report: ReportLike, doc: Document
     const block = el(
       'div',
       { class: 'stack' },
-      [el('h3', {}, `${title} — ${c.liked.length} saved${suffix}`, doc)],
+      [el('h3', {}, `${title} — ${c.liked.length} liked${suffix}`, doc)],
       doc,
     );
     const ul = el('ul', { class: 'hint' }, [], doc);
     for (const r of c.liked) ul.appendChild(el('li', {}, [rugLine(r, doc)], doc));
-    for (const r of c.disliked) ul.appendChild(el('li', {}, ['👎 ', rugLine(r, doc)], doc));
     block.appendChild(ul);
     out.appendChild(block);
   }
-  out.appendChild(
-    el('p', { class: 'hint' }, `${report.rowsRead} vote rows read · generated ${report.generatedAt}`, doc),
-  );
+  out.appendChild(el('p', { class: 'hint' }, `Updated ${whenText(report.generatedAt)}`, doc));
 }
 
 interface VisitRow {
@@ -234,6 +215,13 @@ export interface VisitsLike {
 }
 
 /** "9 Sep, 14:32" in the reader's own locale; the raw ISO stays in the title attribute. */
+/** "1 Sep 2026" — the day only, for the Created column. */
+export function dayText(iso: string, locale = 'en-GB'): string {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return iso;
+  return new Date(t).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 export function whenText(iso: string, locale?: string): string {
   if (!iso) return 'never';
   const d = new Date(iso);
@@ -289,14 +277,7 @@ export function renderVisits(out: HTMLElement, report: VisitsLike, doc: Document
   }
   table.appendChild(tbody);
   out.appendChild(el('div', { class: 'table-wrap' }, table, doc));
-  out.appendChild(
-    el(
-      'p',
-      { class: 'hint' },
-      `${report.rowsRead} visit row${report.rowsRead === 1 ? '' : 's'} read · generated ${report.generatedAt}`,
-      doc,
-    ),
-  );
+  out.appendChild(el('p', { class: 'hint' }, `Updated ${whenText(report.generatedAt)}`, doc));
 }
 
 export interface ClientsPage {
@@ -373,7 +354,7 @@ export function initClients(doc: Document = document, api: ApiOptions = {}): Cli
     credUrl.textContent = c.link;
     credPassword.textContent = password ?? '';
     linkCode.textContent = c.code;
-    linkNote.textContent = `Send this link; their ❤/👎 are recorded under ${c.name}.`;
+    linkNote.textContent = `Send this link with the password. Their likes are recorded under ${c.name}.`;
     // Each control carries what IT copies; the footer button carries both on two lines, which is the
     // shape that gets pasted into a message. Set on the element, never rendered into the page twice.
     for (const el of credCopies) {
@@ -425,7 +406,7 @@ ${password ?? ''}`,
     clients.set(c.code, c);
     tbody.insertBefore(clientRow(c, doc), tbody.firstChild);
     showLink(c, r.data.password);
-    msg(m8, `Link ready for ${c.name} — copy it below. Audit row ${r.data.audit.row}.`, 'ok');
+    msg(m8, `Link ready for ${c.name} — copy it below.`, 'ok');
     name.value = '';
     note.value = '';
     pwField.value = '';
@@ -440,7 +421,7 @@ ${password ?? ''}`,
     if (!current || !tr) return;
     const b = tr.querySelector<HTMLInputElement>('[data-act="toggle"]');
     if (b) b.disabled = true;
-    msg(m9, `${status === 'revoked' ? 'Revoking' : 'Restoring'} ${current.name}…`, 'busy');
+    msg(m9, `${status === 'revoked' ? 'Pausing' : 'Resuming'} ${current.name}…`, 'busy');
     const r = await post<{ client: ClientLike; audit: { row: number } }>(
       `/api/admin/clients/${encodeURIComponent(code)}/status`,
       { status, version: current.version },
@@ -448,12 +429,20 @@ ${password ?? ''}`,
     );
     if (!r.ok) {
       if (b) b.disabled = false;
-      msg(m9, r.status === 409 ? 'This row changed in the sheet — reload the page.' : r.message, 'err');
+      msg(
+        m9,
+        r.status === 409 ? 'This customer was changed elsewhere — reload the page and try again.' : r.message,
+        'err',
+      );
       return;
     }
     clients.set(code, r.data.client);
     tr.replaceWith(clientRow(r.data.client, doc));
-    msg(m9, `${r.data.client.name} is now ${r.data.client.status}. Audit row ${r.data.audit.row}.`, 'ok');
+    msg(
+      m9,
+      `${r.data.client.name}'s link is now ${r.data.client.status === 'active' ? 'active' : 'paused'}.`,
+      'ok',
+    );
   };
 
   const resetPassword = async (code: string, chosen = ''): Promise<void> => {
@@ -467,7 +456,11 @@ ${password ?? ''}`,
       api,
     );
     if (!r.ok) {
-      msg(m9, r.status === 409 ? 'This row changed in the sheet — reload the page.' : r.message, 'err');
+      msg(
+        m9,
+        r.status === 409 ? 'This customer was changed elsewhere — reload the page and try again.' : r.message,
+        'err',
+      );
       return;
     }
     clients.set(code, r.data.client);
@@ -534,13 +527,16 @@ ${password ?? ''}`,
   const pwDialogTitle = byId('pwDialogTitle', doc);
   const pwDialogInput = byId<HTMLInputElement>('pwDialogInput', doc);
   const pwDialogErr = byId('pwDialogErr', doc);
-  const pwDialogOk = byId<HTMLButtonElement>('pwDialogOk', doc);
+  const pwDialogForm = byId<HTMLFormElement>('pwDialogForm', doc);
   const pwDialogCancel = byId<HTMLButtonElement>('pwDialogCancel', doc);
   let pwTarget = '';
 
   const askPassword = (code: string): void => {
     pwTarget = code;
     pwDialogInput.value = '';
+    // hide() strips the `.on`/tone classes msg() added; the attribute goes back on top of that, or a
+    // stale error would be re-revealed the next time the dialog opens.
+    hide(pwDialogErr);
     pwDialogErr.hidden = true;
     pwDialogTitle.textContent = `Reset password for ${clients.get(code)?.name ?? code}`;
     if (typeof pwDialog.showModal === 'function') pwDialog.showModal();
@@ -548,12 +544,21 @@ ${password ?? ''}`,
     pwDialogInput.focus();
   };
 
-  pwDialogOk.addEventListener('click', () => {
+  // Bound on the FORM, not on the button: the confirm is a real submit now, so Enter in the field
+  // and a click on "Set password" arrive through the same path instead of Enter quietly closing the
+  // dialog and throwing the password away. preventDefault stops the navigation the submit implies.
+  pwDialogForm.addEventListener('submit', (event) => {
+    event.preventDefault();
     const chosen = pwDialogInput.value.trim();
     const problem = chosen ? customerPasswordProblem(chosen) : undefined;
     if (problem) {
-      pwDialogErr.textContent = problem;
+      // `#pwDialogErr` is `class="msg err" hidden`, and `.msg` is `display: none` until `.on`
+      // (admin.css). Clearing `hidden` alone — which is all this did — left the element still
+      // display:none, so the password-policy error has never once been visible: a too-short password
+      // simply did nothing, with no explanation. `hidden` has to come off AND `msg()` has to add
+      // `.on`, which also gives it role="alert" so it is announced rather than only drawn.
       pwDialogErr.hidden = false;
+      msg(pwDialogErr, problem, 'err');
       pwDialogInput.focus();
       return;
     }

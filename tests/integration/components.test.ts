@@ -62,7 +62,7 @@ describe('RugCard (reference lines 172-196)', () => {
     expect(html).toMatch(/<li[^>]*>Modern<\/li>/);
     expect(html).toMatch(/<li[^>]*>Denizli, Turkey<\/li>/);
     expect(html).toMatch(/<div class="price"[^>]*>\$576<\/div>/);
-    expect(html).toContain('3.9 · 23 votes');
+    expect(html).toContain('18 likes');
     expect(html).toContain('href="/rugs/winks"');
     // Sheet text is escaped, never injected: text nodes fully, attribute values for quotes/ampersands.
     expect(html).not.toMatch(/>Winks "quoted" <b>bold<\/b></);

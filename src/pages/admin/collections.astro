@@ -10,7 +10,7 @@ import Icon from '../../components/ui/Icon.astro';
 import Input from '../../components/ui/Input.astro';
 import Modal from '../../components/ui/Modal.astro';
 import EmptyState from '../../components/ui/EmptyState.astro';
-import { fetchAdminSnapshot, type AdminSnapshot , syncLabel } from '../../lib/admin/read.ts';
+import { fetchAdminSnapshot, type AdminSnapshot, syncLabel } from '../../lib/admin/read.ts';
 import { getClient } from '../../lib/runtime.ts';
 import { consoleLogger, serializeError } from '../../lib/sheets/errors.ts';
 import { jsonForScript } from '../../lib/view.ts';
@@ -59,8 +59,8 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
     </div>
 
     <p class="hint">
-      Order = the tabs on the site. Renaming a collection does not rewrite its rugs — they keep the old name
-      and drop out of the tab until re-saved.
+      Collections appear on the site in this order. If you rename one, re-save its products so they follow the
+      new name.
     </p>
     <div id="m5" class="msg"></div>
 
@@ -112,7 +112,7 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
               >
                 <Icon name="chevron-down" />
               </button>
-              <button type="button" class="btn btn--ghost" data-act="edit">
+              <button type="button" class="btn btn--secondary" data-act="edit">
                 Edit
               </button>
             </div>
@@ -159,9 +159,8 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
     }
 
     <p class="hint">
-      Each collection carries its own description. Collapsed clamps it to one line so the list stays
-      scannable; See more expands that row in place rather than navigating away, so two collections can be
-      compared side by side.
+      The description shows on the site under the collection's name; this list keeps it to one line until you
+      press See more.
     </p>
 
     <Modal id="new-collection" title="New collection">
@@ -172,9 +171,9 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
           type="textarea"
           name="c_description"
           label="Description"
-          hint="Shown to buyers on the collection. The list clamps it to one line and expands on See more."
+          hint="Shown to customers under the collection name."
         />
-        <Input name="c_cover" label="Cover image (Drive id / URL)" />
+        <Input name="c_cover" label="Cover image (Google Drive link)" />
       </div>
       <Fragment slot="footer">
         <Button style="ghost" data-close="new-collection">Cancel</Button>
@@ -187,7 +186,7 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
 
   <section class="stack" aria-labelledby="h-tags">
     <h3 id="h-tags">Tags</h3>
-    <p class="hint">Click a tag to rename it or change its colour. Rugs keep the tag names they store.</p>
+    <p class="hint">Click a tag to rename it or give it a colour.</p>
     <div class="chips" id="tagList" role="group" aria-label="Tags">
       {
         tags.map((t) => (
@@ -219,8 +218,8 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
         <label class="chk" for="t_noColor"><input type="checkbox" id="t_noColor" /> no colour</label>
       </div>
       <div class="f actions">
-        <button class="go" id="btnSaveTag" type="button">Save tag</button>
-        <button class="go alt" id="btnCancelTag" type="button">Cancel</button>
+        <button class="btn btn--primary" id="btnSaveTag" type="button">Save tag</button>
+        <button class="btn btn--secondary" id="btnCancelTag" type="button">Cancel</button>
       </div>
       <p class="hint" id="tagEditHint"></p>
     </div>
@@ -240,13 +239,15 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
       </div>
     </div>
     <div class="actions">
-      <button class="go" id="btnAddTag" type="button">Add tag</button>
+      <button class="btn btn--primary" id="btnAddTag" type="button">Add tag</button>
     </div>
     <div id="m8" class="msg"></div>
   </section>
 
-  {/* Cloned by scripts/admin/collections.ts so a rebuilt row carries the same icon markup as the
-      server's, instead of the literal ▲ character it used to insert. */}
+  {
+    /* Cloned by scripts/admin/collections.ts so a rebuilt row carries the same icon markup as the
+      server's, instead of the literal ▲ character it used to insert. */
+  }
   <template id="moveTpl"
     ><button type="button" class="btn btn--ghost crow__move"><Icon name="chevron-down" /></button></template
   >

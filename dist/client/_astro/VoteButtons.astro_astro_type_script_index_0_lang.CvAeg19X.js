@@ -1,1 +1,0 @@
-import{t as e}from"./votes.BkpPccar.js";e();

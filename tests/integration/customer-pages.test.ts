@@ -168,9 +168,10 @@ describe('/{slug} — the signed-in catalog', () => {
     expect(html).toContain('data-source="card"');
     // The realm is published for the reaction batch; the server still verifies the cookie.
     expect(html).toContain('data-customer="hala"');
-    // Brief §7: the disclaimer is mandatory, the enquiry actions are forbidden.
-    expect(html).toContain('Prices are indicative and convert at an approximate rate.');
-    expect(html).not.toContain('wa.me');
+    // The payment disclaimer is mandatory; the enquiry actions are still forbidden. The footer does
+    // carry the studio's WhatsApp lines now (owner, 2026-09-16), so only 'Enquire' stays excluded.
+    expect(html).toContain('For some card/transfer payments prices are subject to 16% IVA');
+    expect(html).toContain('wa.me');
     expect(html).not.toContain('Enquire');
     // A private preview is never indexed.
     expect(html).toContain('noindex');
@@ -257,7 +258,7 @@ describe('/{slug}/{productId} — the detail page', () => {
     expect(html).not.toContain('Shape'); // stored, deliberately never shown
     expect(html).not.toContain('Enquire on WhatsApp');
     expect(html).not.toContain('Email the studio');
-    expect(html).toContain('Prices are indicative and convert at an approximate rate.');
+    expect(html).toContain('For some card/transfer payments prices are subject to 16% IVA');
   });
 
   it('sends a deep link into someone else’s preview back to their own gate', async () => {

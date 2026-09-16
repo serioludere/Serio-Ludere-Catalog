@@ -122,6 +122,16 @@ export function hashCustomerPassword(password: string): string {
   return hashPassword(password.trim(), { minLength: CUSTOMER_MIN_PASSWORD });
 }
 
+/**
+ * Every buyer unlocks their `/{slug}` preview with this same password (owner, 2026-09-16: one
+ * password for the whole customer realm, so there is nothing to generate or read down a phone per
+ * buyer). Built in so a plain `git push` deploys it — the same pattern as the public catalogue's
+ * `DEFAULT_SITE_PASSWORD_HASH` (../site/http.ts). To change it: hash the new password with
+ * `hashCustomerPassword()` and paste the result here.
+ */
+export const CUSTOMER_SHARED_PASSWORD_HASH =
+  'scrypt.131072.8.1._g1oMyCXpynil-UjMkRV6A.kDE0E3MbOAELEnV1TaVusK2eaqPCuAuUDNDNelCU-_0pt7QrRp6WrxyL9Tcb55vZ9xuy0gKNz_Q3-xQIqdtBGw';
+
 export function generatePassword(): string {
   const pick = (): string => WORDS[randomInt(WORDS.length)]!;
   const a = pick();

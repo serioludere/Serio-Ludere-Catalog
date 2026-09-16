@@ -1,19 +1,22 @@
 // POST /api/customers/[slug]/login — the buyer's side of the gate (brief §10, §14).
 //
-// Body: `{ "password": "amber-loom-serai-47" }`. On success the response sets that slug's session
+// Body: `{ "password": "amorfati-1314" }`. On success the response sets that slug's session
 // cookie and answers `{ ok: true, redirect: "/<slug>" }`; the form posts with fetch and follows it.
 //
-// The response is deliberately identical for "no such customer", "inactive customer" and "wrong
-// password": one `invalid credentials`, one 401, after the same amount of work. Rate limiting runs
-// BEFORE the scrypt verification (a verification costs ~184 ms of CPU and 128 MiB), and a slug that
-// does not exist still pays a dummy verification so the timing does not leak.
+// Every buyer unlocks with the same CUSTOMER_SHARED_PASSWORD_HASH (../../../../lib/customer/auth.ts);
+// the slug only selects whose catalogue and session the visitor gets. The response is deliberately
+// identical for "no such customer", "inactive customer" and "wrong password": one `invalid
+// credentials`, one 401, after the same amount of work — verification runs against the fixed shared
+// hash either way, so a slug that does not exist still pays the same scrypt cost and the timing does
+// not leak which slugs are real. Rate limiting runs BEFORE the scrypt verification (~184 ms of CPU
+// and 128 MiB).
 export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import * as z from 'zod';
 import { noStore, rejectCrossSite, requestIpHash, socketAddressOf } from '../../../../lib/api.ts';
 import {
-  hashPassword,
+  CUSTOMER_SHARED_PASSWORD_HASH,
   makeCustomerToken,
   newCustomerSession,
   verifyPassword,
@@ -24,9 +27,6 @@ import { isReservedSlug, SLUG_RE } from '../../../../lib/customer/auth.ts';
 import { loadCatalogue } from '../../../../lib/runtime.ts';
 
 const Body = z.object({ password: z.string().min(1).max(200) });
-
-/** A real scrypt verification against a throwaway hash, so a miss costs what a hit costs. */
-const DUMMY_HASH = hashPassword('customer-realm-timing-equaliser', { N: 2 ** 17, r: 8, p: 1 });
 
 export const POST: APIRoute = async (context) => {
   // NOT destructured: `clientAddress` is a getter that throws when the adapter cannot supply a peer
@@ -60,7 +60,7 @@ export const POST: APIRoute = async (context) => {
   if (!snapshot) return noStore({ ok: false, error: 'unavailable' }, 503, { 'retry-after': '30' });
 
   const customer = findCustomer(snapshot.catalogue.customers, slug);
-  const ok = verifyPassword(customer?.passwordHash || DUMMY_HASH, parsed.data.password) && Boolean(customer);
+  const ok = verifyPassword(CUSTOMER_SHARED_PASSWORD_HASH, parsed.data.password) && Boolean(customer);
   if (!ok) {
     const failure = customerRuntime.throttle.fail(ip);
     return noStore({ ok: false, error: 'invalid credentials' }, 401, {

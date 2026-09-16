@@ -8,12 +8,16 @@ import { post, type ApiOptions } from './api.ts';
 import { msg } from './msg.ts';
 
 export interface ListFilter {
-  /** '*' = every collection, '__none' = rugs without one, else a collection slug. */
-  collection: string;
-  /** 'all' or a status. */
-  status: string;
+  /**
+   * The collection slugs to show, ORed together; empty means every collection. '__none' matches the
+   * rugs filed under none. Multi-select since 2026-09-16 — the owner picks one or more tabs.
+   */
+  collections: string[];
   q: string;
 }
+
+/** The chip that means "every collection"; it is exclusive against the individual ones. */
+export const ALL_COLLECTIONS = '*';
 
 export interface CardData {
   /** The primary collection's slug. */
@@ -36,19 +40,15 @@ function slugsOf(card: CardData): string[] {
   return card.collection ? [card.collection] : [];
 }
 
-/** Pure: does a card's data-* set pass the filter? */
+/** Pure: does a card's data-* set pass the filter? Status is no longer filtered on (owner, 2026-09-16). */
 export function matches(card: CardData, f: ListFilter): boolean {
-  // "Needs photos" is a cross-cutting state, not a status value: a half-imported rug can be active,
-  // draft or archived, so this asks about the import rather than about the status column. It is the
-  // filter the owner reaches for most and the one neither design drew — the page already counted
-  // these rows and printed the number as text nobody could click.
-  if (f.status === 'attention') {
-    if (!card.attention) return false;
-  } else if (f.status !== 'all' && (card.status ?? '') !== f.status) return false;
-  const slugs = slugsOf(card);
-  if (f.collection === '__none') {
-    if (slugs.length > 0) return false;
-  } else if (f.collection !== '*' && !slugs.includes(f.collection)) return false;
+  if (f.collections.length > 0) {
+    const slugs = slugsOf(card);
+    const hit = f.collections.some((want) =>
+      want === '__none' ? slugs.length === 0 : slugs.includes(want),
+    );
+    if (!hit) return false;
+  }
   const needle = f.q.trim().toLowerCase();
   if (needle && !(card.search ?? '').includes(needle)) return false;
   return true;
@@ -114,15 +114,11 @@ export function initRugList(doc: Document = document): RugList {
   const emptyNone = maybe('empty-none', doc);
   const cards = [...doc.querySelectorAll<HTMLElement>('[data-card]')];
 
-  const collectionSelect = maybe<HTMLSelectElement>('f_collection_filter', doc);
-
-  const filter = (): ListFilter => ({
-    // The collection filter moved from a chip group into the Filter Bar's drawn 180px select: chips
-    // did not survive a real catalogue, and the counts now live in the option labels.
-    collection: collectionSelect?.value || '*',
-    status: statusChips.values()[0] ?? 'active',
-    q: q.value,
-  });
+  const filter = (): ListFilter => {
+    const chosen = collectionChips.values();
+    // "All" pressed — or nothing pressed at all — means no collection filter.
+    return { collections: chosen.includes(ALL_COLLECTIONS) ? [] : chosen, q: q.value };
+  };
 
   const apply = (): void => {
     const f = filter();
@@ -145,8 +141,25 @@ export function initRugList(doc: Document = document): RugList {
     if (emptyNone) emptyNone.hidden = total === 0 || shown !== 0;
   };
 
-  const statusChips = initChips(byId('statusChips', doc), { onChange: apply });
-  collectionSelect?.addEventListener('change', apply);
+  /**
+   * "All" against the individual collections. The chip group itself is a plain multi-select, so the
+   * exclusivity lives here: pressing All clears the rest, pressing a collection releases All, and
+   * releasing the last collection falls back to All rather than leaving an empty selection that
+   * looks like a filter but reads like "everything".
+   */
+  let pressed: string[] = [];
+  const onCollections = (values: string[]): void => {
+    const allJustPressed = values.includes(ALL_COLLECTIONS) && !pressed.includes(ALL_COLLECTIONS);
+    let next = values;
+    if (allJustPressed || values.length === 0) next = [ALL_COLLECTIONS];
+    else if (values.length > 1) next = values.filter((v) => v !== ALL_COLLECTIONS);
+    if (next.length !== values.length || next.some((v, i) => v !== values[i])) collectionChips.set(next);
+    pressed = next;
+    apply();
+  };
+
+  const collectionChips = initChips(byId('collectionChips', doc), { multi: true, onChange: onCollections });
+  pressed = collectionChips.values();
   q.addEventListener('input', apply);
   doc.addEventListener('click', (e) => {
     const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-retry]');

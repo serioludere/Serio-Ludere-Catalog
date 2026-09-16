@@ -579,7 +579,8 @@ td pre {
 }
 .card .ph {
   position: relative;
-  aspect-ratio: 3 / 4;
+  /* Owner, 2026-09-16: the tall 3:5 plate, filled rather than fitted. */
+  aspect-ratio: 3 / 5;
   /* `--subtle` is the neutral one step off the card: a rug with no photo yet would otherwise be a
      white box inside a white box. */
   background: var(--subtle);
@@ -593,14 +594,17 @@ td pre {
 .card .ph img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
 }
+/* Rotated by 90°, so the element's width becomes the visual HEIGHT and vice versa: to still cover a
+   3:5 box the pair has to be the box's ratio inverted — 5/3 wide by 3/5 tall. These two numbers and
+   the aspect-ratio above move together. */
 .card .ph img.rot {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 133.333%;
-  height: 75%;
+  width: 166.667%;
+  height: 60%;
   transform: translate(-50%, -50%) rotate(90deg);
   transform-origin: center;
 }
@@ -800,33 +804,6 @@ td pre {
   font-weight: 400;
   color: var(--ink-soft);
   margin-left: var(--stack-xs);
-}
-/* Quick links as a row of secondary buttons rather than a run of red text: the dashboard is the
-   only screen whose links were brand red, and red is the panel's danger colour. */
-.links p {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--stack-sm);
-}
-.links a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 36px;
-  padding: 0 var(--stack-md);
-  border: var(--rule-width) solid var(--border-control);
-  border-radius: var(--radius);
-  color: var(--ink);
-  font-family: var(--body);
-  font-size: var(--text-sm);
-  text-decoration: none;
-  transition:
-    border-color var(--motion-quick) var(--motion-ease),
-    background-color var(--motion-quick) var(--motion-ease);
-}
-.links a:hover {
-  border-color: var(--border-strong);
-  background: var(--subtle);
-  color: var(--ink);
 }
 .chip:focus-visible,
 .card:focus-visible,

@@ -13,7 +13,7 @@ import { RugUpdate } from '../../../src/lib/admin/dto.ts';
 
 /** One rug rendered the way the page renders it: once as a row, once as a card. */
 function rug(id: string, name: string, collection: string, status: string): string {
-  const data = `data-card data-id="${id}" data-collection="${collection}" data-status="${status}" data-search="${name.toLowerCase()} ${id.toLowerCase()}"`;
+  const data = `data-card data-id="${id}" data-collection="${collection}" data-collections="${collection}" data-status="${status}" data-search="${name.toLowerCase()} ${id.toLowerCase()}"`;
   return `
     <div class="irow" data-row ${data}>
       <div class="irow__line">
@@ -26,7 +26,7 @@ function rug(id: string, name: string, collection: string, status: string): stri
     </div>`;
 }
 function card(id: string, name: string, collection: string, status: string): string {
-  return `<a class="card" data-card data-id="${id}" data-collection="${collection}" data-status="${status}" data-search="${name.toLowerCase()} ${id.toLowerCase()}">${name}</a>`;
+  return `<a class="card" data-card data-id="${id}" data-collection="${collection}" data-collections="${collection}" data-status="${status}" data-search="${name.toLowerCase()} ${id.toLowerCase()}">${name}</a>`;
 }
 
 /** Teardowns for anything bound during a test; document-level listeners outlive innerHTML. */
@@ -49,13 +49,10 @@ function mount(): void {
     <input id="q" type="search" />
     <button type="button" class="filterbar__view" data-view="list" aria-pressed="false"></button>
     <button type="button" class="filterbar__view" data-view="grid" aria-pressed="false"></button>
-    <select id="f_collection_filter">
-      <option value="*">All collections</option>
-      <option value="kilims">Kilims (1)</option>
-    </select>
-    <div class="chips" id="statusChips" data-multi="false">
-      <button type="button" class="chip on" data-value="active" aria-pressed="true">Active</button>
-      <button type="button" class="chip" data-value="all" aria-pressed="false">Any</button>
+    <div class="chips" id="collectionChips" data-multi="true">
+      <button type="button" class="chip on" data-value="*" aria-pressed="true">All</button>
+      <button type="button" class="chip" data-value="kilims" aria-pressed="false">Kilims</button>
+      <button type="button" class="chip" data-value="tulu" aria-pressed="false">Tulu</button>
     </div>
     <p id="count"></p>
     <div id="empty-first" hidden></div>
@@ -167,12 +164,13 @@ describe('one filter drives both views', () => {
 
   it('hides the row AND the card for a filtered-out rug, so switching view cannot change the result', () => {
     initRugList();
-    const sel = document.getElementById('f_collection_filter') as HTMLSelectElement;
-    sel.value = 'kilims';
-    sel.dispatchEvent(new Event('change'));
+    document.querySelector<HTMLButtonElement>('#collectionChips [data-value="kilims"]')!.click();
     const shown = [...document.querySelectorAll<HTMLElement>('[data-card]')].filter((el) => !el.hidden);
     expect(shown.map((el) => el.dataset.id)).toEqual(['SL-021', 'SL-021']);
     expect(document.getElementById('count')?.textContent).toBe('1 rug shown');
+    // A second tab widens the selection rather than replacing it — both rugs are back, both twice.
+    document.querySelector<HTMLButtonElement>('#collectionChips [data-value="tulu"]')!.click();
+    expect(document.getElementById('count')?.textContent).toBe('2 rugs shown');
   });
 
   it('shows the no-results state, not the first-run one, when cards exist but none match', () => {

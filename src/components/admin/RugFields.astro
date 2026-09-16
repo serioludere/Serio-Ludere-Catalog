@@ -70,16 +70,20 @@ const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().t
 }
 <div class="addform">
   {
-    /* P3 (80:1480) opens the drawer on the rug number. It used to live in `#preview`, which is
-      `display: none` until a scrape succeeds (admin.css `.preview`) — so the server allocated the
-      next id, rendered it, and then hid it, and the drawer opened on "Your name for this rug" with
-      its primary field nowhere on screen. */
+    /* Owner, 2026-09-16: adding a product no longer asks for the number. The server has already
+      allocated the next one, nobody typed it, and a field you cannot usefully change is noise at the
+      top of the drawer — so on add it rides along hidden and rug-form.ts reads it exactly as before.
+      Editing still shows it, read-only: there it is the row's reference, not an input. */
+    edit ? (
+      <div class="f">
+        <label for="f_id">Product number</label>
+        <input id="f_id" value={rug?.id ?? ''} readonly autocomplete="off" />
+        <p class="hint">Must be unique — it becomes the product's reference number.</p>
+      </div>
+    ) : (
+      <input type="hidden" id="f_id" value={nextId ?? ''} />
+    )
   }
-  <div class="f">
-    <label for="f_id">Product number</label>
-    <input id="f_id" value={rug?.id ?? nextId ?? ''} readonly={edit} autocomplete="off" />
-    <p class="hint">Must be unique — it becomes the product's reference number.</p>
-  </div>
 
   <div class="row">
     {

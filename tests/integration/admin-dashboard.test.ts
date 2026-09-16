@@ -101,7 +101,7 @@ const locals = {
 };
 
 describe('/admin dashboard', () => {
-  it('renders counts, health and the newest audit rows from the admin read, escaping sheet text', async () => {
+  it('renders the catalogue counts from the admin read, escaping sheet text', async () => {
     state.mode = 'ok';
     const container = await AstroContainer.create();
     const res = await container.renderToResponse(Dashboard, {
@@ -114,16 +114,20 @@ describe('/admin dashboard', () => {
     expect(html).not.toContain('aria-current="page"'); // the dashboard is the wordmark link, not a tab
     expect(html).toContain('Active products');
     expect(html).toMatch(/Active products<\/div>\s*<div class="v">1<\/div>/);
-    expect(html).toMatch(/Drafts<\/div>\s*<div class="v">1<\/div>/);
-    expect(html).toMatch(/Archived<\/div>\s*<div class="v">1<\/div>/);
     expect(html).toMatch(/Collections<\/div>\s*<div class="v">1<\/div>/);
     expect(html).toMatch(/Tags<\/div>\s*<div class="v">2<\/div>/);
     expect(html).toMatch(/Customers<\/div>\s*<div class="v">\s*1\s*<small>\+1 paused<\/small>/);
-    expect(html).toContain('12 s');
-    expect(html).toContain('not checked');
-    expect(html).toMatch(/Rows skipped by the sheet<\/div>\s*<div class="v">1<\/div>/);
-    expect(html).toContain('<td>Product updated</td>');
-    expect(html).toContain('&lt;script&gt;x&lt;/script&gt;');
+    // Owner, 2026-09-16: Drafts and Archived are not tiles any more, and the health strip, the
+    // recent-activity table and the quick links are gone from this screen altogether.
+    expect(html).not.toContain('>Drafts<');
+    expect(html).not.toContain('>Archived<');
+    expect(html).not.toContain('Site health');
+    expect(html).not.toContain('Recent activity');
+    expect(html).not.toContain('Quick links');
+    expect(html).not.toContain('Rows skipped by the sheet');
+    expect(html).not.toContain('<td>Product updated</td>');
+    // The audit note carried the injected markup; with that table gone, the settings warning is the
+    // sheet-authored text still on the page, and it is printed as text either way.
     expect(html).not.toContain('<script>x</script>');
     expect(html).toContain('price_round_step must be a positive whole number');
     expect(html).not.toContain('missing its admin columns');
@@ -157,6 +161,7 @@ describe('/admin dashboard', () => {
     expect(html).toContain('[redacted]');
     expect(html).not.toContain('refresh_token=secret');
     expect(html).toMatch(/Active products<\/div>\s*<div class="v">—<\/div>/);
-    expect(html).toContain('<a href="/admin/rugs/new"');
+    // The shell's nav tabs are the way out of a failed read now that the quick links are gone.
+    expect(html).toContain('href="/admin/rugs"');
   });
 });

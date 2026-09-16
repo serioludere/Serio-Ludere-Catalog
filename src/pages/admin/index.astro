@@ -1,15 +1,17 @@
 ---
-// /admin dashboard (docs/ADMIN_SPEC.md §2.1): counts from a fresh admin read (never the public
-// route cache), the newest audit rows, a health strip and quick links. A failed read renders the
-// shell with the scrubbed reason instead of a 500, so the owner can still reach the other tabs.
+// /admin dashboard (docs/ADMIN_SPEC.md §2.1): the catalogue counts from a fresh admin read (never
+// the public route cache). A failed read renders the shell with the scrubbed reason instead of a
+// 500, so the owner can still reach the other tabs.
+//
+// Owner, 2026-09-16: the health strip, the recent-activity table and the quick links are gone, and
+// so are the Drafts and Archived tiles. The activity log keeps its own page (/admin/audit) and the
+// health numbers are still served by /api/health; neither earned room on the screen the owner opens
+// every morning.
 export const prerender = false;
 
 import AdminLayout from '../../components/admin/AdminLayout.astro';
-import Button from '../../components/ui/Button.astro';
-import { auditLabel } from '../../lib/admin/audit-labels.ts';
-import { adminHealth } from '../../lib/admin/http.ts';
 import { adminCounts, fetchAdminSnapshot, type AdminSnapshot } from '../../lib/admin/read.ts';
-import { getCache, getClient } from '../../lib/runtime.ts';
+import { getClient } from '../../lib/runtime.ts';
 import { consoleLogger, serializeError } from '../../lib/sheets/errors.ts';
 
 let snapshot: AdminSnapshot | undefined;
@@ -22,28 +24,7 @@ try {
   error = safe.message;
 }
 const counts = snapshot ? adminCounts(snapshot) : undefined;
-let snapshotAgeSec: number | null = null;
-let lastRefreshOk: boolean | null = null;
-try {
-  const h = getCache().health();
-  snapshotAgeSec = h.snapshotAgeSec;
-  lastRefreshOk = h.lastRefreshOk;
-} catch {
-  /* not configured: the read above already failed */
-}
-const health = adminHealth();
-const audit = snapshot?.audit.slice(0, 10) ?? [];
-const droppedRows = snapshot?.report.dropped.length ?? 0;
 const settingsWarnings = snapshot?.settings.warnings ?? [];
-const drive =
-  health.driveScopeOk === null ? 'not checked' : health.driveScopeOk ? 'connected' : 'not connected';
-const links: Array<[string, string]> = [
-  ['/admin/rugs/new', 'Add product'],
-  ['/admin/rugs', 'Products'],
-  ['/admin/collections', 'Collections & tags'],
-  ['/admin/clients', 'Customers'],
-  ['/admin/audit', 'Activity log'],
-];
 ---
 
 <AdminLayout title="Serio Ludere — Admin" active="dashboard">
@@ -53,7 +34,6 @@ const links: Array<[string, string]> = [
       <p class="page-head__count">What is live, what needs attention, and what changed last.</p>
     </div>
     <span class="page-head__rule"></span>
-    <Button href="/admin/rugs/new" icon="plus">Add product</Button>
   </div>
   {error && <div class="msg err on">Could not read the sheet: {error}</div>}
   {
@@ -74,14 +54,6 @@ const links: Array<[string, string]> = [
         <div class="v">{counts ? counts.rugs.active : '—'}</div>
       </div>
       <div class="stat">
-        <div class="k">Drafts</div>
-        <div class="v">{counts ? counts.rugs.draft : '—'}</div>
-      </div>
-      <div class="stat">
-        <div class="k">Archived</div>
-        <div class="v">{counts ? counts.rugs.archived : '—'}</div>
-      </div>
-      <div class="stat">
         <div class="k">Collections</div>
         <div class="v">{counts ? counts.collections : '—'}</div>
       </div>
@@ -98,102 +70,4 @@ const links: Array<[string, string]> = [
       </div>
     </div>
   </section>
-
-  <section class="stack" aria-labelledby="h-health">
-    <h3 id="h-health">Site health</h3>
-    <div class="stats">
-      <div class="stat">
-        <div class="k">Catalogue refreshed</div>
-        <div class="v">
-          {snapshotAgeSec === null ? '—' : `${snapshotAgeSec} s ago`}
-          {lastRefreshOk === false && <small>last refresh failed</small>}
-        </div>
-      </div>
-      <div class="stat">
-        <div class="k">Photo storage</div>
-        <div class="v">{drive}</div>
-      </div>
-      <div class="stat">
-        <div class="k">Failed saves</div>
-        <div class="v">{health.adminWriteFailures}</div>
-      </div>
-      <div class="stat">
-        <div class="k">Rows skipped by the sheet</div>
-        <div class="v">{snapshot ? droppedRows : '—'}</div>
-      </div>
-    </div>
-    {
-      snapshot && droppedRows > 0 && (
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Tab</th>
-                <th>Row</th>
-                <th>Issues</th>
-              </tr>
-            </thead>
-            <tbody>
-              {snapshot.report.dropped.slice(0, 10).map((d) => (
-                <tr>
-                  <td>{d.tab}</td>
-                  <td class="mono">{d.row}</td>
-                  <td class="mono">{d.issues.join('; ')}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )
-    }
-  </section>
-
-  <section class="stack" aria-labelledby="h-audit">
-    <h3 id="h-audit">Recent activity</h3>
-    {audit.length === 0 && <div class="msg busy on">Nothing has changed yet.</div>}
-    {
-      audit.length > 0 && (
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Time</th>
-                <th>Who</th>
-                <th>What</th>
-                <th>Item</th>
-                <th>Note</th>
-              </tr>
-            </thead>
-            <tbody>
-              {audit.map((a) => (
-                <tr>
-                  <td class="mono" data-ts={a.timestamp}>
-                    {a.timestamp}
-                  </td>
-                  <td>{a.actor}</td>
-                  <td>{auditLabel(a.action)}</td>
-                  <td class="mono">
-                    {a.targetTab} {a.targetId}
-                  </td>
-                  <td class="mono">{a.note}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )
-    }
-    <p class="hint">
-      <a href="/admin/audit">See all activity</a>
-    </p>
-  </section>
-
-  <section class="stack links" aria-labelledby="h-links">
-    <h3 id="h-links">Quick links</h3>
-    <p>{links.map(([href, label]) => <a href={href}>{label}</a>)}</p>
-  </section>
-  <script>
-    import { initDashboard } from '../../scripts/admin/dashboard.ts';
-    initDashboard();
-  </script>
 </AdminLayout>

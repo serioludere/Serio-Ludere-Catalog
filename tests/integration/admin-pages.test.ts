@@ -163,24 +163,23 @@ function expectCspClean(html: string): void {
 }
 
 describe('/admin/rugs', () => {
-  it('puts the collection filter in the bar as a select with counts, and keeps status as chips', async () => {
+  it('puts the collections in the bar as multi-select tabs with counts, and drops the status filter', async () => {
     state.down = false;
     const { status, html } = await render(RugsPage, '/admin/rugs');
     expect(status).toBe(200);
     expect(html).toContain('aria-current="page"');
-    // Collections are the drawn 180px select inside FilterBar's `filters` slot — chips did not
-    // survive a real catalogue, and ADR D18 already capped the preview's chips at eight for the same
-    // reason. The counts move into the option labels rather than being lost.
-    expect(html).toContain('id="f_collection_filter"');
-    expect(html).toContain('filterbar__select');
-    expect(html).toMatch(/<option value="\*">All collections<\/option>/);
-    expect(html).toMatch(/<option value="kilims">\s*Kilims\s*\(1\)/);
-    expect(html).toMatch(/<option value="tulu">\s*Tulu\s*\(1\)/);
-    expect(html).toMatch(/<option value="__none">\s*No collection\s*\(1\)/);
-    // …and the collection chip group is gone, not merely hidden.
-    expect(html).not.toContain('id="collectionChips"');
-    // Status stays chips: the file draws no status control, and a required domain field needs one.
-    expect(html).toMatch(/data-value="active" aria-pressed="true"/);
+    // Owner, 2026-09-16: collections are tabs again, and this time several can be pressed at once —
+    // so the group carries data-multi and "All" opens pressed as the reset.
+    expect(html).toContain('id="collectionChips"');
+    expect(html).toContain('data-multi="true"');
+    expect(html).toMatch(/data-value="\*" aria-pressed="true"/);
+    expect(html).toMatch(/data-value="kilims"[^>]*>\s*Kilims\s*1/);
+    expect(html).toMatch(/data-value="tulu"[^>]*>\s*Tulu\s*1/);
+    expect(html).toMatch(/data-value="__none"[^>]*>\s*No collection\s*1/);
+    // …and the select it replaced is gone, along with the status chips entirely.
+    expect(html).not.toContain('id="f_collection_filter"');
+    expect(html).not.toContain('id="statusChips"');
+    expect(html).not.toContain('Any status');
     expect(html).toContain('href="/admin/rugs/SL-021"');
     expect(html).toContain('data-status="archived"');
     expect(html).toContain('class="card status-draft"');
@@ -346,9 +345,11 @@ describe('failure state', () => {
     }
     state.down = false;
   });
-  it('the dashboard relativises audit timestamps through its script hook', async () => {
+  it('the activity log relativises its timestamps through the script hook', async () => {
+    // The dashboard used to carry the newest audit rows; since 2026-09-16 the log lives only on its
+    // own page, which is where the `data-ts` hook has to keep working.
     state.down = false;
-    const { html } = await render(Dashboard, '/admin');
+    const { html } = await render(AuditPage, '/admin/audit');
     expect(html).toContain('data-ts="2026-09-07T10:00:00Z"');
     expectCspClean(html);
   });

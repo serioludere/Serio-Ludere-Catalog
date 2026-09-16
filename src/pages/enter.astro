@@ -19,7 +19,7 @@ import {
   verifySiteToken,
 } from '../lib/site/gate.ts';
 import { siteRuntime } from '../lib/site/http.ts';
-import { STUDIO_EMAIL, STUDIO_NAME } from '../lib/studio.ts';
+import { STUDIO_NAME } from '../lib/studio.ts';
 
 Astro.cache?.set(false);
 Astro.response.headers.set('cache-control', 'no-store');
@@ -88,8 +88,7 @@ const rates: RateTable = { rates: { USD: 1 }, symbols: { USD: '$' } };
   <main class="gate">
     <div class="gate-card">
       <a href="/" class="gate-home" aria-label={`${STUDIO_NAME} catalogue`}><Wordmark /></a>
-      <p class="eyebrow">Private catalogue</p>
-      <h1 class="gate-title">Enter the password to view the collection</h1>
+      <p class="eyebrow">Catalogue</p>
       <form method="post" action={ENTER_PATH} class="gate-form">
         <input type="hidden" name="next" value={next} />
         <label class="sr-only" for="site-password">Password</label>
@@ -107,7 +106,7 @@ const rates: RateTable = { rates: { USD: 1 }, symbols: { USD: '$' } };
           maxlength="200"
           autofocus
         />
-        <button type="submit" class="gate-go">View the catalogue</button>
+        <button type="submit" class="gate-go">Enter</button>
         {
           message && (
             <p class="gate-error" role="alert">
@@ -116,10 +115,6 @@ const rates: RateTable = { rates: { USD: 1 }, symbols: { USD: '$' } };
           )
         }
       </form>
-      <p class="gate-fine">
-        The password was sent to you by the studio. Questions?{' '}
-        <a href={`mailto:${STUDIO_EMAIL}`}>{STUDIO_EMAIL}</a>
-      </p>
     </div>
   </main>
 </Layout>
@@ -145,12 +140,6 @@ const rates: RateTable = { rates: { USD: 1 }, symbols: { USD: '$' } };
   }
   .gate-home :global(.wordmark) {
     width: min(260px, 70vw);
-  }
-  .gate-title {
-    font: 500 clamp(20px, 2.2vw, 26px) / 1.25 var(--body);
-    letter-spacing: -0.01em;
-    text-wrap: balance;
-    margin-bottom: 8px;
   }
   .gate-form {
     display: flex;
@@ -197,13 +186,5 @@ const rates: RateTable = { rates: { USD: 1 }, symbols: { USD: '$' } };
   .gate-error {
     font: 400 13px/1.5 var(--body);
     color: var(--accent);
-  }
-  .gate-fine {
-    font: 400 11px/1.7 var(--mono);
-    letter-spacing: 0.02em;
-    color: var(--ink-soft);
-  }
-  .gate-fine a {
-    color: inherit;
   }
 </style>

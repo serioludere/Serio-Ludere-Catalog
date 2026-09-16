@@ -69,8 +69,8 @@ const { rugId, mode = 'card' } = Astro.props;
     min-height: 44px;
   }
 
-  /* 32px circle, fully round. Neutral is the raised surface on a hairline; pressed fills with ink
-     and the glyph inherits the surface colour through currentColor. */
+  /* 32px hit area, no container chrome (owner, 2026-09-16: no circle, no border — just the glyph).
+     Neutral is ink; pressed fills the heart red through currentColor. */
   .pv-circle {
     position: relative;
     display: flex;
@@ -80,27 +80,17 @@ const { rugId, mode = 'card' } = Astro.props;
     width: 32px;
     height: 32px;
     padding: 0;
-    border: var(--rule-width) solid var(--border-control);
+    border: none;
     border-radius: var(--radius-pill);
-    background: var(--surface-raised);
+    background: transparent;
     color: var(--ink);
     cursor: pointer;
   }
 
-  .pv-circle[aria-pressed='true'] {
-    background: var(--ink);
-    border-color: transparent;
-    color: var(--surface);
-  }
-
   /* The LIKE control departs from the drawn pressed state, on the owner's instruction (2026-09-13):
      "the heart like button should transform to filled red when liked, and outlined with the normal
-     one". Figma 18:54 fills the whole circle with ink; the owner wants the heart itself to fill.
-     So the circle keeps its resting surface and only the glyph changes — which is also the idiom
-     every buyer already knows from every other wishlist they have used. */
+     one". Only the glyph changes — the button itself never grows a background or border. */
   .pv-circle[data-vote='like'][aria-pressed='true'] {
-    background: var(--surface-raised);
-    border-color: var(--brand);
     color: var(--brand);
   }
   .pv-circle[data-vote='like'][aria-pressed='true'] .pv-glyph svg path {

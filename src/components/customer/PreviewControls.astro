@@ -36,9 +36,7 @@ const currencies = fromSheet.length
 <div class="pv-controls">
   <div class="pv-seg" id="unitTog" role="group" aria-label="Units">
     <button type="button" data-u="cm" class="on" aria-pressed="true">cm</button>
-    <button type="button" data-u="ft" aria-pressed="false">
-      <span class="pv-seg-long">ft / in</span><span class="pv-seg-short">ft</span>
-    </button>
+    <button type="button" data-u="ft" aria-pressed="false">ft</button>
   </div>
   {
     sort && (
@@ -151,12 +149,6 @@ const currencies = fromSheet.length
     pointer-events: none;
   }
 
-  .pv-seg-short {
-    display: none;
-  }
-
-  /* The Unit Toggle documentation: at 390 the imperial segment abbreviates to "ft" so the toggle and
-     the picker clear 358px beside the title without truncating it. */
   @media (max-width: 767px) {
     /* Wraps for the same reason the title row does: three controls no longer fit the 358px the
        two-control frame was measured against, and a select cannot shrink below its own label. */
@@ -164,13 +156,6 @@ const currencies = fromSheet.length
       gap: var(--stack-sm);
       flex-wrap: wrap;
       justify-content: flex-end;
-    }
-
-    .pv-seg-long {
-      display: none;
-    }
-    .pv-seg-short {
-      display: inline;
     }
   }
 </style>

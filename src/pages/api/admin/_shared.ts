@@ -5,7 +5,7 @@ import type { CellValue, SheetsClient } from '../../../lib/sheets/client.ts';
 import { HEADERS, PRODUCT_WIDTH, TABS } from '../../../lib/sheets/contract.ts';
 import { consoleLogger } from '../../../lib/sheets/errors.ts';
 import { parseCollections, parseTags } from '../../../lib/sheets/parse.ts';
-import type { Rotate, Status } from '../../../lib/sheets/types.ts';
+import type { Rotate } from '../../../lib/sheets/types.ts';
 import { AdminError, adminRuntime } from '../../../lib/admin/http.ts';
 import { clientLink, parseClients, withoutSecrets } from '../../../lib/admin/clients.ts';
 import type { RugInputT } from '../../../lib/admin/dto.ts';
@@ -136,7 +136,6 @@ export function rugFieldsFrom(
     priceUsd: resolved.priceUsd,
     rotate: body.rotate as Rotate,
     featured: body.featured,
-    status: body.status as Status,
     method: body.method,
     sourceUrl: body.sourceUrl ?? '',
     supplier: body.supplier,
@@ -166,7 +165,6 @@ export function fieldsOfRug(rug: AdminRug): RugFields {
     priceUsd: rug.priceUsd,
     rotate: rug.rotate,
     featured: rug.featured,
-    status: rug.status,
     method: rug.method,
     sourceUrl: rug.sourceUrl,
     supplier: rug.supplier,
@@ -187,17 +185,13 @@ export function fieldsOfRug(rug: AdminRug): RugFields {
   };
 }
 
-const STATUSES = new Set(['active', 'draft', 'archived', 'all']);
-
 /** Client-side filtering is the norm; the server filter exists for scripts and the `?q=` deep link. */
-export function filterRugs(rugs: readonly AdminRug[], status: string | null, q: string | null): AdminRug[] {
-  const wanted = status && STATUSES.has(status) ? status : 'all';
+export function filterRugs(rugs: readonly AdminRug[], q: string | null): AdminRug[] {
   const needle = (q ?? '').trim().toLowerCase();
-  return rugs.filter((r) => {
-    if (wanted !== 'all' && r.status !== wanted) return false;
-    if (!needle) return true;
-    return [r.name, r.id, r.supplierRef, r.slug].some((s) => s.toLowerCase().includes(needle));
-  });
+  if (!needle) return [...rugs];
+  return rugs.filter((r) =>
+    [r.name, r.id, r.supplierRef, r.slug].some((s) => s.toLowerCase().includes(needle)),
+  );
 }
 
 /** Ids reserved by `rug.create` audit rows (a create whose verify failed still burnt its number). */

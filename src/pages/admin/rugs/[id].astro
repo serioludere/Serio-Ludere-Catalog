@@ -40,7 +40,6 @@ const data = rug
       rug,
       collections: collections.map((c) => ({ id: c.id, slug: c.slug, name: c.name })),
       tags: tags.map((t) => ({ id: t.id, slug: t.slug, name: t.name, color: t.color ?? '' })),
-      defaultStatus: rug.status === 'draft' ? 'draft' : 'active',
       roundStep,
       driveScopeOk: null,
     }
@@ -63,7 +62,7 @@ const data = rug
           <div class="page-head__titles">
             <h1 class="page-head__title">{rug.name}</h1>
             <p class="page-head__count">
-              <span class="mono">{rug.id}</span> · {rug.status}
+              <span class="mono">{rug.id}</span>
             </p>
           </div>
           <span class="page-head__rule" />
@@ -76,7 +75,6 @@ const data = rug
           rug={rug}
           collections={collections}
           tags={tags}
-          defaultStatus={rug.status === 'draft' ? 'draft' : 'active'}
           roundStep={roundStep}
           driveScopeOk={null}
           likes={likesById.get(rug.id) ?? 0}

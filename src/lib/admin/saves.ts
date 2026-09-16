@@ -16,7 +16,8 @@ export interface RugRef {
   rugId: string;
   name: string;
   slug: string;
-  status: Rug['status'] | 'unknown';
+  /** True when the id is still a row in Products; a liked product can since have been deleted. */
+  known: boolean;
 }
 
 export interface MostSavedEntry extends RugRef {
@@ -104,8 +105,8 @@ export function buildSavesReport(
   const ref = (rugId: string): RugRef => {
     const r = rugById.get(rugId);
     return r
-      ? { rugId, name: r.name, slug: r.slug, status: r.status }
-      : { rugId, name: rugId, slug: '', status: 'unknown' };
+      ? { rugId, name: r.name, slug: r.slug, known: true }
+      : { rugId, name: rugId, slug: '', known: false };
   };
   const rugIds = new Set([...likers.keys(), ...dislikers.keys()]);
   const mostSaved: MostSavedEntry[] = [...rugIds]

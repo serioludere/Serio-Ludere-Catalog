@@ -10,7 +10,7 @@ import FetchModal from '../../../components/ui/FetchModal.astro';
 import { adminRuntime } from '../../../lib/admin/http.ts';
 import { nextRugId } from '../../../lib/admin/ids.ts';
 import { fetchAdminSnapshot, type AdminSnapshot } from '../../../lib/admin/read.ts';
-import { defaultStatusOf, roundStepOf } from '../../../lib/admin/settings.ts';
+import { roundStepOf } from '../../../lib/admin/settings.ts';
 import { getClient } from '../../../lib/runtime.ts';
 import { consoleLogger, serializeError } from '../../../lib/sheets/errors.ts';
 import { jsonForScript } from '../../../lib/view.ts';
@@ -34,7 +34,6 @@ const driveScopeOk = adminRuntime.driveScopeOk ?? null;
 const collections = snapshot?.collections ?? [];
 const tags = snapshot?.tags ?? [];
 const settings = snapshot?.settings;
-const defaultStatus = settings ? defaultStatusOf(settings) : 'active';
 const roundStep = settings ? roundStepOf(settings) : 5;
 const nextId = snapshot
   ? nextRugId(
@@ -47,7 +46,6 @@ const data = {
   collections: collections.map((c) => ({ id: c.id, slug: c.slug, name: c.name })),
   tags: tags.map((t) => ({ id: t.id, slug: t.slug, name: t.name, color: t.color ?? '' })),
   nextId,
-  defaultStatus,
   roundStep,
   driveScopeOk,
   adminHeaders: snapshot?.report.adminHeaders ?? 'ok',
@@ -78,7 +76,6 @@ const data = {
     mode="add"
     collections={collections}
     tags={tags}
-    defaultStatus={defaultStatus}
     roundStep={roundStep}
     driveScopeOk={driveScopeOk}
     nextId={nextId}

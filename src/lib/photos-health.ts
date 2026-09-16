@@ -20,7 +20,7 @@ export async function sweepPhotos(rugs: Rug[], opts: SweepOptions = {}): Promise
   const concurrency = opts.concurrency ?? 4;
   const timeoutMs = opts.timeoutMs ?? 10_000;
   const targets = rugs
-    .filter((r) => r.status === 'active' && r.photos[0])
+    .filter((r) => r.photos[0])
     .map((r) => ({ id: r.id, name: r.name, photo: r.photos[0]! }));
   const failing: PhotoHealth['failing'] = [];
   let i = 0;

@@ -29,7 +29,7 @@ const PRODUCT_BASE = {
   internalNotes: '',
 };
 
-function rug(id: string, name: string, status: Rug['status'] = 'active'): Rug {
+function rug(id: string, name: string): Rug {
   return {
     ...PRODUCT_BASE,
     id,
@@ -46,7 +46,6 @@ function rug(id: string, name: string, status: Rug['status'] = 'active'): Rug {
     method: '',
     rotate: 'false',
     featured: false,
-    status,
     likes: 0,
     dislikes: 0,
     rating: 0,
@@ -66,7 +65,7 @@ const row = (customer: string, productId: string, reaction: string, source = 'ca
   source,
   't',
 ];
-const rugs = [rug('SL-021', 'Winks'), rug('SL-022', 'Yellow'), rug('SL-023', 'Old', 'archived')];
+const rugs = [rug('SL-021', 'Winks'), rug('SL-022', 'Yellow'), rug('SL-023', 'Old')];
 const clients = [{ code: 'nadia-k7m2pq', name: 'Nadia', status: 'active' as const }];
 
 describe('buildSavesReport (ADMIN_SPEC §3.5)', () => {
@@ -94,7 +93,7 @@ describe('buildSavesReport (ADMIN_SPEC §3.5)', () => {
       ['SL-021', 1, 0],
       ['SL-022', 1, 1],
     ]);
-    expect(report.mostSaved[0]).toMatchObject({ name: 'Old', status: 'archived' }); // archived still displays
+    expect(report.mostSaved[0]).toMatchObject({ name: 'Old', known: true });
     expect(report.byClient.map((c) => c.code).sort()).toEqual(['anon', 'ghost-code', 'omar-aaaaaa']);
     const omar = report.byClient.find((c) => c.code === 'omar-aaaaaa')!;
     expect(omar.liked.map((r) => r.rugId)).toEqual(['SL-021']);
@@ -123,7 +122,7 @@ describe('buildSavesReport (ADMIN_SPEC §3.5)', () => {
     expect(report.mostSaved.map((m) => m.rugId).sort()).toEqual(['SL-021', 'SL-022', 'SL-099']);
     expect(report.mostSaved.find((m) => m.rugId === 'SL-099')).toMatchObject({
       name: 'SL-099',
-      status: 'unknown',
+      known: false,
       slug: '',
     });
     expect(report.byClient.map((c) => c.code).sort()).toEqual(['anon', 'anon2']);

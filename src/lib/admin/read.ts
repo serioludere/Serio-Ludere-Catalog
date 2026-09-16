@@ -293,15 +293,15 @@ export function findTagByName(snapshot: Pick<AdminSnapshot, 'tags'>, name: strin
 }
 
 export interface AdminCounts {
-  rugs: { active: number; draft: number; archived: number; total: number };
+  /** Products have no status any more (owner, 2026-09-16), so there is one number to report. */
+  rugs: number;
   collections: number;
   tags: number;
   clients: { active: number; revoked: number };
 }
 
 export function adminCounts(snapshot: AdminSnapshot): AdminCounts {
-  const rugs = { active: 0, draft: 0, archived: 0, total: snapshot.rugs.length };
-  for (const r of snapshot.rugs) rugs[r.status] += 1;
+  const rugs = snapshot.rugs.length;
   const clients = { active: 0, revoked: 0 };
   for (const c of snapshot.clients) clients[c.status] += 1;
   return { rugs, collections: snapshot.collections.length, tags: snapshot.tags.length, clients };

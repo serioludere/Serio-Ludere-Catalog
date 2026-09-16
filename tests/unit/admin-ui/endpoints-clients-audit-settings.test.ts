@@ -48,7 +48,7 @@ let sheet: FakeSheet;
 let cache: ReturnType<typeof fakeCache>;
 beforeEach(() => {
   sheet = fakeSheet({
-    rugs: [adminRugRow({ id: 'SL-021' }), adminRugRow({ id: 'SL-022', name: 'Yellow', status: 'archived' })],
+    rugs: [adminRugRow({ id: 'SL-021' }), adminRugRow({ id: 'SL-022', name: 'Yellow' })],
     // Customers: slug, display_name, password_hash, note, created_at, active
     clients: [
       ['nadia-k7m2pq', 'Nadia', 'scrypt.131072.8.1.aa.bb', 'VIP', '2026-09-01T00:00:00Z', true],
@@ -193,8 +193,8 @@ describe('clients', () => {
     expect(r.ok).toBe(true);
     expect(r.rowsRead).toBe(5);
     expect(r.mostSaved).toEqual([
-      { rugId: 'SL-021', name: 'Winks', slug: 'winks', status: 'active', saves: 1, dislikes: 1 },
-      { rugId: 'SL-022', name: 'Yellow', slug: 'yellow', status: 'archived', saves: 1, dislikes: 0 },
+      { rugId: 'SL-021', name: 'Winks', slug: 'winks', known: true, saves: 1, dislikes: 1 },
+      { rugId: 'SL-022', name: 'Yellow', slug: 'yellow', known: true, saves: 1, dislikes: 0 },
     ]);
     expect(r.byClient.map((c: { code: string; known: boolean }) => [c.code, c.known])).toEqual([
       ['nadia-k7m2pq', true],
@@ -233,7 +233,7 @@ describe('audit paging', () => {
 describe('settings', () => {
   it('reads the parsed settings and updates one key per call with an audit row (400 on a bad value)', async () => {
     const before = await (await settingsGet(ctx({ path: '/api/admin/settings' }))).json();
-    expect(before.settings).toMatchObject({ priceRoundStep: 5, defaultStatus: 'active' });
+    expect(before.settings).toMatchObject({ priceRoundStep: 5 });
     expect(before.settings.retailMarkup).toBeUndefined();
     const res = await settingsPost(
       ctx({ path: '/api/admin/settings', method: 'POST', body: { key: 'retail_markup', value: '1.6' } }),

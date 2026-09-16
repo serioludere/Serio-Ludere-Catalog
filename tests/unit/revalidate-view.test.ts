@@ -139,11 +139,13 @@ describe('handleRevalidate (ADR D5.4)', () => {
 });
 
 describe('catalogueDto', () => {
-  it('exposes only active rugs and public fields', async () => {
+  it('exposes every rug and public fields only', async () => {
     const snap = await cacheWith(() => 5000, { n: 0 }).get();
     const dto = catalogueDto(snap);
-    expect(dto.count).toBe(4);
-    expect(dto.rugs.map((r) => r.id)).toEqual(['SL-021', 'T-1', 'k-lower', 'no-col']);
+    // `d1` still reads `draft` in the sheet's status column and is published anyway: the status is
+    // gone and a row in Products IS the catalogue (owner, 2026-09-16).
+    expect(dto.count).toBe(5);
+    expect(dto.rugs.map((r) => r.id)).toEqual(['SL-021', 'd1', 'T-1', 'k-lower', 'no-col']);
     const text = JSON.stringify(dto);
     expect(text).not.toContain('visitor');
     expect(text).not.toContain('voteState');
@@ -181,13 +183,15 @@ describe('view helpers (ADR D12)', () => {
   });
   it('navTabs: sort_order first, case variants merged, blank collections under "More", counts by slug', async () => {
     const snap = await cacheWith(() => 5000, { n: 0 }).get();
-    const rugs = snap.catalogue.rugs.filter((r) => r.status === 'active');
+    const rugs = snap.catalogue.rugs;
     expect(navTabs(rugs, snap.catalogue)).toEqual([
       { name: 'Tulu', slug: 'tulu', count: 1, description: '' },
-      { name: 'Kilims', slug: 'kilims', count: 2, description: '' },
+      // Three, not two: the row still carrying `draft` in the sheet's status column is part of the
+      // catalogue now that products have no status (owner, 2026-09-16).
+      { name: 'Kilims', slug: 'kilims', count: 3, description: '' },
       { name: 'More', slug: 'more', count: 1, description: '' },
     ]);
-    expect(cardView(rugs[3]!, snap.catalogue)).toMatchObject({
+    expect(cardView(rugs[4]!, snap.catalogue)).toMatchObject({
       id: 'no-col',
       collection: 'More',
       collectionSlug: 'more',
@@ -196,8 +200,8 @@ describe('view helpers (ADR D12)', () => {
   });
   it('cardView builds photo URLs and tag slugs; ratesTable always has USD', async () => {
     const snap = await cacheWith(() => 5000, { n: 0 }).get();
-    const rugs = snap.catalogue.rugs.filter((r) => r.status === 'active');
-    const card = cardView(rugs[1]!, snap.catalogue);
+    const rugs = snap.catalogue.rugs;
+    const card = cardView(rugs[2]!, snap.catalogue);
     expect(card).toMatchObject({ id: 'T-1', collectionSlug: 'tulu', rot: '0' });
     expect(card.photoUrl).toMatch(/\?w=800$/);
     expect(card.tags).toEqual([

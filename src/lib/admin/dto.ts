@@ -76,7 +76,6 @@ export const RugInput = z.object({
   priceUsd: z.number().min(0).max(1_000_000).multipleOf(0.01).optional(),
   rotate: z.enum(['force', 'true', 'false']).default('false'),
   featured: z.boolean().default(false),
-  status: z.enum(['active', 'draft', 'archived']).default('active'),
   sourceUrl: HttpsUrl.optional(),
   supplier: z.enum(['ecarpetgallery', 'karavanrug', '']).default(''),
   supplierRef: Text(40),
@@ -102,9 +101,6 @@ export const RugCommit = z.object({
   driveFolderUrl: z.string().trim().max(400).default(''),
 });
 export type RugCommitT = z.infer<typeof RugCommit>;
-export const RugStatus = z.object({ status: z.enum(['active', 'draft', 'archived']), version: Version });
-export type RugStatusT = z.infer<typeof RugStatus>;
-
 export const CollectionInput = z.object({
   name: z.string().trim().min(1).max(80),
   description: Text(1000),
@@ -177,7 +173,6 @@ export const SettingsUpdate = z.object({
     'retail_markup.ecarpetgallery',
     'retail_markup.karavanrug',
     'price_round_step',
-    'default_status',
   ]),
   value: z.string().trim().max(40), // parsed per key server-side (§3.3); '' clears
 });

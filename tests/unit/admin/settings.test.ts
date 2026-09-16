@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   SETTINGS_KEYS,
-  defaultStatusOf,
   markupFor,
   parseSettingValue,
   parseSettings,
@@ -17,7 +16,6 @@ describe('parseSettings (ADMIN_SPEC §3.2)', () => {
     expect(s.retailMarkup).toBeUndefined();
     expect(s.retailMarkupBySupplier).toEqual({});
     expect(s.priceRoundStep).toBe(5);
-    expect(s.defaultStatus).toBe('draft'); // new rugs wait for the owner's review
     expect(s.warnings).toEqual([]);
     expect(s.rows.map((r) => r.key)).toEqual([...SETTINGS_KEYS]);
     expect(s.rows[0]).toMatchObject({ row: 2, key: 'retail_markup', value: '' });
@@ -29,12 +27,10 @@ describe('parseSettings (ADMIN_SPEC §3.2)', () => {
       ['retail_markup', 1.6, '2026-09-07', 'owner'],
       ['retail_markup.karavanrug', '1.8', '', ''],
       ['price_round_step', '50', '', ''],
-      ['default_status', 'Draft', '', ''],
     ]);
     expect(s.retailMarkup).toBe(1.6);
     expect(s.retailMarkupBySupplier).toEqual({ karavanrug: 1.8 });
     expect(s.priceRoundStep).toBe(50);
-    expect(s.defaultStatus).toBe('draft');
     expect(s.rows[0]).toMatchObject({ updatedAt: '2026-09-07', updatedBy: 'owner' });
   });
   it('turns bad values into undefined with a warning (never a crash), first duplicate wins, unknown keys reported', () => {
@@ -44,24 +40,22 @@ describe('parseSettings (ADMIN_SPEC §3.2)', () => {
         header,
         ['retail_markup', '-1', '', ''],
         ['price_round_step', '2.5', '', ''],
-        ['default_status', 'archived', '', ''],
-        ['default_status', 'draft', '', ''],
+        ['price_round_step', '10', '', ''],
         ['mystery', 'x', '', ''],
         ['', 'blank key row is skipped', '', ''],
       ],
       { info: () => {}, warn: (m) => warnings.push(m), error: () => {} },
     );
     expect(s.retailMarkup).toBeUndefined();
+    // First duplicate wins, so the invalid 2.5 is what stuck and the later valid 10 is reported.
     expect(s.priceRoundStep).toBeUndefined();
-    expect(s.defaultStatus).toBeUndefined();
-    expect(s.warnings).toHaveLength(5);
+    expect(s.warnings).toHaveLength(4);
     expect(warnings).toEqual(s.warnings);
     expect(s.warnings.join('\n')).toMatch(/positive number/);
     expect(s.warnings.join('\n')).toMatch(/whole number/);
-    expect(s.warnings.join('\n')).toMatch(/duplicate key "default_status"/);
+    expect(s.warnings.join('\n')).toMatch(/duplicate key "price_round_step"/);
     expect(s.warnings.join('\n')).toMatch(/unknown key "mystery"/);
     expect(roundStepOf(s)).toBe(5);
-    expect(defaultStatusOf(s)).toBe('active');
   });
   it('rejects a wrong header row', () => {
     expect(() => parseSettings([['name', 'value']])).toThrow(/Sheet contract violated in tab "Settings"/);
@@ -76,8 +70,6 @@ describe('parseSettingValue', () => {
     expect(parseSettingValue('retail_markup', '0').ok).toBe(false);
     expect(parseSettingValue('price_round_step', '10')).toEqual({ ok: true, value: 10 });
     expect(parseSettingValue('price_round_step', '0.5').ok).toBe(false);
-    expect(parseSettingValue('default_status', 'ACTIVE')).toEqual({ ok: true, value: 'active' });
-    expect(parseSettingValue('default_status', 'archived').ok).toBe(false);
   });
 });
 

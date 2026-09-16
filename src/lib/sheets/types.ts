@@ -2,7 +2,6 @@
 // Column ↔ field mapping for `Product` is in contract.ts (`PRODUCT_COLS`).
 
 export type Rotate = 'force' | 'true' | 'false';
-export type Status = 'active' | 'draft' | 'archived';
 export type Vote = 'like' | 'dislike';
 /** A reaction event's value; `none` clears an earlier like/dislike (brief §3 rule 1). */
 export type Reaction = Vote | 'none';
@@ -74,7 +73,6 @@ export interface Product {
   variantTaxable: boolean;
   seoTitle: string;
   seoDescription: string;
-  status: Status;
   sourceUrl: string;
   sourceSite: string;
   driveFolderId: string;

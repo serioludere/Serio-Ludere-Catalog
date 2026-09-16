@@ -24,7 +24,8 @@ interface RugRef {
   rugId: string;
   name: string;
   slug: string;
-  status: string;
+  /** False once the liked product has been deleted from the sheet: named, but no longer linkable. */
+  known: boolean;
 }
 
 export interface ReportLike {
@@ -137,10 +138,10 @@ export function clientRow(c: ClientLike, doc: Document = document): HTMLTableRow
 
 function rugLine(r: RugRef, doc: Document): HTMLElement {
   const label = `${r.name}${r.rugId !== r.name ? ` (${r.rugId})` : ''}`;
-  const cls = r.status === 'archived' ? 'status-archived' : '';
-  return r.slug
-    ? el('a', { href: `/admin/rugs/${encodeURIComponent(r.rugId)}`, class: cls }, label, doc)
-    : el('span', { class: cls }, label, doc);
+  // A liked product that is no longer a row — deleted since the like — is named but not linked.
+  return r.known && r.slug
+    ? el('a', { href: `/admin/rugs/${encodeURIComponent(r.rugId)}` }, label, doc)
+    : el('span', { class: 'rug-gone' }, label, doc);
 }
 
 export function renderReport(out: HTMLElement, report: ReportLike, doc: Document = document): void {

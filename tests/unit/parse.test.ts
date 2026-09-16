@@ -61,7 +61,6 @@ describe('parseProducts', () => {
     expect(r.origin).toBe('Denizli, Turkey');
     expect(r.rotate).toBe('false');
     expect(r.featured).toBe(false);
-    expect(r.status).toBe('active');
     // Counts come from the Reactions log now; parseProducts alone reports zero (brief §3).
     expect(r.likes).toBe(0);
     expect(r.rating).toBe(0);
@@ -93,7 +92,6 @@ describe('parseProducts', () => {
     ).toMatchObject({
       featured: false,
       rotate: 'false',
-      status: 'active',
     });
   });
   it('treats an unknown flag as an ordinary tag rather than dropping the row', () => {

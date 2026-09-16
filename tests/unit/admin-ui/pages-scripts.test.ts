@@ -344,7 +344,7 @@ describe('clients.ts', () => {
                   rugId: 'SL-021',
                   name: 'Winks <b>x</b>',
                   slug: 'winks',
-                  status: 'active',
+                  known: true,
                   saves: 2,
                   dislikes: 0,
                 },
@@ -355,14 +355,15 @@ describe('clients.ts', () => {
                   name: 'Nadia',
                   known: true,
                   status: 'active',
-                  liked: [{ rugId: 'SL-021', name: 'Winks <b>x</b>', slug: 'winks', status: 'active' }],
+                  liked: [{ rugId: 'SL-021', name: 'Winks <b>x</b>', slug: 'winks', known: true }],
                   disliked: [],
                 },
                 {
                   code: 'anon',
                   name: 'anonymous',
                   known: false,
-                  liked: [{ rugId: 'SL-022', name: 'Old', slug: 'old', status: 'archived' }],
+                  // A product that has since been deleted: still named in the report, no longer linked.
+                  liked: [{ rugId: 'SL-022', name: 'Old', slug: '', known: false }],
                   disliked: [],
                 },
               ],
@@ -421,7 +422,7 @@ describe('clients.ts', () => {
     expect(out.innerHTML).not.toContain('<b>x</b>');
     expect(out.textContent).toContain('Nadia — 1 liked');
     expect(out.textContent).toContain('anonymous — 1 liked');
-    expect(out.querySelector('.status-archived')?.textContent).toBe('Old (SL-022)');
+    expect(out.querySelector('.rug-gone')?.textContent).toBe('Old (SL-022)');
     // The like count lives in the "Most liked" report, not in a column — F1 does not draw one.
     expect(out.textContent).toContain('Nadia — 1 liked');
     expect(document.body.innerHTML).not.toMatch(/\son[a-z]+=/i);

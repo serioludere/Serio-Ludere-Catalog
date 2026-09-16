@@ -153,7 +153,7 @@ export async function handleReactions(input: VoteInput, deps: VoteDeps): Promise
     let unknown = 0;
 
     for (const item of items) {
-      const product = snapshot.catalogue.rugs.find((r) => r.id === item.productId && r.status === 'active');
+      const product = snapshot.catalogue.rugs.find((r) => r.id === item.productId);
       if (!product) {
         unknown++;
         continue;

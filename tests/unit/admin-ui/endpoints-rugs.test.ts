@@ -1,6 +1,6 @@
 // /api/admin/rugs* handlers against the in-memory sheet (docs/ADMIN_SPEC.md §2.3, §3.4): create
 // writes the row and its audit entry in ONE batchUpdate, allocates SL-nnn, derives the slug, rounds
-// the price; update answers 409 with the fresh row on a stale version; status archives / restores;
+// the price; update answers 409 with the fresh row on a stale version;
 // unknown collection / tag → 422; oversized bodies → 413; every mutation invalidates the catalogue.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { APIContext } from 'astro';
@@ -30,7 +30,6 @@ import {
 } from '../../../src/pages/api/admin/rugs/index.ts';
 import { GET as nextIdGet } from '../../../src/pages/api/admin/rugs/next-id.ts';
 import { GET as oneGet, POST as updatePost } from '../../../src/pages/api/admin/rugs/[id]/index.ts';
-import { POST as statusPost } from '../../../src/pages/api/admin/rugs/[id]/status.ts';
 
 const session = newSession('owner', Date.now());
 const PHOTO = '1U8FwNPCdm-n8RUvSNRcJLBA_27u-Pjkb';
@@ -39,8 +38,8 @@ function seed(): FakeSheet {
   const sheet = fakeSheet({
     rugs: [
       adminRugRow({ id: 'SL-021' }, ['https://karavanrug.com/products/winks', 'karavanrug', '1389', '']),
-      adminRugRow({ id: 'SL-029', name: 'Yellow', slug: 'yellow', status: 'draft' }),
-      adminRugRow({ id: '1389', name: 'Old', status: 'archived' }),
+      adminRugRow({ id: 'SL-029', name: 'Yellow', slug: 'yellow' }),
+      adminRugRow({ id: '1389', name: 'Old' }),
     ],
     collections: [
       ['kilims', 'Kilims', 'kilims', '', '', '', 1],
@@ -53,7 +52,6 @@ function seed(): FakeSheet {
     ],
     settings: [
       ['price_round_step', '5', '', ''],
-      ['default_status', 'draft', '', ''],
     ],
   });
   return sheet;
@@ -92,7 +90,7 @@ const baseInput = {
 };
 
 describe('GET /api/admin/rugs and next-id', () => {
-  it('lists every rug with row + version and filters by status / q', async () => {
+  it('lists every rug with row + version and filters by q', async () => {
     const res = await listGet(ctx({ path: '/api/admin/rugs' }));
     expect(res.status).toBe(200);
     expect(res.headers.get('cache-control')).toBe('no-store');
@@ -101,9 +99,7 @@ describe('GET /api/admin/rugs and next-id', () => {
     expect(body.rugs[0]).toMatchObject({ row: 2, supplier: 'karavanrug', supplierRef: '1389' });
     expect(body.rugs[0].version).toMatch(/^[a-f0-9]{16}$/);
     expect(body.collections).toHaveLength(2);
-    const drafts = await (await listGet(ctx({ path: '/api/admin/rugs?status=draft' }))).json();
-    expect(drafts.rugs.map((r: { id: string }) => r.id)).toEqual(['SL-029']);
-    const q = await (await listGet(ctx({ path: '/api/admin/rugs?status=all&q=1389' }))).json();
+    const q = await (await listGet(ctx({ path: '/api/admin/rugs?q=1389' }))).json();
     expect(q.rugs.map((r: { id: string }) => r.id)).toEqual(['SL-021', '1389']);
     const next = await (await nextIdGet(ctx({ path: '/api/admin/rugs/next-id' }))).json();
     expect(next).toEqual({ ok: true, id: 'SL-030' });
@@ -132,7 +128,6 @@ describe('POST /api/admin/rugs (rug.create)', () => {
       photos: [PHOTO],
       priceUsd: 1335,
       featured: true,
-      status: 'active',
       supplier: 'ecarpetgallery',
       supplierRef: '380114',
       notes: 'bought at the fair',
@@ -335,7 +330,6 @@ describe('GET/POST /api/admin/rugs/[id] (rug.update)', () => {
       priceUsd: rug.priceUsd,
       rotate: rug.rotate,
       featured: rug.featured,
-      status: rug.status,
       supplier: rug.supplier,
       supplierRef: rug.supplierRef,
       notes: rug.notes,
@@ -364,57 +358,5 @@ describe('GET/POST /api/admin/rugs/[id] (rug.update)', () => {
       }),
     );
     expect((await renamed.json()).rug.slug).toBe('sunny');
-  });
-});
-
-describe('POST /api/admin/rugs/[id]/status (rug.status)', () => {
-  it('archives then restores with {status} audit rows and a fresh version each time', async () => {
-    const rug = (
-      await (await oneGet(ctx({ path: '/api/admin/rugs/SL-021', params: { id: 'SL-021' } }))).json()
-    ).rug;
-    const archived = await statusPost(
-      ctx({
-        path: '/api/admin/rugs/SL-021/status',
-        method: 'POST',
-        params: { id: 'SL-021' },
-        body: { status: 'archived', version: rug.version },
-      }),
-    );
-    expect(archived.status).toBe(200);
-    const a = await archived.json();
-    expect(a.rug.status).toBe('archived');
-    expect(a.audit).toEqual({ row: 2, action: 'rug.status' });
-    expect(sheet.row('Products', 2)[PRODUCT_COLS.status]).toBe('archived');
-    expect(JSON.parse(String(sheet.auditRows()[0]![5]))).toEqual({ status: 'active' });
-    expect(JSON.parse(String(sheet.auditRows()[0]![6]))).toEqual({ status: 'archived' });
-    const stale = await statusPost(
-      ctx({
-        path: '/api/admin/rugs/SL-021/status',
-        method: 'POST',
-        params: { id: 'SL-021' },
-        body: { status: 'active', version: rug.version },
-      }),
-    );
-    expect(stale.status).toBe(409);
-    const restored = await statusPost(
-      ctx({
-        path: '/api/admin/rugs/SL-021/status',
-        method: 'POST',
-        params: { id: 'SL-021' },
-        body: { status: 'active', version: a.rug.version },
-      }),
-    );
-    expect((await restored.json()).rug.status).toBe('active');
-    expect(sheet.auditRows()).toHaveLength(2);
-    expect(cache.busts).toBe(2);
-    const unknown = await statusPost(
-      ctx({
-        path: '/api/admin/rugs/SL-404/status',
-        method: 'POST',
-        params: { id: 'SL-404' },
-        body: { status: 'active', version: a.rug.version },
-      }),
-    );
-    expect(unknown.status).toBe(404);
   });
 });

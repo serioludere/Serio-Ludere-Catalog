@@ -111,7 +111,7 @@ describe('CatalogueCache — failure cooldown without a snapshot, discardVote, m
 });
 
 describe('sweepPhotos', () => {
-  it('HEADs the first photo of each active rug and lists the failures', async () => {
+  it('HEADs the first photo of every rug that has one and lists the failures', async () => {
     const rugs = snapshotFromRanges(
       rangesWith({
         rugs: [
@@ -133,8 +133,10 @@ describe('sweepPhotos', () => {
       });
     }) as unknown as typeof fetch;
     const result = await sweepPhotos(rugs, { fetchImpl });
-    expect(result.checked).toBe(2);
-    expect(seen).toHaveLength(2);
+    // Three, not two: the row still reading `draft` in the sheet is an ordinary product now, and
+    // only `none` is skipped — for having no photo at all.
+    expect(result.checked).toBe(3);
+    expect(seen).toHaveLength(3);
     expect(result.failing).toEqual([
       { id: 'bad', name: 'Winks', photo: '1DlTneR_41y-MNEuzUuqqaR5H0pXy0Sb0', status: 500 },
     ]);

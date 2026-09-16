@@ -181,8 +181,9 @@ describe('/admin/rugs', () => {
     expect(html).not.toContain('id="statusChips"');
     expect(html).not.toContain('Any status');
     expect(html).toContain('href="/admin/rugs/SL-021"');
-    expect(html).toContain('data-status="archived"');
-    expect(html).toContain('class="card status-draft"');
+    // Products carry no status since 2026-09-16: no data-status hook, no status modifier class.
+    expect(html).not.toContain('data-status=');
+    expect(html).toContain('class="card"');
     expect(html).toContain('Yellow &lt;b&gt;x&lt;/b&gt;');
     expect(html).not.toContain('<b>x</b>');
     // Figma's "All sources" dropdown, delivered as capability rather than chrome: `supplier` is a
@@ -197,7 +198,7 @@ describe('/admin/rugs', () => {
 });
 
 describe('/admin/rugs/new', () => {
-  it('renders the add form with collections, tag chips, the next id, Settings defaults and the JSON block', async () => {
+  it('renders the add form with collections, tag chips, the next id and the JSON block', async () => {
     state.down = false;
     const { status, html } = await render(NewPage, '/admin/rugs/new');
     expect(status).toBe(200);
@@ -211,7 +212,7 @@ describe('/admin/rugs/new', () => {
     expect(html).toContain('id="url"');
     expect(html).toContain('id="btnFetch"');
     expect(html).toMatch(/id="f_id" value="SL-024"/); // max(SL-021..SL-023) + 1
-    expect(html).toMatch(/<option value="draft" selected>/); // Settings default_status
+    expect(html).not.toContain('id="f_status"'); // no status field since 2026-09-16
     expect(html).toContain('Round price to 50 on save'); // Settings price_round_step
     expect(html).toMatch(/id="savePhotos" disabled/); // service-account mode: Drive not authorised
     expect(html).toContain('id="admin-data"');
@@ -237,8 +238,8 @@ describe('/admin/rugs/[id]', () => {
     expect(html).toMatch(/data-value="Denizli" aria-pressed="true"/); // the fixture rug carries both tags
     expect(html).toContain('api/image/1U8FwNPCdm-n8RUvSNRcJLBA_27u-Pjkb?w=800');
     expect(html).toContain('id="btnSave"');
-    expect(html).toContain('id="btnArchive"');
-    expect(html).toMatch(/id="btnRestore"[^>]*hidden/);
+    expect(html).not.toContain('id="btnArchive"');
+    expect(html).not.toContain('id="btnRestore"');
     expect(html).toContain('href="/rugs/winks"');
     expect(html).toContain('<dialog id="confirm">');
     expect(html).toContain('my &lt;note&gt;');

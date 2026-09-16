@@ -62,7 +62,6 @@ const fields: RugFields = {
   priceUsd: 705,
   rotate: 'false',
   featured: true,
-  status: 'active',
   method: 'Hand-woven',
   sourceUrl: 'https://karavanrug.com/products/winks',
   supplier: 'karavanrug',

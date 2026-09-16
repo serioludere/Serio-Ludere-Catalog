@@ -10,7 +10,6 @@ export const SETTINGS_KEYS = [
   'retail_markup.ecarpetgallery',
   'retail_markup.karavanrug',
   'price_round_step',
-  'default_status',
 ] as const;
 export type SettingsKey = (typeof SETTINGS_KEYS)[number];
 export const SUPPLIERS = ['ecarpetgallery', 'karavanrug'] as const;
@@ -28,14 +27,12 @@ export interface AdminSettings {
   retailMarkup?: number;
   retailMarkupBySupplier: Partial<Record<Supplier, number>>;
   priceRoundStep?: number;
-  defaultStatus?: 'active' | 'draft';
   /** Every data row as read (the settings endpoint edits by row + version). */
   rows: SettingRow[];
   warnings: string[];
 }
 
-export type ParsedSettingValue =
-  { ok: true; value: number | 'active' | 'draft' | undefined } | { ok: false; error: string };
+export type ParsedSettingValue = { ok: true; value: number | undefined } | { ok: false; error: string };
 
 function positiveNumber(raw: string): number | undefined {
   const s = raw.trim();
@@ -62,12 +59,6 @@ export function parseSettingValue(key: SettingsKey, raw: string): ParsedSettingV
       return n === undefined || !Number.isInteger(n)
         ? { ok: false, error: 'price_round_step must be a positive whole number' }
         : { ok: true, value: n };
-    }
-    case 'default_status': {
-      const v = s.toLowerCase();
-      return v === 'active' || v === 'draft'
-        ? { ok: true, value: v }
-        : { ok: false, error: 'default_status must be active or draft' };
     }
   }
 }
@@ -126,9 +117,6 @@ export function parseSettings(values: CellValue[][] | undefined, logger?: Logger
       case 'price_round_step':
         out.priceRoundStep = parsed.value as number;
         break;
-      case 'default_status':
-        out.defaultStatus = parsed.value as 'active' | 'draft';
-        break;
     }
   }
   for (const w of out.warnings) logger?.warn(w);
@@ -151,8 +139,4 @@ export function markupFor(
 
 export function roundStepOf(settings: Pick<AdminSettings, 'priceRoundStep'>): number {
   return settings.priceRoundStep ?? 5;
-}
-
-export function defaultStatusOf(settings: Pick<AdminSettings, 'defaultStatus'>): 'active' | 'draft' {
-  return settings.defaultStatus ?? 'active';
 }

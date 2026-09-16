@@ -13,7 +13,6 @@ interface Props {
   rug?: AdminRug;
   collections: readonly AdminCollection[];
   tags: readonly AdminTag[];
-  defaultStatus: 'active' | 'draft';
   roundStep: number;
   driveScopeOk: boolean | null;
   nextId?: string;
@@ -32,7 +31,6 @@ const {
   rug,
   collections,
   tags,
-  defaultStatus,
   roundStep,
   driveScopeOk,
   nextId,
@@ -56,7 +54,6 @@ const tagChips = tags.map((t) => ({
   label: t.name,
   pressed: pressed.has(t.name.toLowerCase()),
 }));
-const status = rug?.status ?? defaultStatus;
 const openSite = rug ? `/rugs/${rug.slug}` : '#';
 // Membership, not the primary: the form must tick every collection the rug is filed under.
 const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().toLowerCase()));
@@ -213,14 +210,6 @@ const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().t
       </select>
     </div>
     <div class="f">
-      <label for="f_status">Status</label>
-      <select id="f_status">
-        <option value="active" selected={status === 'active'}>Active</option>
-        <option value="draft" selected={status === 'draft'}>Draft</option>
-        <option value="archived" selected={status === 'archived'}>Archived</option>
-      </select>
-    </div>
-    <div class="f">
       <label class="chk" for="f_featured"
         ><input type="checkbox" id="f_featured" checked={rug?.featured === true} /> Featured</label
       >
@@ -313,20 +302,7 @@ const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().t
           <button class="btn btn--primary" id="btnSave" type="button">
             Save
           </button>
-          <button class="btn btn--destructive" id="btnArchive" type="button" hidden={status === 'archived'}>
-            Archive
-          </button>
-          <button class="btn btn--secondary" id="btnRestore" type="button" hidden={status !== 'archived'}>
-            Restore
-          </button>
-          <a
-            id="openSite"
-            class="chip"
-            href={openSite}
-            target="_blank"
-            rel="noopener"
-            aria-disabled={status === 'active' ? undefined : 'true'}
-          >
+          <a id="openSite" class="chip" href={openSite} target="_blank" rel="noopener">
             Open on site
           </a>
         </>

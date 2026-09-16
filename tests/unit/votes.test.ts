@@ -129,7 +129,7 @@ describe('handleReactions', () => {
     ).toBe(DEFAULT_LIMITS.perVisitor.limit - 1);
   });
 
-  it('validates the body and rejects unknown or draft products', async () => {
+  it('validates the body and rejects products that are not in the sheet', async () => {
     const { deps } = setup();
     expect((await handleReactions({ body: one('SL-021', 'love'), ...visitor(5) }, deps)).status).toBe(400);
     expect((await handleReactions({ body: null, ...visitor(5) }, deps)).status).toBe(400);
@@ -137,9 +137,9 @@ describe('handleReactions', () => {
     expect((await handleReactions({ body: one('nope', 'like'), ...visitor(5) }, deps)).body.error).toBe(
       'unknown rug',
     );
-    expect((await handleReactions({ body: one('draft-1', 'like'), ...visitor(5) }, deps)).body.error).toBe(
-      'unknown rug',
-    );
+    // `draft-1` still reads `draft` in the sheet's status column and now takes votes like any other
+    // row: there is no status to refuse it with (owner, 2026-09-16).
+    expect((await handleReactions({ body: one('draft-1', 'like'), ...visitor(5) }, deps)).status).toBe(200);
   });
 
   it('reverts the optimistic count, refunds the budgets and answers 503 when the append fails', async () => {

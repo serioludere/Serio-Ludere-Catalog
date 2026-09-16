@@ -72,7 +72,6 @@ const rug: AdminRug = {
   priceUsd: 576,
   rotate: 'false',
   featured: false,
-  status: 'active',
   likes: 3,
   dislikes: 1,
   rating: 3.75,
@@ -96,7 +95,6 @@ beforeAll(async () => {
       mode: 'add',
       collections,
       tags,
-      defaultStatus: 'draft',
       roundStep: 5,
       driveScopeOk: true,
       nextId: 'SL-030',
@@ -108,7 +106,6 @@ beforeAll(async () => {
       rug,
       collections,
       tags,
-      defaultStatus: 'active',
       roundStep: 5,
       driveScopeOk: null,
     },
@@ -238,7 +235,6 @@ describe('add mode', () => {
         collections,
         tags: tags.map((t) => ({ ...t, color: '' })),
         nextId: 'SL-030',
-        defaultStatus: 'draft',
         roundStep: 5,
         driveScopeOk: true,
       });
@@ -252,13 +248,12 @@ describe('add mode', () => {
     calls = [];
   });
 
-  it('renders the legacy layout with no inline handlers, prefilled id and default status', () => {
+  it('renders the legacy layout with no inline handlers and a prefilled id', () => {
     form = mount(() => ({ status: 500, body: {} }));
     expect(form.mode).toBe('add');
     expect(addHtml).not.toMatch(/\son[a-z]+=/i);
     expect(addHtml).not.toMatch(/\sstyle="/);
     expect(val('f_id')).toBe('SL-030');
-    expect((document.getElementById('f_status') as HTMLSelectElement).value).toBe('draft');
     expect((document.getElementById('savePhotos') as HTMLInputElement).checked).toBe(true);
     expect((document.getElementById('roundOnSave') as HTMLInputElement).checked).toBe(true);
     expect(cls('preview')).toBe('preview');
@@ -455,7 +450,6 @@ describe('add mode', () => {
       widthCm: 130,
       lengthCm: 226,
       priceUsd: 1120,
-      status: 'draft',
       supplier: 'ecarpetgallery',
       supplierRef: '380114',
       sourceUrl: scraped.sourceUrl,
@@ -501,7 +495,6 @@ describe('edit mode', () => {
         rug,
         collections,
         tags: tags.map((t) => ({ ...t, color: '' })),
-        defaultStatus: 'active',
         roundStep: 5,
         driveScopeOk: null,
       });
@@ -530,9 +523,11 @@ describe('edit mode', () => {
     expect(document.querySelectorAll('#photoStrip img')).toHaveLength(1);
     expect(val('f_photos')).toBe(PHOTO);
     expect((document.getElementById('roundOnSave') as HTMLInputElement).checked).toBe(false);
-    expect((document.getElementById('btnArchive') as HTMLButtonElement).hidden).toBe(false);
-    expect((document.getElementById('btnRestore') as HTMLButtonElement).hidden).toBe(true);
+    // Products have no status since 2026-09-16: no Archive/Restore pair, and the site link is always live.
+    expect(document.getElementById('btnArchive')).toBeNull();
+    expect(document.getElementById('btnRestore')).toBeNull();
     expect(document.getElementById('openSite')?.getAttribute('href')).toBe('/rugs/winks');
+    expect(document.getElementById('openSite')?.hasAttribute('aria-disabled')).toBe(false);
     set('f_name', 'Winks II');
     await form.save();
     expect(calls[0]?.url).toBe('/api/admin/rugs/SL-021');
@@ -563,33 +558,6 @@ describe('edit mode', () => {
     expect(val('f_version')).toBe('d'.repeat(16));
   });
 
-  it('archive / restore go through the status endpoint and flip the buttons', async () => {
-    const form = mount((url, body) =>
-      url === '/api/admin/rugs/SL-021/status'
-        ? {
-            status: 200,
-            body: {
-              ok: true,
-              rug: { ...rug, status: body.status, version: 'e'.repeat(16) },
-              audit: { row: 2, action: 'rug.status' },
-            },
-          }
-        : { status: 500, body: {} },
-    );
-    await form.setStatus('archived');
-    expect(calls[0]).toEqual({
-      url: '/api/admin/rugs/SL-021/status',
-      body: { status: 'archived', version: 'b'.repeat(16) },
-    });
-    expect((document.getElementById('f_status') as HTMLSelectElement).value).toBe('archived');
-    expect((document.getElementById('btnArchive') as HTMLButtonElement).hidden).toBe(true);
-    expect((document.getElementById('btnRestore') as HTMLButtonElement).hidden).toBe(false);
-    expect(document.getElementById('openSite')?.getAttribute('aria-disabled')).toBe('true');
-    expect(text('m2')).toContain('Status is now archived');
-    await form.setStatus('active');
-    expect(calls[1]?.body).toEqual({ status: 'active', version: 'e'.repeat(16) });
-    expect((document.getElementById('btnRestore') as HTMLButtonElement).hidden).toBe(true);
-  });
 });
 
 describe('the fetch modal gates the form (P5-P9)', () => {
@@ -604,7 +572,6 @@ describe('the fetch modal gates the form (P5-P9)', () => {
         collections,
         tags: tags.map((t) => ({ ...t, color: '' })),
         nextId: 'SL-030',
-        defaultStatus: 'draft',
         roundStep: 5,
         driveScopeOk: true,
       });

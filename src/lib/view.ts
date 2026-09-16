@@ -94,8 +94,14 @@ export function plateRatio(
   return best;
 }
 
-export function activeRugs(catalogue: Catalogue): Rug[] {
-  return catalogue.rugs.filter((r) => r.status === 'active');
+/**
+ * Every product a buyer may see. Products carried an active/draft/archived status until 2026-09-16
+ * and this was the one gate that hid the non-active ones; with the status gone, a row in the Products
+ * tab IS the catalogue. It stays a named call rather than `catalogue.rugs` inlined in ten places, so
+ * that if visibility ever needs a rule again there is one place to put it.
+ */
+export function catalogueRugs(catalogue: Catalogue): Rug[] {
+  return [...catalogue.rugs];
 }
 
 export { FALLBACK_COLLECTION, collectionSlug, displayCollection } from './text.ts';

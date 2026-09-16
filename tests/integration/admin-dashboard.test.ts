@@ -112,8 +112,9 @@ describe('/admin dashboard', () => {
     expect(res.status).toBe(200);
     const html = await res.text();
     expect(html).not.toContain('aria-current="page"'); // the dashboard is the wordmark link, not a tab
-    expect(html).toContain('Active products');
-    expect(html).toMatch(/Active products<\/div>\s*<div class="v">1<\/div>/);
+    expect(html).toContain('Products');
+    // Three: every row parses now, including the two that still read draft/archived in the sheet.
+    expect(html).toMatch(/Products<\/div>\s*<div class="v">3<\/div>/);
     expect(html).toMatch(/Collections<\/div>\s*<div class="v">1<\/div>/);
     expect(html).toMatch(/Tags<\/div>\s*<div class="v">2<\/div>/);
     expect(html).toMatch(/Customers<\/div>\s*<div class="v">\s*1\s*<small>\+1 paused<\/small>/);
@@ -145,7 +146,7 @@ describe('/admin dashboard', () => {
     expect(res.status).toBe(200);
     expect(html).toContain('missing its admin columns');
     // No header row means no parsable products, so the tiles read zero, not stale.
-    expect(html).toMatch(/Active products<\/div>\s*<div class="v">0<\/div>/);
+    expect(html).toMatch(/Products<\/div>\s*<div class="v">0<\/div>/);
   });
   it('renders the shell with a scrubbed error (never a 500, never a secret) when the sheet is unreachable', async () => {
     state.mode = 'down';
@@ -160,7 +161,7 @@ describe('/admin dashboard', () => {
     expect(html).toContain('Could not read the sheet');
     expect(html).toContain('[redacted]');
     expect(html).not.toContain('refresh_token=secret');
-    expect(html).toMatch(/Active products<\/div>\s*<div class="v">—<\/div>/);
+    expect(html).toMatch(/Products<\/div>\s*<div class="v">—<\/div>/);
     // The shell's nav tabs are the way out of a failed read now that the quick links are gone.
     expect(html).toContain('href="/admin/rugs"');
   });

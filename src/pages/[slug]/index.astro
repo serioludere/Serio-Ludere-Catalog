@@ -24,7 +24,7 @@ import ProductCard from '../../components/customer/ProductCard.astro';
 import TagFilters from '../../components/customer/TagFilters.astro';
 import { findCustomer, noteVisit } from '../../lib/customer/http.ts';
 import { baseCurrency, loadCatalogue, ratesFor } from '../../lib/runtime.ts';
-import { activeRugs, cardView, tagSlug, visibleLikes } from '../../lib/view.ts';
+import { catalogueRugs, cardView, tagSlug, visibleLikes } from '../../lib/view.ts';
 
 const slug = (Astro.params.slug ?? '').toLowerCase();
 const { snapshot, error } = await loadCatalogue();
@@ -49,7 +49,7 @@ if (error || !snapshot) {
 // One row per buyer per half hour, appended in the background: never awaited, never fatal.
 if (customer && signedIn) noteVisit(slug, Astro.request);
 
-const rugs = customer && signedIn ? activeRugs(catalogue) : [];
+const rugs = customer && signedIn ? catalogueRugs(catalogue) : [];
 const cards = rugs.map((r) => cardView(r, catalogue));
 
 // The chips are the rug types actually present, most-used first, then alphabetical for a stable

@@ -14,7 +14,6 @@ import type {
   ParseReport,
   Product,
   Rate,
-  Status,
   TabStats,
   Tag,
   Vote,
@@ -74,14 +73,6 @@ const CLIENT_RE = /^[A-Za-z0-9_-]{1,64}$/;
 
 const id = z.preprocess(asTrimmed, z.string().regex(ID_RE, 'id must be 1-64 letters, digits, "-" or "_"'));
 
-const status = z.preprocess(
-  (v) => {
-    const b = blank(v);
-    return b === undefined ? 'active' : String(b).trim().toLowerCase();
-  },
-  z.enum(['active', 'draft', 'archived']),
-);
-
 /* ---------- row schemas (keys = sheet headers) ---------- */
 
 /** Products is index-mapped (Shopify headers contain spaces and parentheses), so the schema is flat. */
@@ -107,7 +98,6 @@ const ProductRow = z.object({
   image_alt_text: trimmed,
   seo_title: trimmed,
   seo_description: trimmed,
-  status,
   width_cm: num,
   length_cm: num,
   size_label: trimmed,
@@ -253,7 +243,6 @@ function productRaw(cells: CellValue[]): Raw {
     image_alt_text: at(PRODUCT_COLS.imageAltText),
     seo_title: at(PRODUCT_COLS.seoTitle),
     seo_description: at(PRODUCT_COLS.seoDescription),
-    status: at(PRODUCT_COLS.status),
     width_cm: at(PRODUCT_COLS.widthCm),
     length_cm: at(PRODUCT_COLS.lengthCm),
     size_label: at(PRODUCT_COLS.sizeLabel),
@@ -386,7 +375,6 @@ export function parseProducts(values: CellValue[][] | undefined): Parsed<Product
       variantTaxable: p.variant_taxable,
       seoTitle: p.seo_title ?? '',
       seoDescription: p.seo_description ?? '',
-      status: p.status as Status,
       sourceUrl: p.source_url ?? '',
       sourceSite: p.source_site ?? '',
       driveFolderId: p.drive_folder_id ?? '',

@@ -9,7 +9,6 @@ import { assertHeaders } from '../sheets/parse.ts';
 export const AUDIT_ACTIONS = [
   'rug.create',
   'rug.update',
-  'rug.status',
   'collection.create',
   'collection.update',
   'collection.reorder',
@@ -45,7 +44,6 @@ export type AuditTab = (typeof AUDIT_TABS)[number];
 export const MUTATION_ACTIONS: ReadonlySet<AuditAction> = new Set<AuditAction>([
   'rug.create',
   'rug.update',
-  'rug.status',
   'collection.create',
   'collection.update',
   'collection.reorder',

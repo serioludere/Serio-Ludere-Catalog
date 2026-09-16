@@ -37,7 +37,7 @@ export const GET = adminGet(async ({ context }) => {
   const { searchParams } = context.url;
   return noStore({
     ok: true,
-    rugs: filterRugs(snapshot.rugs, searchParams.get('status'), searchParams.get('q')),
+    rugs: filterRugs(snapshot.rugs, searchParams.get('q')),
     collections: snapshot.collections,
     tags: snapshot.tags,
     adminHeaders: snapshot.report.adminHeaders,

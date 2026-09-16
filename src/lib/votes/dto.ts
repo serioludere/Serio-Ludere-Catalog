@@ -2,7 +2,7 @@
 // Never vote state, visitor hashes, user agents or client ids.
 import { driveImageUrl } from '../images.ts';
 import type { Snapshot } from '../sheets/types.ts';
-import { activeRugs, visibleLikes } from '../view.ts';
+import { catalogueRugs, visibleLikes } from '../view.ts';
 
 export interface CatalogueDto {
   ok: true;
@@ -39,8 +39,8 @@ export function catalogueDto(snapshot: Snapshot): CatalogueDto {
   return {
     ok: true,
     fetchedAt: new Date(snapshot.fetchedAt).toISOString(),
-    count: activeRugs(c).length,
-    rugs: activeRugs(c).map((r) => ({
+    count: catalogueRugs(c).length,
+    rugs: catalogueRugs(c).map((r) => ({
       id: r.id,
       slug: r.slug,
       name: r.name,

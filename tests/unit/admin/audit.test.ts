@@ -90,14 +90,14 @@ describe('buildAuditRow (ADMIN_SPEC §3.2)', () => {
   it('serialises with sorted keys so equal objects hash equal and the note is capped', () => {
     const a = buildAuditRow({
       ...base,
-      action: 'rug.status',
+      action: 'rug.update',
       targetTab: 'Products',
       targetId: 'x',
       after: { b: 1, a: 2 },
     });
     const b = buildAuditRow({
       ...base,
-      action: 'rug.status',
+      action: 'rug.update',
       targetTab: 'Products',
       targetId: 'x',
       after: { a: 2, b: 1 },

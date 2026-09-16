@@ -7,7 +7,6 @@
 export const AUDIT_LABELS: Record<string, string> = {
   'rug.create': 'Product added',
   'rug.update': 'Product updated',
-  'rug.status': 'Product archived or restored',
   'collection.create': 'Collection added',
   'collection.update': 'Collection updated',
   'collection.reorder': 'Collections reordered',

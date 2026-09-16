@@ -69,7 +69,7 @@ try {
   // "Not yet reviewed" is what is LEFT of the live catalogue, not of everything ever published: a
   // buyer cannot review a draft or an archived rug, so counting those would make the number a lie.
   // Dislikes were removed (owner, 2026-09-15), so reviewed now means liked.
-  const active = snapshot.rugs.filter((r) => r.status === 'active');
+  const active = snapshot.rugs;
   notReviewed = Math.max(0, active.length - (saves?.liked.length ?? 0));
 
   photoOf = new Map(active.map((r) => [r.id, r.photos[0] ? driveImageUrl(r.photos[0], 800) : undefined]));

@@ -5,9 +5,16 @@
 // update. Rows are never deleted, never inserted at the top of Rugs, never appended with
 // `values.append` (the Q:S array-formula spill makes table detection unverified).
 import type { CellValue, SheetsClient } from '../sheets/client.ts';
-import { HEADERS, PRODUCT_COLS, PRODUCT_WIDTH, TABS, type TabName } from '../sheets/contract.ts';
+import {
+  HEADERS,
+  PRODUCT_COLS,
+  PRODUCT_STATUS_CELL,
+  PRODUCT_WIDTH,
+  TABS,
+  type TabName,
+} from '../sheets/contract.ts';
 import { SheetsApiError, serializeError, type Logger } from '../sheets/errors.ts';
-import type { Rotate, Status } from '../sheets/types.ts';
+import type { Rotate } from '../sheets/types.ts';
 import { buildInsertRows, cellOrClear } from '../sheets/write.ts';
 import { auditRowToCells, type AuditAction, type AuditRow } from './audit.ts';
 import { withAdminLock } from './lock.ts';
@@ -74,7 +81,6 @@ export interface RugFields {
   priceUsd?: number;
   rotate: Rotate;
   featured: boolean;
-  status: Status;
   method: string;
   sourceUrl: string;
   /** Written to `Source Site`. */
@@ -122,7 +128,9 @@ export function productFieldsToCells(f: RugFields, id: string): Cells {
   cells[PRODUCT_COLS.productCategory] = f.productCategory ?? '';
   cells[PRODUCT_COLS.type] = f.productType ?? '';
   cells[PRODUCT_COLS.tags] = tags;
-  cells[PRODUCT_COLS.published] = f.status === 'active';
+  // Every product is live now that the status is gone, so both these cells are constants. They stay
+  // written because the Shopify export reads the columns straight out of the sheet.
+  cells[PRODUCT_COLS.published] = true;
   cells[PRODUCT_COLS.option1Name] = 'Title';
   cells[PRODUCT_COLS.option1Value] = 'Default Title';
   cells[PRODUCT_COLS.variantSku] = f.supplierRef;
@@ -137,7 +145,7 @@ export function productFieldsToCells(f: RugFields, id: string): Cells {
   cells[PRODUCT_COLS.imageAltText] = f.imageAltText ?? f.name;
   cells[PRODUCT_COLS.seoTitle] = f.seoTitle ?? '';
   cells[PRODUCT_COLS.seoDescription] = f.seoDescription ?? '';
-  cells[PRODUCT_COLS.status] = f.status;
+  cells[PRODUCT_COLS.status] = PRODUCT_STATUS_CELL;
   cells[PRODUCT_COLS.widthCm] = f.widthCm;
   cells[PRODUCT_COLS.lengthCm] = f.lengthCm;
   cells[PRODUCT_COLS.sizeLabel] = f.sizeLabel ?? '';
@@ -157,32 +165,6 @@ export function productFieldsToCells(f: RugFields, id: string): Cells {
   cells[PRODUCT_COLS.commitStatus] = f.commitStatus ?? '';
   cells[PRODUCT_COLS.internalNotes] = f.notes;
   return cells;
-}
-
-/** Legacy shape kept for the callers that still speak in B..P slices. */
-export function rugFieldsToBP(f: RugFields): Cells {
-  return [
-    f.slug,
-    f.name,
-    f.description,
-    joinCollections(f.collections),
-    f.tags.join('|'),
-    f.photos.join('|'),
-    f.widthCm,
-    f.lengthCm,
-    f.material,
-    f.age,
-    f.origin,
-    f.priceUsd,
-    f.rotate === 'false' ? '' : f.rotate,
-    f.featured,
-    f.status,
-  ];
-}
-
-/** Columns V..Z (method, source_url, supplier, supplier_ref, notes). */
-export function rugFieldsToVZ(f: RugFields): Cells {
-  return [f.method, f.sourceUrl, f.supplier, f.supplierRef, f.notes];
 }
 
 /* ---------- request builders ---------- */

@@ -10,14 +10,14 @@ import Layout from '../../components/Layout.astro';
 import RugGrid from '../../components/RugGrid.astro';
 import { loadCatalogue, ratesFor } from '../../lib/runtime.ts';
 import { publicCachePolicy } from '../../lib/site/http.ts';
-import { activeRugs, cardView, rugsWithTag, SLUG_PARAM_RE } from '../../lib/view.ts';
+import { catalogueRugs, cardView, rugsWithTag, SLUG_PARAM_RE } from '../../lib/view.ts';
 
 const slug = Astro.params.slug ?? '';
 const { snapshot, error } = await loadCatalogue();
 const catalogue = snapshot?.catalogue ?? { rugs: [], collections: [], tags: [], rates: [], customers: [] };
 const rates = ratesFor(catalogue);
 const found =
-  snapshot && SLUG_PARAM_RE.test(slug) ? rugsWithTag(activeRugs(catalogue), slug, catalogue) : undefined;
+  snapshot && SLUG_PARAM_RE.test(slug) ? rugsWithTag(catalogueRugs(catalogue), slug, catalogue) : undefined;
 
 if (error || !snapshot) {
   Astro.cache.set(false);

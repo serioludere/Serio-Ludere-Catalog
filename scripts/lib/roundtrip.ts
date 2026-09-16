@@ -43,8 +43,8 @@ export async function runRoundTrip(
     log(`  dropped ${d.tab} row ${d.row}: ${d.issues.join('; ')}`);
   for (const w of snap.report.warnings.slice(0, 10))
     log(`  warning ${w.tab} row ${w.row}: ${w.issues.join('; ')}`);
-  const rug = rugs.find((r) => r.status === 'active');
-  if (!rug) throw new Error('no active rug to vote on');
+  const rug = rugs[0];
+  if (!rug) throw new Error('no rug to vote on');
   log(
     `  target rug: ${rug.id} "${rug.name}" likes=${rug.likes} dislikes=${rug.dislikes} rating=${rug.rating}`,
   );

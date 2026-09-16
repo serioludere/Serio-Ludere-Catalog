@@ -16,7 +16,7 @@ import RugFields from '../../../components/admin/RugFields.astro';
 import FetchModal from '../../../components/ui/FetchModal.astro';
 import { adminRuntime } from '../../../lib/admin/http.ts';
 import { nextRugId } from '../../../lib/admin/ids.ts';
-import { defaultStatusOf, roundStepOf } from '../../../lib/admin/settings.ts';
+import { roundStepOf } from '../../../lib/admin/settings.ts';
 import { jsonForScript } from '../../../lib/view.ts';
 import { driveScope, reservedIds } from '../../api/admin/_shared.ts';
 import { type AdminSnapshot, syncLabel } from '../../../lib/admin/read.ts';
@@ -89,7 +89,6 @@ await driveScope();
 const driveScopeOk = adminRuntime.driveScopeOk ?? null;
 const tags = snapshot?.tags ?? [];
 const settings = snapshot?.settings;
-const defaultStatus = settings ? defaultStatusOf(settings) : 'active';
 const roundStep = settings ? roundStepOf(settings) : 5;
 const nextId = snapshot
   ? nextRugId(
@@ -102,7 +101,6 @@ const addData = {
   collections: collections.map((c) => ({ id: c.id, slug: c.slug, name: c.name })),
   tags: tags.map((t) => ({ id: t.id, slug: t.slug, name: t.name, color: t.color ?? '' })),
   nextId,
-  defaultStatus,
   roundStep,
   driveScopeOk,
   adminHeaders: snapshot?.report.adminHeaders ?? 'ok',
@@ -192,7 +190,6 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
       mode="add"
       collections={collections}
       tags={tags}
-      defaultStatus={defaultStatus}
       roundStep={roundStep}
       driveScopeOk={driveScopeOk}
       nextId={nextId}

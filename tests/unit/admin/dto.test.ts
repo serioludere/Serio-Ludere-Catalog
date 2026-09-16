@@ -21,7 +21,6 @@ describe('admin DTO schemas (ADMIN_SPEC §2.3)', () => {
       photos: [],
       rotate: 'false',
       featured: false,
-      status: 'active',
       supplier: '',
       supplierRef: '',
       notes: '',

@@ -25,7 +25,6 @@ async function main(): Promise<void> {
   let checked = 0;
   let failing = 0;
   for (const rug of snap.catalogue.rugs) {
-    if (rug.status !== 'active') continue;
     if (rug.photos.length === 0) {
       console.log(`no photo   ${rug.id}  ${rug.name}`);
       continue;

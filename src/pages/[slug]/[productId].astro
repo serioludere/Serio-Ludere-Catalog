@@ -23,7 +23,7 @@ import { findCustomer } from '../../lib/customer/http.ts';
 import { baseCurrency, loadCatalogue, ratesFor } from '../../lib/runtime.ts';
 import { dims, PREVIEW_SEP } from '../../lib/units.ts';
 import { driveImageUrl } from '../../lib/images.ts';
-import { activeRugs, cardView, tagSlug, type CardView } from '../../lib/view.ts';
+import { catalogueRugs, cardView, tagSlug, type CardView } from '../../lib/view.ts';
 
 const slug = (Astro.params.slug ?? '').toLowerCase();
 const productId = Astro.params.productId ?? '';
@@ -33,7 +33,7 @@ const rates = ratesFor(catalogue);
 const customer = snapshot ? findCustomer(catalogue.customers, slug) : undefined;
 const signedIn = Astro.locals.customer === slug;
 
-const cards = customer && signedIn ? activeRugs(catalogue).map((r) => cardView(r, catalogue)) : [];
+const cards = customer && signedIn ? catalogueRugs(catalogue).map((r) => cardView(r, catalogue)) : [];
 const card = cards.find((c) => c.id === productId);
 
 Astro.cache?.set(false);

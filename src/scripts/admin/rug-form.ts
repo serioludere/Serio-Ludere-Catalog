@@ -1,7 +1,7 @@
 // Add + edit rug form (docs/ADMIN_SPEC.md §8.3), the legacy "Add rug" flow rebuilt: Fetch →
 // preview → photos strip → Add to sheet (photos first, then the row), manual entry on any scrape
 // failure, "Round to 5", swap sides, suggested tags, "+ new tag"; in edit mode Save with the version
-// token (409 → the form reloads the fresh row), Archive / Restore behind a <dialog>. Keyboard:
+// token (409 → the form reloads the fresh row). Keyboard:
 // Enter in the link field fetches, Enter in "your name" moves to the link, Escape hides the
 // banner, Ctrl/⌘+S saves. Buttons are disabled while a request is in flight.
 import { extractDriveId } from '../../lib/images.ts';
@@ -40,7 +40,6 @@ export interface RugLike {
   priceUsd?: number;
   rotate: 'force' | 'true' | 'false';
   featured: boolean;
-  status: 'active' | 'draft' | 'archived';
   likes: number;
   dislikes: number;
   rating: number;
@@ -58,7 +57,6 @@ export interface FormData {
   collections: Array<{ id: string; slug: string; name: string }>;
   tags: Array<{ id: string; slug: string; name: string; color?: string }>;
   nextId?: string;
-  defaultStatus: 'active' | 'draft';
   roundStep: number;
   driveScopeOk: boolean | null;
 }
@@ -111,7 +109,6 @@ export interface RugBody {
   priceUsd?: number;
   rotate: string;
   featured: boolean;
-  status: string;
   sourceUrl?: string;
   supplier: string;
   supplierRef: string;
@@ -137,7 +134,6 @@ export interface RugForm {
   manualEntry(): void;
   add(): Promise<void>;
   save(): Promise<void>;
-  setStatus(status: 'active' | 'draft' | 'archived'): Promise<void>;
   collect(): RugBody;
   fill(rug: RugLike): void;
   applyScrape(data: Partial<ScrapedLike>): void;
@@ -221,7 +217,6 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     origin: input('f_origin'),
     price: input('f_price'),
     rotate: byId<HTMLSelectElement>('f_rotate', doc),
-    status: byId<HTMLSelectElement>('f_status', doc),
     featured: input('f_featured'),
     sourceUrl: input('f_sourceUrl'),
     supplier: byId<HTMLSelectElement>('f_supplier', doc),
@@ -245,24 +240,16 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
   const btnAdd = maybe<HTMLButtonElement>('btnAdd', doc);
   const btnClear = maybe<HTMLButtonElement>('btnClear', doc);
   const btnSave = maybe<HTMLButtonElement>('btnSave', doc);
-  const btnArchive = maybe<HTMLButtonElement>('btnArchive', doc);
-  const btnRestore = maybe<HTMLButtonElement>('btnRestore', doc);
   const openSite = maybe<HTMLAnchorElement>('openSite', doc);
   const m2 = byId('m2', doc);
-  const dialog = maybe<HTMLDialogElement>('confirm', doc);
 
-  const actionButtons = [btnFetch, btnAdd, btnSave, btnArchive, btnRestore, btnNewTag].filter(
+  const actionButtons = [btnFetch, btnAdd, btnSave, btnNewTag].filter(
     (b): b is HTMLButtonElement => b !== null,
   );
   let inflight = false;
   const setBusy = (on: boolean): void => {
     inflight = on;
     setDisabled(actionButtons, on);
-    if (!on && btnArchive && btnRestore) {
-      // status buttons follow the current status, not the busy flag
-      btnArchive.hidden = f.status.value === 'archived';
-      btnRestore.hidden = f.status.value !== 'archived';
-    }
   };
 
   let manual = false;
@@ -335,14 +322,9 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     f.slug.value = slugify(f.name.value.trim() || (yourName?.value.trim() ?? '')) || '';
   };
 
-  const applyStatusUi = (): void => {
-    if (btnArchive) btnArchive.hidden = f.status.value === 'archived';
-    if (btnRestore) btnRestore.hidden = f.status.value !== 'archived';
-    if (openSite) {
-      openSite.href = `/rugs/${encodeURIComponent(f.slug.value.trim())}`;
-      if (f.status.value === 'active') openSite.removeAttribute('aria-disabled');
-      else openSite.setAttribute('aria-disabled', 'true');
-    }
+  /** Every product is on the site now that there is no status, so the link only tracks the slug. */
+  const applyOpenSiteHref = (): void => {
+    if (openSite) openSite.href = `/rugs/${encodeURIComponent(f.slug.value.trim())}`;
   };
 
   /* ---------- fill / collect ---------- */
@@ -370,7 +352,6 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     f.origin.value = rug.origin;
     f.price.value = rug.priceUsd === undefined ? '' : String(rug.priceUsd);
     f.rotate.value = rug.rotate;
-    f.status.value = rug.status;
     f.featured.checked = rug.featured;
     f.sourceUrl.value = rug.sourceUrl;
     f.supplier.value = rug.supplier;
@@ -378,7 +359,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     f.notes.value = rug.notes;
     f.photos.value = rug.photos.join('\n');
     f.version.value = rug.version;
-    applyStatusUi();
+    applyOpenSiteHref();
   };
 
   const collect = (): RugBody => {
@@ -398,7 +379,6 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
       priceUsd: parsePrice(f.price.value),
       rotate: f.rotate.value,
       featured: f.featured.checked,
-      status: f.status.value,
       supplier: f.supplier.value,
       supplierRef: f.supplierRef.value.trim(),
       notes: f.notes.value.trim(),
@@ -783,67 +763,6 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     msg(m2, r.status === 400 ? issuesText(r) : r.message, 'err');
   };
 
-  const setStatus = async (status: 'active' | 'draft' | 'archived'): Promise<void> => {
-    if (!edit || inflight) return;
-    hide(m2);
-    setBusy(true);
-    msg(m2, status === 'archived' ? 'Archiving…' : 'Restoring…', 'busy');
-    const r = await post<{ rug: RugLike; audit?: { row: number }; unchanged?: boolean }>(
-      `/api/admin/rugs/${encodeURIComponent(rugId)}/status`,
-      { status, version: f.version.value },
-      api,
-    );
-    setBusy(false);
-    if (r.ok) {
-      fill(r.data.rug);
-      msg(m2, [`Status is now ${r.data.rug.status}.`, ...auditLink(r.data.audit)], 'ok');
-      return;
-    }
-    if (r.status === 409 && r.body?.rug) {
-      fill(r.body.rug as RugLike);
-      msg(m2, 'Someone changed this row — reloaded the latest values; try again.', 'err');
-      return;
-    }
-    msg(m2, r.message, 'err');
-  };
-
-  const confirmStatus = (status: 'archived' | 'active'): void => {
-    const text =
-      status === 'archived'
-        ? `Archive ${rugId}? It disappears from the site and stops taking votes; you can restore it later.`
-        : `Restore ${rugId} to active?`;
-    const confirmText = maybe('confirmText', doc);
-    const yes = maybe<HTMLButtonElement>('confirmYes', doc);
-    const no = maybe<HTMLButtonElement>('confirmNo', doc);
-    if (dialog && confirmText && yes && no && typeof dialog.showModal === 'function') {
-      confirmText.textContent = text;
-      // One #confirmYes serves BOTH flows (btnArchive and btnRestore below both land here), so the
-      // button's emphasis has to follow the action instead of sitting in the markup: archiving is
-      // destructive and takes the red, restoring is a recovery and must not be dressed as a warning.
-      // Toggling a class rather than writing a style keeps this inside the hash-based CSP.
-      yes.classList.toggle('btn--destructive', status === 'archived');
-      yes.classList.toggle('btn--primary', status !== 'archived');
-      const onYes = (): void => {
-        cleanup();
-        dialog.close();
-        void setStatus(status);
-      };
-      const onNo = (): void => {
-        cleanup();
-        dialog.close();
-      };
-      const cleanup = (): void => {
-        yes.removeEventListener('click', onYes);
-        no.removeEventListener('click', onNo);
-      };
-      yes.addEventListener('click', onYes);
-      no.addEventListener('click', onNo);
-      dialog.showModal();
-      return;
-    }
-    if (confirmImpl(text)) void setStatus(status);
-  };
-
   const reset = (keepCollection = false): void => {
     dirty = false;
     manual = false;
@@ -875,7 +794,6 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     f.supplier.value = '';
     f.rotate.value = 'false';
     f.featured.checked = false;
-    f.status.value = data.defaultStatus;
     f.id.value = data.nextId ?? '';
     if (supplierTitle) setHint(supplierTitle, null);
     setHint(ftHint, null);
@@ -943,9 +861,6 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     hide(m2);
   });
   btnSave?.addEventListener('click', () => void save());
-  btnArchive?.addEventListener('click', () => confirmStatus('archived'));
-  btnRestore?.addEventListener('click', () => confirmStatus('active'));
-  f.status.addEventListener('change', applyStatusUi);
   doc.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       hideVisible(doc);
@@ -960,10 +875,9 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
 
   if (edit && data.rug) fill(data.rug);
   else if (!edit) {
-    f.status.value = data.defaultStatus;
     if (!f.id.value) f.id.value = data.nextId ?? '';
   }
-  applyStatusUi();
+  applyOpenSiteHref();
 
   // P5-P9. Built last so every handler it closes over already exists.
   const parts = fetchModalParts(doc);
@@ -1029,7 +943,6 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     manualEntry,
     add,
     save,
-    setStatus,
     collect,
     fill,
     applyScrape,

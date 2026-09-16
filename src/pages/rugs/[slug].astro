@@ -18,7 +18,7 @@ import { money } from '../../lib/currency.ts';
 import { baseCurrency, loadCatalogue, ratesFor } from '../../lib/runtime.ts';
 import { publicCachePolicy } from '../../lib/site/http.ts';
 import {
-  activeRugs,
+  catalogueRugs,
   cardView,
   likesText,
   relatedCards,
@@ -31,7 +31,7 @@ const slug = Astro.params.slug ?? '';
 const { snapshot, error } = await loadCatalogue();
 const catalogue = snapshot?.catalogue ?? { rugs: [], collections: [], tags: [], rates: [], customers: [] };
 const rates = ratesFor(catalogue);
-const cards = snapshot ? withLeads(activeRugs(catalogue).map((r) => cardView(r, catalogue))) : [];
+const cards = snapshot ? withLeads(catalogueRugs(catalogue).map((r) => cardView(r, catalogue))) : [];
 const card = snapshot && SLUG_PARAM_RE.test(slug) ? cards.find((c) => c.slug === slug) : undefined;
 
 if (error || !snapshot) {

@@ -117,6 +117,14 @@ export const PRODUCT_COLS = {
 /** Number of columns a Products row occupies (A..AP). */
 export const PRODUCT_WIDTH = PRODUCT_HEADER_LABELS.length;
 
+/**
+ * What column X carries now that products have no status (owner, 2026-09-16). The column stays in
+ * the sheet and in PRODUCT_COLS — `assertHeaders` compares positionally, so removing it would shift
+ * every column after index 23 — but nothing reads it any more. Every write puts this literal there,
+ * which also keeps the Shopify export (src/lib/admin/export.ts) emitting a value Shopify accepts.
+ */
+export const PRODUCT_STATUS_CELL = 'active';
+
 export const HEADERS: Record<TabName, readonly string[]> = {
   Products: PRODUCT_HEADER_LABELS.map((h) => h.toLowerCase()),
   // The brief's five columns first (id, name, slug, description, created_at); cover_image_url and
@@ -149,7 +157,6 @@ export const SETTINGS_SEED: ReadonlyArray<readonly [string, string]> = [
   ['retail_markup.ecarpetgallery', ''],
   ['retail_markup.karavanrug', ''],
   ['price_round_step', '5'],
-  ['default_status', 'draft'],
 ];
 
 /** How many newest Reactions rows are read to rebuild the customer→product state map (brief §3). */

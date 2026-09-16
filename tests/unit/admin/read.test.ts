@@ -112,7 +112,7 @@ describe('parseAdminSnapshot', () => {
     expect(snap.clients[0]!.version).toMatch(/^[a-f0-9]{16}$/);
     expect(snap.audit[0]).toMatchObject({ row: 2, action: 'rug.update' });
     expect(adminCounts(snap)).toEqual({
-      rugs: { active: 1, draft: 1, archived: 1, total: 3 },
+      rugs: 3,
       collections: 2,
       tags: 1,
       clients: { active: 1, revoked: 0 },

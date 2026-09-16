@@ -6,6 +6,7 @@
 export const prerender = false;
 
 import AdminLayout from '../../components/admin/AdminLayout.astro';
+import AdminLogo from '../../components/admin/AdminLogo.astro';
 import Button from '../../components/ui/Button.astro';
 import Input from '../../components/ui/Input.astro';
 import { requestIpHash, socketAddressOf } from '../../lib/api.ts';
@@ -116,8 +117,8 @@ if (retryAfter > 0) Astro.response.headers.set('retry-after', String(retryAfter)
     <input type="hidden" name="next" value={next} />
 
     <div class="alogin__brand">
-      <p class="alogin__wordmark">Serio Ludere</p>
-      <p class="alogin__realm">preview admin</p>
+      <AdminLogo />
+      <p class="alogin__realm">Admin</p>
     </div>
 
     <Input
@@ -134,8 +135,6 @@ if (retryAfter > 0) Astro.response.headers.set('retry-after', String(retryAfter)
     <Button type="submit" style="primary" disabled={locked} class="alogin__go">
       {locked ? 'Locked' : 'Enter'}
     </Button>
-
-    <p class="alogin__fine">Private. Sessions expire after 12 hours idle and 7 days at most.</p>
   </form>
 </AdminLayout>
 
@@ -159,17 +158,14 @@ if (retryAfter > 0) Astro.response.headers.set('retry-after', String(retryAfter)
   .alogin__brand {
     display: flex;
     flex-direction: column;
+    align-items: center;
+    text-align: center;
     gap: var(--stack-xs);
   }
 
-  /* H3 in admin resolves to 15 (47:6), which is the wordmark's step here — not the page title's. */
-  .alogin__wordmark {
-    margin: 0;
-    font-family: var(--heading);
-    font-size: var(--h3);
-    font-weight: var(--weight-heading);
-    line-height: var(--leading-heading);
-    text-transform: uppercase;
+  .alogin__brand :global(.admin-logo) {
+    width: 160px;
+    height: auto;
     color: var(--ink);
   }
 
@@ -183,13 +179,6 @@ if (retryAfter > 0) Astro.response.headers.set('retry-after', String(retryAfter)
   /* 47:19 is full-bleed inside the card. */
   .alogin__go {
     width: 100%;
-  }
-
-  .alogin__fine {
-    margin: 0;
-    font-size: var(--text-xs);
-    line-height: var(--leading-body);
-    color: var(--ink-muted);
   }
 </style>
 

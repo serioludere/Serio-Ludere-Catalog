@@ -57,8 +57,9 @@ describe('A1 · Login card (Figma 47:3 / 47:4)', () => {
     expect(r).not.toMatch(/(padding|gap):\s*\d+px/);
   });
 
-  it('sets the wordmark at H3 — 15 in admin, which is what 47:6 draws', () => {
-    expect(rule(css, '.alogin__wordmark')).toMatch(/font-size:\s*var\(--h3\)/);
+  it('centres the brand block and sizes the logo mark (owner, 2026-09-16)', () => {
+    expect(rule(css, '.alogin__brand')).toMatch(/align-items:\s*center/);
+    expect(rule(css, '.admin-logo')).toMatch(/width:\s*160px/);
     expect(rule(css, '.alogin__realm')).toMatch(/font-size:\s*var\(--text-xs\)/);
   });
 });

@@ -1,12 +1,18 @@
 ---
-// The filter strip (Figma 53:42), by collection only (owner, 2026-09-17: buyers never filter by tag).
+// The filter strip, by collection only (owner, 2026-09-17: buyers never filter by tag).
 //
-// "All" plus one chip per collection that has rugs, in the Collections sort order. Square chips, 8px
-// apart, on the page's white ground with a hairline edge; the pressed one is filled with ink.
+// "All" plus one tab per collection that has rugs, in the Collections sort order. Text tabs, not
+// buttons (owner, 2026-09-17, replacing the earlier bordered chip): a plain label with a hairline
+// underneath, active = bold with a thicker underline. The underline is a box-shadow, not a border —
+// the same trick .pv-input:focus-visible uses (preview.css) — so the 1px → 3px change on activation
+// never shifts the row's height.
 //
-// The row wraps on desktop but not on a phone: at 390 it scrolls sideways and the last chip is cut
-// at the frame edge rather than folding onto a second line. The cut IS the affordance, which is why
-// no scrollbar is drawn.
+// This strip now shares its row with the unit/currency controls (owner, 2026-09-17): "The
+// collection" heading it used to sit under is gone, which is what freed the space.
+//
+// The row wraps on desktop but not on a phone: at 390 it scrolls sideways and the last tab is cut at
+// the frame edge rather than folding onto a second line. The cut IS the affordance, which is why no
+// scrollbar is drawn.
 interface Props {
   collections: Array<{ slug: string; name: string; count: number }>;
 }
@@ -27,40 +33,49 @@ const { collections } = Astro.props;
 <style>
   .pv-filters {
     display: flex;
+    align-items: center;
     flex-wrap: wrap;
-    gap: var(--stack-sm);
+    gap: var(--stack-xl);
   }
 
   .pv-chip {
     display: inline-flex;
     align-items: center;
-    padding: calc(var(--stack-sm) - var(--rule-width)) calc(var(--stack-lg) - var(--rule-width));
-    border: var(--rule-width) solid var(--rule);
-    border-radius: var(--radius);
-    background: #ffffff;
-    color: var(--ink);
+    padding-block: var(--stack-sm);
+    border: 0;
+    background: none;
+    /* The rest tab's line: an inset shadow, not a border, so activating a tab (below) never adds to
+       the box's height and shifts the row. */
+    box-shadow: inset 0 -1px 0 0 var(--rule);
+    color: var(--ink-soft);
     font-family: inherit;
     font-size: var(--text-sm);
     font-weight: 400;
     line-height: var(--leading-body);
     white-space: nowrap;
     cursor: pointer;
-    transition: border-color var(--motion-quick) var(--motion-ease);
+    transition:
+      box-shadow var(--motion-quick) var(--motion-ease),
+      color var(--motion-quick) var(--motion-ease);
   }
   .pv-chip:hover {
-    border-color: var(--ink);
+    color: var(--ink);
   }
 
   .pv-chip.is-on,
   .pv-chip[aria-pressed='true'] {
-    border-color: var(--ink);
-    background: var(--ink);
-    color: #ffffff;
+    color: var(--ink);
+    font-weight: 700;
+    box-shadow: inset 0 -3px 0 0 var(--ink);
   }
 
   @media (max-width: 767px) {
     .pv-filters {
+      /* Claims the whole row inside .pv-title-row (src/pages/[slug]/index.astro), so the shared
+         unit/currency controls wrap onto their own line below it rather than being squeezed. */
+      flex: 1 1 100%;
       flex-wrap: nowrap;
+      gap: var(--stack-lg);
       overflow-x: auto;
       overscroll-behavior-x: contain;
       scrollbar-width: none;

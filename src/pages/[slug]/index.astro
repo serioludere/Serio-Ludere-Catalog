@@ -10,7 +10,8 @@
 //   known customer, no session   → the password gate, which is header-less and footer-less as drawn
 //   known customer, session      → their catalog
 //
-// One title, one line, and a strip of collection chips (owner, 2026-09-17: never tags).
+// A strip of collection tabs (owner, 2026-09-17: never tags), sharing one row with the unit/currency
+// controls — "The collection" heading and its standfirst are gone, which is what freed the row.
 export const prerender = false;
 
 import PreviewControls from '../../components/customer/PreviewControls.astro';
@@ -99,20 +100,11 @@ const showGate = !error && Boolean(customer) && !signedIn;
         <main class="pv-main">
           <section class="pv-wrap pv-title">
             <div class="pv-title-row">
-              <h1 class="pv-h1">The collection</h1>
+              {collections.length > 0 && <CollectionFilters collections={collections} />}
               <span class="pv-spacer" aria-hidden="true" />
               <PreviewControls rates={rates} />
             </div>
-            <p class="pv-lede">
-              <span class="pv-wide-only">Every rug we have available. </span>Mark what draws you.
-            </p>
           </section>
-
-          {collections.length > 0 && (
-            <section class="pv-wrap">
-              <CollectionFilters collections={collections} />
-            </section>
-          )}
 
           <section class="pv-wrap">
             {cards.length > 0 ? (
@@ -210,24 +202,13 @@ const showGate = !error && Boolean(customer) && !signedIn;
       grid-template-columns: 1fr;
       row-gap: var(--section-gap);
     }
-    .pv-wide-only {
-      display: none;
-    }
-    /* At 390 the title steps down a size and the row gaps tighten from 12 to 8, which is what the
-       mobile frame measures; together with the abbreviated "ft" that keeps the title, the toggle and
-       the picker on one row inside 358px.
-
-       That budget was drawn for TWO controls. The sort select (owner, 2026-09-13) is a third, and
-       the title below cannot shrink — `nowrap` plus flex items that refuse to go under their content
-       width is exactly the recipe for a row wider than the viewport, which scrolls the whole page
-       sideways. Wrapping costs one line in the worst case and nothing when it still fits: the spacer
-       has no base width, so it only takes up slack and never forces the break itself. */
+    /* The collection tabs and the unit/currency controls share this row (owner, 2026-09-17). Neither
+       can shrink below its content — a tab label and "ft"/a currency code all refuse to break — so
+       the row wraps rather than scrolling the whole page sideways. The spacer has no base width, so
+       it only takes up slack on the line it lands on and never forces the break itself. */
     .pv-title-row {
       gap: var(--stack-sm);
       flex-wrap: wrap;
-    }
-    .pv-title-row .pv-h1 {
-      white-space: nowrap;
     }
     .pv-title-row .pv-spacer {
       min-width: var(--stack-sm);

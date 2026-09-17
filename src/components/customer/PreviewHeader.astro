@@ -12,6 +12,13 @@
 // The only rule is the hairline along the bottom, and the detail variant drops even that at 390:
 // M3 (58:327) draws no border-bottom where M2 (58:232) and desktop G3 (57:226) both keep it, and
 // M3 has no trailing wordmark at all. Both are hung off `pv-header--detail` in preview.css.
+//
+// Owner, 2026-09-17: the catalog's own top-left wordmark (the non-`back` branch below) is now the
+// same logo mark the two login screens use, in black — this page is always [data-mode='preview'],
+// where --ink is true black, so the mark needs no override the way the dark logins' does. The
+// detail header's trailing wordmark is unchanged; the owner asked for the catalog corner only.
+import AdminLogo from '../admin/AdminLogo.astro';
+
 interface Props {
   /** Where the wordmark links. Inside a realm this is the buyer's own catalog, never `/`. */
   home: string;
@@ -49,8 +56,8 @@ const { home, back } = Astro.props;
       </>
     ) : (
       <>
-        <a class="pv-wordmark pv-h3" href={home}>
-          Serio Ludere
+        <a class="pv-wordmark pv-logo-mark" href={home}>
+          <AdminLogo />
         </a>
         <span class="pv-spacer" aria-hidden="true" />
       </>
@@ -59,6 +66,13 @@ const { home, back } = Astro.props;
 </header>
 
 <style>
+  .pv-logo-mark :global(.admin-logo) {
+    display: block;
+    width: 140px;
+    height: auto;
+    color: var(--ink);
+  }
+
   .pv-back {
     font-size: var(--text-sm);
     color: var(--ink-soft);

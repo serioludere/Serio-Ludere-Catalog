@@ -295,22 +295,6 @@
   color: var(--ink-soft);
 }
 
-/* The footer's exceptions, re-asserted above `.pv-footer-col p` (0,1,1) which would otherwise win:
-   the wordmark is the H4 in ink (130:277), the contact label is the muted Label (130:280), and the
-   email is Body 13 in ink (130:281) — its h21 in the file is 13 x 1.65, where the true 12px lines
-   in the same footer measure h20. */
-.pv-footer-col p.pv-h4 {
-  font-size: var(--h4);
-  color: var(--ink);
-}
-.pv-footer-col p.pv-muted {
-  color: var(--ink-muted);
-}
-.pv-footer-col p.pv-footer-email {
-  font-size: var(--text-base);
-  color: var(--ink);
-}
-
 .pv-footer-fine {
   margin-left: auto;
   text-align: right;
@@ -327,17 +311,44 @@
   text-underline-offset: 3px;
 }
 
-/* The email is the one footer link drawn in ink (130:281 / 131:297). Its `<p>` already carries --ink
-   from the exceptions block above, but the rule directly above declares a colour on the anchor
-   itself, so inheritance never reaches the link text. Same specificity as `.pv-footer a` (0,1,1),
-   which is why it has to sit below it; the hover below is (0,2,1) and still wins on hover. */
-.pv-footer-email a {
-  color: var(--ink);
-}
-
 .pv-footer a:hover {
   color: var(--brand);
   text-decoration: underline;
+}
+
+/* The wordmark, black (owner, 2026-09-17): this footer only ever renders in [data-mode='preview'],
+   where --ink is true black. Plain descendant selector, not :global(...) — that syntax only means
+   anything inside an Astro component's own scoped <style>; this is an ordinary imported stylesheet,
+   already global, and :global(...) here would just be invalid CSS the browser drops. */
+.pv-footer-mark .admin-logo {
+  display: block;
+  width: 120px;
+  height: auto;
+  color: var(--ink);
+}
+
+/* Three icon-led groups on one row, 48px apart (--stack-2xl, mode-invariant) — overrides
+   .pv-footer-col's column direction and 4px gap above, both too tight for grouped contacts. */
+.pv-footer-contacts {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--stack-2xl);
+}
+
+.pv-contact-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--stack-xs);
+}
+
+.pv-contact {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--stack-sm);
+}
+
+.pv-contact svg {
+  flex: none;
 }
 
 /* ---------- section heads ---------- */
@@ -412,6 +423,14 @@
   .pv-footer-fine {
     margin-left: 0;
     text-align: left;
+  }
+
+  /* The 48px horizontal gap is a desktop-row measurement; stacked in a 358px column it would be a
+     lot of dead space between three short groups, so this folds to a column at the same tight 12px
+     the rest of the stacked footer uses. */
+  .pv-footer-contacts {
+    flex-direction: column;
+    gap: var(--stack-md);
   }
 }
 

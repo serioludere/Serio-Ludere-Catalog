@@ -160,7 +160,10 @@ describe('/{slug} — the signed-in catalog', () => {
     // gate greeting on the owner's instruction: no buyer name anywhere in this realm.
     expect(html).not.toContain('pv-who');
     expect(html).not.toContain('Hala');
-    expect(html).toContain('The collection');
+    // "The collection" heading and standfirst are gone (owner, 2026-09-17): the header carries the
+    // logo mark instead, and the freed space puts the collection tabs on the controls' own row.
+    expect(html).not.toContain('The collection');
+    expect(html).not.toContain('Mark what draws you');
     expect(html).not.toContain('action="/api/customers/hala/login"');
     expect(html).toContain('Winks');
     // Cards stay inside the realm and are keyed by Product ID, not by handle (brief §7).

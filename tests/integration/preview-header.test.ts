@@ -36,9 +36,11 @@ function mobileBlock(): string {
 }
 
 describe('the catalog header (53:35)', () => {
-  it('leads with the wordmark at H3 and never names the buyer', async () => {
+  it('leads with the logo mark (owner, 2026-09-17) and never names the buyer', async () => {
     const html = await catalog();
-    expect(html).toMatch(/class="[^"]*pv-wordmark[^"]*pv-h3/);
+    expect(html).toMatch(/class="[^"]*pv-wordmark[^"]*pv-logo-mark/);
+    expect(html).toContain('aria-label="Serio Ludere"');
+    expect(html).not.toContain('>Serio Ludere<');
     // Figma 53:37 puts the buyer's name on the right of this header. The owner removed it on
     // 2026-09-14 along with the gate greeting; the right-hand slot is now simply empty here.
     expect(html).not.toContain('Hala');

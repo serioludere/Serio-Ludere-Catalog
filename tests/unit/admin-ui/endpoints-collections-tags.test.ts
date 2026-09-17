@@ -28,6 +28,8 @@ import { POST as collectionPost } from '../../../src/pages/api/admin/collections
 import { POST as reorderPost } from '../../../src/pages/api/admin/collections/reorder.ts';
 import { GET as tagsGet, POST as tagsPost } from '../../../src/pages/api/admin/tags/index.ts';
 import { POST as tagPost } from '../../../src/pages/api/admin/tags/[id].ts';
+import { POST as collectionDeletePost } from '../../../src/pages/api/admin/collections/[id]/delete.ts';
+import { POST as tagDeletePost } from '../../../src/pages/api/admin/tags/[id]/delete.ts';
 
 const session = newSession('owner', Date.now());
 const ctx = (init: Parameters<typeof apiContext>[0]): APIContext =>
@@ -68,11 +70,7 @@ describe('collections', () => {
       ctx({
         path: '/api/admin/collections',
         method: 'POST',
-        body: {
-          name: 'Wabi Sabi',
-          description: 'Imperfect',
-          coverImageUrl: '1U8FwNPCdm-n8RUvSNRcJLBA_27u-Pjkb',
-        },
+        body: { name: 'Wabi Sabi', description: 'Imperfect' },
       }),
     );
     expect(res.status).toBe(201);
@@ -84,15 +82,16 @@ describe('collections', () => {
       sortOrder: 4,
       row: 5,
     });
-    expect(body.collection.coverImageUrl).toContain('/api/image/1U8FwNPCdm');
+    expect(body.collection.coverImageUrl ?? '').toBe('');
     expect(body.audit).toEqual({ row: 2, action: 'collection.create' });
     const created = sheet.row('Collections', 5);
+    // The cover column stays in the sheet, written blank (owner, 2026-09-16).
     expect([created[0], created[1], created[2], created[3], created[5], created[6]]).toEqual([
       'wabi-sabi',
       'Wabi Sabi',
       'wabi-sabi',
       'Imperfect',
-      '1U8FwNPCdm-n8RUvSNRcJLBA_27u-Pjkb',
+      '',
       4,
     ]);
     expect(String(created[4])).toMatch(/^[0-9]{4}-/); // created_at
@@ -102,16 +101,18 @@ describe('collections', () => {
       ctx({ path: '/api/admin/collections', method: 'POST', body: { name: 'KILIMS' } }),
     );
     expect(dup.status).toBe(409);
-    const badCover = await collectionsPost(
+    // A cover sent by an older client is ignored rather than refused — the field is simply gone.
+    const stray = await collectionsPost(
       ctx({
         path: '/api/admin/collections',
         method: 'POST',
         body: { name: 'X', coverImageUrl: 'http://evil.test/a.jpg' },
       }),
     );
-    expect(badCover.status).toBe(400);
+    expect(stray.status).toBe(201);
+    expect(sheet.row('Collections', 6)[5]).toBe('');
   });
-  it('updates name/description/cover with the version token, keeps the slug, reports detached rugs, 409 on stale', async () => {
+  it('updates name/description with the version token, keeps the slug, reports detached rugs, 409 on stale', async () => {
     const list = await (await collectionsGet(ctx({ path: '/api/admin/collections' }))).json();
     const kilims = list.collections[0];
     const res = await collectionPost(
@@ -119,7 +120,7 @@ describe('collections', () => {
         path: '/api/admin/collections/kilims',
         method: 'POST',
         params: { id: 'kilims' },
-        body: { name: 'Flatweaves', description: 'Renamed', coverImageUrl: '', version: kilims.version },
+        body: { name: 'Flatweaves', description: 'Renamed', version: kilims.version },
       }),
     );
     expect(res.status).toBe(200);
@@ -219,7 +220,7 @@ describe('collections', () => {
 });
 
 describe('tags', () => {
-  it('lists, creates with id = slug and optional colour (409 on a duplicate), updates with the version', async () => {
+  it('lists, creates with id = slug (409 on a duplicate), updates with the version', async () => {
     const list = await (await tagsGet(ctx({ path: '/api/admin/tags' }))).json();
     expect(list.tags.map((t: { id: string; row: number }) => [t.id, t.row])).toEqual([
       ['kilim', 2],
@@ -230,15 +231,10 @@ describe('tags', () => {
     );
     expect(res.status).toBe(201);
     const out = await res.json();
-    expect(out.tag).toMatchObject({
-      id: 'plant-dyes',
-      slug: 'plant-dyes',
-      name: 'Plant Dyes',
-      color: '#2f6b3a',
-      row: 4,
-    });
+    expect(out.tag).toMatchObject({ id: 'plant-dyes', slug: 'plant-dyes', name: 'Plant Dyes', row: 4 });
     expect(out.audit).toEqual({ row: 2, action: 'tag.create' });
-    expect(sheet.row('Tags', 4)).toEqual(['plant-dyes', 'plant-dyes', 'Plant Dyes', '#2f6b3a']);
+    // The colour column stays in the sheet, written blank (owner, 2026-09-16).
+    expect(sheet.row('Tags', 4)).toEqual(['plant-dyes', 'plant-dyes', 'Plant Dyes', '']);
     const dup = await tagsPost(ctx({ path: '/api/admin/tags', method: 'POST', body: { name: 'kilim' } }));
     expect(dup.status).toBe(409);
     const pipe = await tagsPost(ctx({ path: '/api/admin/tags', method: 'POST', body: { name: 'a|b' } }));
@@ -267,5 +263,94 @@ describe('tags', () => {
     );
     expect(stale.status).toBe(409);
     expect(cache.busts).toBe(2);
+  });
+});
+
+/**
+ * Deleting a collection or a tag (owner, 2026-09-16). Both refuse while a product still references
+ * them, and for the same reason: products store the DISPLAY NAME as text, so removing the definition
+ * would not detach anything — it would quietly relabel those rugs on the buyer's side.
+ */
+describe('deleting collections and tags', () => {
+  it('refuses a collection that still has products, naming the count', async () => {
+    const list = await (await collectionsGet(ctx({ path: '/api/admin/collections' }))).json();
+    const kilims = list.collections[0];
+    const res = await collectionDeletePost(
+      ctx({
+        path: '/api/admin/collections/kilims/delete',
+        method: 'POST',
+        params: { id: 'kilims' },
+        body: { version: kilims.version },
+      }),
+    );
+    expect(res.status).toBe(409);
+    const out = await res.json();
+    expect(out).toMatchObject({ error: 'collection in use', inUse: 2 });
+    expect(out.message).toContain('2 products are still in "Kilims"');
+    expect(sheet.writes).toHaveLength(0); // nothing was touched
+  });
+
+  it('deletes an empty collection and keeps the audit row', async () => {
+    const list = await (await collectionsGet(ctx({ path: '/api/admin/collections' }))).json();
+    const tulu = list.collections.find((c: { id: string }) => c.id === 'tulu');
+    const res = await collectionDeletePost(
+      ctx({
+        path: '/api/admin/collections/tulu/delete',
+        method: 'POST',
+        params: { id: 'tulu' },
+        body: { version: tulu.version },
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ ok: true, id: 'tulu' });
+    const after = await (await collectionsGet(ctx({ path: '/api/admin/collections' }))).json();
+    expect(after.collections.map((c: { id: string }) => c.id)).toEqual(['kilims', 'modern']);
+    expect(sheet.auditRows()[0]![2]).toBe('collection.delete');
+    expect(cache.busts).toBe(1);
+  });
+
+  it('refuses a tag that products carry, and deletes an unused one', async () => {
+    const list = await (await tagsGet(ctx({ path: '/api/admin/tags' }))).json();
+    const kilim = list.tags.find((t: { id: string }) => t.id === 'kilim');
+    const used = await tagDeletePost(
+      ctx({
+        path: '/api/admin/tags/kilim/delete',
+        method: 'POST',
+        params: { id: 'kilim' },
+        body: { version: kilim.version },
+      }),
+    );
+    expect(used.status).toBe(409);
+    expect(await used.json()).toMatchObject({ error: 'tag in use', inUse: 2 });
+
+    // A tag nothing carries goes without argument — created here so the fixture's own two stay used.
+    const made = await (
+      await tagsPost(ctx({ path: '/api/admin/tags', method: 'POST', body: { name: 'Nomad Stripe' } }))
+    ).json();
+    const res = await tagDeletePost(
+      ctx({
+        path: '/api/admin/tags/nomad-stripe/delete',
+        method: 'POST',
+        params: { id: 'nomad-stripe' },
+        body: { version: made.tag.version },
+      }),
+    );
+    expect(res.status).toBe(200);
+    const after = await (await tagsGet(ctx({ path: '/api/admin/tags' }))).json();
+    expect(after.tags.map((t: { id: string }) => t.id)).toEqual(['kilim', 'denizli']);
+    expect(sheet.auditRows()[0]![2]).toBe('tag.delete');
+  });
+
+  it('refuses a stale version rather than deleting whatever is there now', async () => {
+    const res = await collectionDeletePost(
+      ctx({
+        path: '/api/admin/collections/tulu/delete',
+        method: 'POST',
+        params: { id: 'tulu' },
+        body: { version: 'f'.repeat(16) },
+      }),
+    );
+    expect(res.status).toBe(409);
+    expect(sheet.writes).toHaveLength(0);
   });
 });

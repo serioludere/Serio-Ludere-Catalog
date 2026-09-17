@@ -23,6 +23,8 @@ import { newSession } from '../../../src/lib/admin/auth.ts';
 import { CLIENT_CODE_RE } from '../../../src/lib/admin/dto.ts';
 import { GET as clientsGet, POST as clientsPost } from '../../../src/pages/api/admin/clients/index.ts';
 import { POST as statusPost } from '../../../src/pages/api/admin/clients/[code]/status.ts';
+import { POST as clientUpdatePost } from '../../../src/pages/api/admin/clients/[code]/index.ts';
+import { POST as clientDeletePost } from '../../../src/pages/api/admin/clients/[code]/delete.ts';
 import { GET as reportGet } from '../../../src/pages/api/admin/clients/report.ts';
 import { GET as auditGet } from '../../../src/pages/api/admin/audit.ts';
 import { GET as settingsGet, POST as settingsPost } from '../../../src/pages/api/admin/settings.ts';
@@ -82,7 +84,7 @@ describe('clients', () => {
       link: 'https://catalogue.example.test/nadia-k7m2pq',
     });
     const res = await clientsPost(
-      ctx({ path: '/api/admin/clients', method: 'POST', body: { name: 'Léa Dupont', note: 'from Paris' } }),
+      ctx({ path: '/api/admin/clients', method: 'POST', body: { name: 'Léa Dupont' } }),
     );
     expect(res.status).toBe(201);
     const out = await res.json();
@@ -93,54 +95,84 @@ describe('clients', () => {
     expect(out.client.code).toMatch(/^[a-z0-9][a-z0-9_-]*[a-z0-9]$/);
     expect(out.client.code).not.toContain('lea-dupont');
     for (const ch of out.client.code.replace(/[^a-z]/g, '')) expect('leadupont').toContain(ch);
-    expect(out.client).toMatchObject({
-      name: 'Léa Dupont',
-      note: 'from Paris',
-      status: 'active',
-      row: 2,
-    });
+    expect(out.client).toMatchObject({ name: 'Léa Dupont', status: 'active', row: 2 });
     expect(out.client.link).toBe(`https://catalogue.example.test/${out.client.code}`);
     expect(out.audit).toEqual({ row: 2, action: 'client.create' });
     expect(sheet.row('Customers', 2)[0]).toBe(out.client.code);
     expect(sheet.row('Customers', 3)[0]).toBe('nadia-k7m2pq'); // pushed down
     expect(sheet.writes).toHaveLength(1);
     // The audit row records how the password came about, never the password or its hash.
+    // Owner, 2026-09-16: there is no per-customer password, so none is minted, echoed or audited —
+    // and the note nobody filled in is gone with it.
     expect(JSON.parse(String(sheet.auditRows()[0]![6]))).toEqual({
       code: out.client.code,
       name: 'Léa Dupont',
-      note: 'from Paris',
-      password: 'generated',
     });
-    expect(out.password).toMatch(/^[a-z]+-[a-z]+-[a-z]+-\d{2}$/);
+    expect(out).not.toHaveProperty('password');
+    // The password_hash and note columns stay in the sheet, written blank.
+    expect(sheet.row('Customers', 2)[2]).toBe('');
+    expect(sheet.row('Customers', 2)[3]).toBe('');
     const empty = await clientsPost(ctx({ path: '/api/admin/clients', method: 'POST', body: { name: '' } }));
     expect(empty.status).toBe(400);
   });
 
-  it('takes a password the owner types, and refuses one that is too short', async () => {
-    const chosen = await clientsPost(
+  it('renames without touching the code, so the link already sent keeps working', async () => {
+    const list = await (await clientsGet(ctx({ path: '/api/admin/clients' }))).json();
+    const nadia = list.clients.find((c: { code: string }) => c.code === 'nadia-k7m2pq');
+    const res = await clientUpdatePost(
       ctx({
-        path: '/api/admin/clients',
+        path: '/api/admin/clients/nadia-k7m2pq',
         method: 'POST',
-        body: { name: 'Hala', note: '', password: 'winter-loom-2026' },
+        params: { code: 'nadia-k7m2pq' },
+        body: { name: 'Nadia K', version: nadia.version },
       }),
     );
-    expect(chosen.status).toBe(201);
-    const out = await chosen.json();
-    // Echoed once so the reveal panel can show it, and marked as the owner's choice in the audit.
-    expect(out.password).toBe('winter-loom-2026');
-    expect(JSON.parse(String(sheet.auditRows()[0]![6])).password).toBe('chosen');
-
-    const short = await clientsPost(
-      ctx({ path: '/api/admin/clients', method: 'POST', body: { name: 'Omar', password: 'short' } }),
+    expect(res.status).toBe(200);
+    const out = await res.json();
+    expect(out.client).toMatchObject({ code: 'nadia-k7m2pq', name: 'Nadia K' });
+    expect(out.client.link).toBe('https://catalogue.example.test/nadia-k7m2pq');
+    expect(out.audit).toEqual({ row: 2, action: 'client.update' });
+    // A stale version is refused rather than overwriting someone else's rename.
+    const stale = await clientUpdatePost(
+      ctx({
+        path: '/api/admin/clients/nadia-k7m2pq',
+        method: 'POST',
+        params: { code: 'nadia-k7m2pq' },
+        body: { name: 'Nadia X', version: nadia.version },
+      }),
     );
-    expect(short.status).toBe(400);
+    expect(stale.status).toBe(409);
+  });
 
-    // Blank still means "generate one for me".
-    const blank = await clientsPost(
-      ctx({ path: '/api/admin/clients', method: 'POST', body: { name: 'Rana', password: '' } }),
+  it('deletes the row for good, keeping the audit trail', async () => {
+    const list = await (await clientsGet(ctx({ path: '/api/admin/clients' }))).json();
+    const nadia = list.clients.find((c: { code: string }) => c.code === 'nadia-k7m2pq');
+    const before = sheet.row('Customers', nadia.row)[0];
+    expect(before).toBe('nadia-k7m2pq');
+    const res = await clientDeletePost(
+      ctx({
+        path: '/api/admin/clients/nadia-k7m2pq/delete',
+        method: 'POST',
+        params: { code: 'nadia-k7m2pq' },
+        body: { version: nadia.version },
+      }),
     );
-    expect(blank.status).toBe(201);
-    expect((await blank.json()).password).toMatch(/^[a-z]+-[a-z]+-[a-z]+-\d{2}$/);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ ok: true, code: 'nadia-k7m2pq' });
+    // The row is gone from the tab…
+    const after = await (await clientsGet(ctx({ path: '/api/admin/clients' }))).json();
+    expect(after.clients.map((c: { code: string }) => c.code)).not.toContain('nadia-k7m2pq');
+    // …and the audit row that describes it is not.
+    expect(sheet.auditRows()[0]![2]).toBe('client.delete');
+    const gone = await clientDeletePost(
+      ctx({
+        path: '/api/admin/clients/nadia-k7m2pq/delete',
+        method: 'POST',
+        params: { code: 'nadia-k7m2pq' },
+        body: { version: nadia.version },
+      }),
+    );
+    expect(gone.status).toBe(404);
   });
   it('revokes / restores with the version token (409 when stale, 404 unknown)', async () => {
     const list = await (await clientsGet(ctx({ path: '/api/admin/clients' }))).json();

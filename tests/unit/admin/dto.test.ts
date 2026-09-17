@@ -65,8 +65,10 @@ describe('admin DTO schemas (ADMIN_SPEC §2.3)', () => {
     expect('id' in RugUpdate.shape).toBe(false);
   });
   it('tags, collections, settings, photos and audit paging', () => {
-    expect(TagInput.safeParse({ name: 'Kilim', color: '#A32020' }).success).toBe(true);
-    expect(TagInput.safeParse({ name: 'Kilim', color: 'red' }).success).toBe(false);
+    // A tag is a name (owner, 2026-09-16): a colour sent by an older client is simply ignored.
+    expect(TagInput.safeParse({ name: 'Kilim' }).success).toBe(true);
+    expect(TagInput.parse({ name: 'Kilim', color: '#A32020' })).toEqual({ name: 'Kilim' });
+    expect(TagInput.safeParse({ name: '' }).success).toBe(false);
     expect(CollectionReorder.safeParse({ order: [] }).success).toBe(false);
     expect(CollectionReorder.safeParse({ order: ['kilims', 'tulu'] }).success).toBe(true);
     expect(SettingsUpdate.safeParse({ key: 'price_round_step', value: ' 50 ' })).toMatchObject({

@@ -3,7 +3,6 @@
 export const prerender = false;
 
 import { noStore } from '../../../../lib/api.ts';
-import { generatePassword, hashCustomerPassword } from '../../../../lib/customer/auth.ts';
 import { buildAuditRow } from '../../../../lib/admin/audit.ts';
 import { clientLink, clientToCells, newClientCode } from '../../../../lib/admin/clients.ts';
 import { ClientInput } from '../../../../lib/admin/dto.ts';
@@ -33,19 +32,12 @@ export const POST = adminPost(ClientInput, async ({ context, body, actor }) => {
     snapshot.clients.map((c) => c.code),
   );
   const link = clientLink(adminRuntime.siteUrl, code);
-  // The owner may type a password themselves — easier to dictate over the phone than three random
-  // words — and leaving the field blank generates one. Either way it is shown once and stored only
-  // as a hash (brief §10).
-  const password = body.password?.trim() || generatePassword();
-  const passwordHash = hashCustomerPassword(password);
   const audit = buildAuditRow({
     ...auditBase(context),
     action: 'client.create',
     targetTab: 'Customers',
     targetId: code,
-    // Never the password itself, and never the hash: an audit row is readable by anyone with the
-    // sheet. Only whether the owner chose it or the site generated one.
-    after: { code, name: body.name, note: body.note, password: body.password ? 'chosen' : 'generated' },
+    after: { code, name: body.name },
   });
   const result = await insertTopRow(client, {
     // Re-checked inside the admin lock, not just against the snapshot read above. The codes are
@@ -67,18 +59,20 @@ export const POST = adminPost(ClientInput, async ({ context, body, actor }) => {
     cells: clientToCells({
       code,
       name: body.name,
-      note: body.note,
+      // Note and password columns stay in the sheet, written blank: every buyer signs in with the
+      // one shared catalogue password now, so there is nothing per-customer left to store.
+      note: '',
       status: 'active',
       createdAt: nowIso(),
       createdBy: actor,
       link,
-      passwordHash,
+      passwordHash: '',
     }),
     audit,
   });
   const created = clientView(await freshClient(client, result.row));
-  // The only time the plaintext exists: the reveal-once panel shows it, nothing stores it.
-  return noStore({ ok: true, client: created, password, audit: result.audit }, 201);
+  // Creating a customer produces one thing the studio needs: their link.
+  return noStore({ ok: true, client: created, audit: result.audit }, 201);
 });
 
 export const ALL = methodNotAllowed('GET, POST');

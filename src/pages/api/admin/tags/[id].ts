@@ -28,8 +28,9 @@ export const POST = adminPost(TagUpdate, async ({ context, body }) => {
     (t) => t.id !== current.id && t.name.trim().toLowerCase() === body.name.toLowerCase(),
   );
   if (clash) throw new AdminError(409, 'name exists', `Another tag is already called "${clash.name}".`);
-  const color = body.color ?? '';
-  const diff = diffFields({ name: current.name, color: current.color ?? '' }, { name: body.name, color });
+  // Same as collections: the colour column is no longer edited, so the row keeps what it has.
+  const color = current.color ?? '';
+  const diff = diffFields({ name: current.name }, { name: body.name });
   if (diff.changed.length === 0) return noStore({ ok: true, tag: current, unchanged: true });
   const audit = buildAuditRow({
     ...auditBase(context),

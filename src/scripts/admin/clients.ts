@@ -1,9 +1,6 @@
-// /admin/clients (docs/ADMIN_SPEC.md §6, §8.3): generate a unique link (name, note → code → link +
-// Copy), revoke / restore rows, and the saves report (most saved + per-client lists) from
+// /admin/clients (docs/ADMIN_SPEC.md §6, §8.3): generate a unique link (name → code → link + Copy),
+// rename, revoke / restore and delete rows, and the saves report (most saved + per-client lists) from
 // GET /api/admin/clients/report. Everything rendered as text nodes.
-// NOT from '../../lib/customer/auth.ts': that module imports `node:crypto`, whose browser stub
-// throws at import time, which used to kill every handler on this page.
-import { customerPasswordProblem } from '../../lib/customer/password-policy.ts';
 import { get, post, type ApiOptions } from './api.ts';
 import { byId, clear, el, readJson } from './dom.ts';
 import { hide, msg } from './msg.ts';
@@ -87,9 +84,6 @@ export function clientRow(c: ClientLike, doc: Document = document): HTMLTableRow
         doc,
       ),
       el('td', {}, dayText(c.createdAt), doc),
-      // Filled by the visits loader: a Badge reading "Opened" or "Not visited", never a bare count.
-      el('td', {}, el('span', { class: 'badge', 'data-visits': '' }, 'Not visited', doc), doc),
-      el('td', { 'data-last-seen': '' }, '—', doc),
       el(
         'td',
         {},
@@ -122,10 +116,11 @@ export function clientRow(c: ClientLike, doc: Document = document): HTMLTableRow
           // "Copy-link is the most-used action here — the control changes icon, label and colour for
           // 2 seconds. A toast alone is missable when copying several in a row." (52:1114)
           copyControl(c.link, doc),
+          el('button', { type: 'button', class: 'btn btn--secondary', 'data-act': 'rename' }, 'Rename', doc),
           el(
             'button',
-            { type: 'button', class: 'btn btn--secondary', 'data-act': 'password' },
-            'Reset password',
+            { type: 'button', class: 'btn btn--destructive', 'data-act': 'delete' },
+            'Delete',
             doc,
           ),
         ],
@@ -189,32 +184,6 @@ export function renderReport(out: HTMLElement, report: ReportLike, doc: Document
   out.appendChild(el('p', { class: 'hint' }, `Updated ${whenText(report.generatedAt)}`, doc));
 }
 
-interface VisitRow {
-  customerSlug: string;
-  occurredAt: string;
-  userAgent: string;
-  referrer: string;
-  name: string;
-  known: boolean;
-}
-
-export interface VisitsLike {
-  generatedAt: string;
-  byClient: Array<{
-    code: string;
-    name: string;
-    known: boolean;
-    status?: string;
-    visits: number;
-    firstSeen: string;
-    lastSeen: string;
-    devices: string[];
-  }>;
-  recent: VisitRow[];
-  rowsRead: number;
-  rowsDropped: number;
-}
-
 /** "9 Sep, 14:32" in the reader's own locale; the raw ISO stays in the title attribute. */
 /** "1 Sep 2026" — the day only, for the Created column. */
 export function dayText(iso: string, locale = 'en-GB'): string {
@@ -230,70 +199,26 @@ export function whenText(iso: string, locale?: string): string {
   return d.toLocaleString(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
-export function renderVisits(out: HTMLElement, report: VisitsLike, doc: Document = document): void {
-  clear(out);
-  out.classList.add('report');
-  if (report.recent.length === 0) {
-    out.appendChild(el('p', { class: 'hint' }, 'Nobody has opened a link yet.', doc));
-    return;
-  }
-  const table = el(
-    'table',
-    {},
-    [
-      el(
-        'thead',
-        {},
-        el(
-          'tr',
-          {},
-          [
-            el('th', {}, 'When', doc),
-            el('th', {}, 'Who', doc),
-            el('th', {}, 'Device', doc),
-            el('th', {}, 'Came from', doc),
-          ],
-          doc,
-        ),
-        doc,
-      ),
-    ],
-    doc,
-  );
-  const tbody = el('tbody', {}, [], doc);
-  for (const v of report.recent) {
-    tbody.appendChild(
-      el(
-        'tr',
-        {},
-        [
-          el('td', { class: 'mono', title: v.occurredAt }, whenText(v.occurredAt), doc),
-          el('td', {}, v.known ? v.name : `${v.customerSlug} (deleted)`, doc),
-          el('td', {}, v.userAgent || '—', doc),
-          el('td', { class: 'mono' }, v.referrer || 'direct', doc),
-        ],
-        doc,
-      ),
-    );
-  }
-  table.appendChild(tbody);
-  out.appendChild(el('div', { class: 'table-wrap' }, table, doc));
-  out.appendChild(el('p', { class: 'hint' }, `Updated ${whenText(report.generatedAt)}`, doc));
+
+/** `confirmImpl` replaces window.confirm so the delete path is testable. */
+export interface ClientsOptions extends ApiOptions {
+  confirmImpl?: (text: string) => boolean;
 }
 
 export interface ClientsPage {
   generate(): Promise<void>;
-  loadVisits(): Promise<void>;
   setStatus(code: string, status: 'active' | 'revoked'): Promise<void>;
-  resetPassword(code: string, chosen?: string): Promise<void>;
+  rename(code: string, name: string): Promise<void>;
+  remove(code: string): Promise<void>;
   loadReport(): Promise<void>;
 }
 
-export function initClients(doc: Document = document, api: ApiOptions = {}): ClientsPage {
+export function initClients(doc: Document = document, opts: ClientsOptions = {}): ClientsPage {
+  const { confirmImpl: confirmOpt, ...api } = opts;
+  const confirmImpl =
+    confirmOpt ?? ((text: string) => (typeof confirm === 'function' ? confirm(text) : true));
   const data = readJson<{ clients: ClientLike[]; siteOrigin: string }>('admin-data', doc);
   const name = byId<HTMLInputElement>('cl_name', doc);
-  const note = byId<HTMLInputElement>('cl_note', doc);
-  const pwField = byId<HTMLInputElement>('cl_pw', doc);
   const generate = byId<HTMLButtonElement>('btnGenerate', doc);
   const m8 = byId('m8', doc);
   const linkOut = byId('linkOut', doc);
@@ -305,73 +230,29 @@ export function initClients(doc: Document = document, api: ApiOptions = {}): Cli
   // copy buttons. src/scripts/ui/copy.ts drives every [data-copy] and reads the attribute at CLICK
   // time, so filling these in here is all the wiring the panel needs.
   const credUrl = doc.querySelector<HTMLElement>('[data-credential-url]')!;
-  const credPassword = doc.querySelector<HTMLElement>('[data-credential-password]')!;
   const credCopies = Array.from(doc.querySelectorAll<HTMLElement>('.credential [data-copy]'));
   const tbody = byId<HTMLTableElement>('clientTable', doc).querySelector('tbody')!;
   const m9 = byId('m9', doc);
   const reportBtn = byId<HTMLButtonElement>('btnReport', doc);
   const m10 = byId('m10', doc);
   const reportOut = byId('reportOut', doc);
-  const visitsBtn = byId<HTMLButtonElement>('btnVisits', doc);
-  const m11 = byId('m11', doc);
-  const visitsOut = byId('visitsOut', doc);
   const clients = new Map(data.clients.map((c) => [c.code, c]));
 
-  /**
-   * The reveal-once panel (brief §10). The plaintext exists only in this response body: it is never
-   * stored, never re-read from the sheet, and disappears from the page on the next action.
-   */
-  /**
-   * Reveals the credential panel — and OPENS the dialog it lives in.
-   *
-   * `#linkOut` sits inside `<Modal id="new-client">`. On the create path that modal is already open,
-   * so un-hiding the panel was enough and this looked correct for as long as anyone only ever
-   * created customers. "Reset password" is a control on a TABLE ROW, outside the modal: it wrote the
-   * one-time plaintext into a hidden element inside a CLOSED dialog, printed "copy it now, it is not
-   * shown again", and the password was already live in the sheet. The buyer was locked out with no
-   * way back — resetting again just repeated it.
-   *
-   * `showModal()` on an already-open dialog throws, hence the `open` check.
-   */
-  const revealPanel = (): void => {
-    const dialog = doc.getElementById('new-client');
-    if (dialog instanceof HTMLDialogElement && !dialog.open) {
-      dialog.showModal();
-      // Arriving from a row, the create form is noise and its inputs are the wrong thing to focus:
-      // this is a reveal-once panel, not a form. F4 (52:1115) draws the panel alone.
-      fields?.setAttribute('hidden', '');
-    }
-  };
-
-  // …and put it back. A reset hides the create form so the panel stands alone; without this, the
-  // next "New customer link" would open a modal with no form in it.
+  // Re-opening the create form after a link has been shown: without this, the next "New customer
+  // link" would open a modal still showing the previous customer's panel.
   const opener = doc.querySelector<HTMLElement>('[data-open="new-client"]');
   opener?.addEventListener('click', () => {
     fields?.removeAttribute('hidden');
     linkOut.hidden = true;
   });
 
-  const showLink = (c: ClientLike, password?: string): void => {
+  const showLink = (c: ClientLike): void => {
     credUrl.textContent = c.link;
-    credPassword.textContent = password ?? '';
     linkCode.textContent = c.code;
-    linkNote.textContent = `Send this link with the password. Their likes are recorded under ${c.name}.`;
-    // Each control carries what IT copies; the footer button carries both on two lines, which is the
-    // shape that gets pasted into a message. Set on the element, never rendered into the page twice.
-    for (const el of credCopies) {
-      const what = el.dataset.copyWhat;
-      el.setAttribute(
-        'data-copy',
-        what === 'url'
-          ? c.link
-          : what === 'password'
-            ? (password ?? '')
-            : `${c.link}
-${password ?? ''}`,
-      );
-    }
+    linkNote.textContent = `Their likes are recorded under ${c.name}.`;
+    // Every control on the panel copies the same one thing now that there is no password beside it.
+    for (const el of credCopies) el.setAttribute('data-copy', c.link);
     linkOut.hidden = false;
-    revealPanel();
   };
 
   const doGenerate = async (): Promise<void> => {
@@ -380,22 +261,11 @@ ${password ?? ''}`,
       msg(m8, 'Give the client a name first.', 'err');
       return;
     }
-    // Blank is fine and means "generate one"; anything typed has to clear the floor before we spend
-    // a round trip on it.
-    const chosen = pwField.value.trim();
-    if (chosen) {
-      const problem = customerPasswordProblem(chosen);
-      if (problem) {
-        msg(m8, problem, 'err');
-        pwField.focus();
-        return;
-      }
-    }
     generate.disabled = true;
     msg(m8, 'Generating…', 'busy');
-    const r = await post<{ client: ClientLike; password: string; audit: { row: number } }>(
+    const r = await post<{ client: ClientLike; audit: { row: number } }>(
       '/api/admin/clients',
-      { name: n, note: note.value.trim(), ...(chosen ? { password: chosen } : {}) },
+      { name: n },
       api,
     );
     generate.disabled = false;
@@ -406,13 +276,10 @@ ${password ?? ''}`,
     const c = r.data.client;
     clients.set(c.code, c);
     tbody.insertBefore(clientRow(c, doc), tbody.firstChild);
-    showLink(c, r.data.password);
+    showLink(c);
     msg(m8, `Link ready for ${c.name} — copy it below.`, 'ok');
     name.value = '';
-    note.value = '';
-    pwField.value = '';
-    // Focus the one control that copies BOTH — it is the only thing worth doing on this panel, and
-    // it is where the keyboard should already be when the panel appears.
+    // Focus the copy control: it is the only thing worth doing on this panel.
     doc.querySelector<HTMLElement>('.credential [data-copy-what="both"]')?.focus();
   };
 
@@ -446,14 +313,15 @@ ${password ?? ''}`,
     );
   };
 
-  const resetPassword = async (code: string, chosen = ''): Promise<void> => {
+  /** Renaming leaves the code — and so the link already sent to the buyer — untouched. */
+  const rename = async (code: string, newName: string): Promise<void> => {
     const current = clients.get(code);
     const tr = tbody.querySelector<HTMLTableRowElement>(`tr[data-code="${CSS.escape(code)}"]`);
     if (!current || !tr) return;
-    msg(m9, `Setting a new password for ${current.name}…`, 'busy');
-    const r = await post<{ client: ClientLike; password: string; audit: { row: number } }>(
-      `/api/admin/clients/${encodeURIComponent(code)}/regenerate`,
-      { version: current.version, ...(chosen ? { password: chosen } : {}) },
+    msg(m9, `Renaming ${current.name}…`, 'busy');
+    const r = await post<{ client: ClientLike; audit?: { row: number }; unchanged?: boolean }>(
+      `/api/admin/clients/${encodeURIComponent(code)}`,
+      { name: newName, version: current.version },
       api,
     );
     if (!r.ok) {
@@ -466,44 +334,38 @@ ${password ?? ''}`,
     }
     clients.set(code, r.data.client);
     tr.replaceWith(clientRow(r.data.client, doc));
-    showLink(r.data.client, r.data.password);
-    msg(m9, `New password for ${r.data.client.name} — copy it now, it is not shown again.`, 'ok');
+    msg(m9, r.data.unchanged ? 'Nothing changed.' : `Renamed to ${r.data.client.name}.`, 'ok');
   };
 
-  /**
-   * The access log. Fetched on load rather than on a button, because "has this buyer opened it yet"
-   * is the question the owner has every time they arrive, and one extra sheet read on an admin page
-   * nobody else visits is a fair price for not having to ask for it.
-   */
-  const loadVisits = async (): Promise<void> => {
-    visitsBtn.disabled = true;
-    msg(m11, 'Reading the access log…', 'busy');
-    const r = await get<VisitsLike>('/api/admin/clients/visits', { timeoutMs: 30_000, ...api });
-    visitsBtn.disabled = false;
-    if (!r.ok) {
-      msg(m11, r.message, 'err');
+  /** Permanent (owner, 2026-09-16): the row goes and the buyer's link stops resolving. */
+  const remove = async (code: string): Promise<void> => {
+    const current = clients.get(code);
+    const tr = tbody.querySelector<HTMLTableRowElement>(`tr[data-code="${CSS.escape(code)}"]`);
+    if (!current || !tr) return;
+    if (
+      !confirmImpl(
+        `Delete ${current.name}? Their link stops working and the row leaves the sheet for good. Their likes are kept.`,
+      )
+    ) {
       return;
     }
-    renderVisits(visitsOut, r.data, doc);
-    const seen = new Map(r.data.byClient.map((c) => [c.code, c]));
-    tbody.querySelectorAll<HTMLTableRowElement>('tr[data-code]').forEach((tr) => {
-      const row = seen.get(tr.dataset.code ?? '');
-      const visits = tr.querySelector('[data-visits]');
-      const last = tr.querySelector<HTMLElement>('[data-last-seen]');
-      if (visits) {
-        // The drawn states are "Opened" and "Not visited" — a count of 0 reads as a measurement,
-        // where the point is only whether the buyer has been (52:887).
-        const n = row?.visits ?? 0;
-        visits.textContent = n > 0 ? 'Opened' : 'Not visited';
-        visits.classList.toggle('badge--success', n > 0);
-        if (n > 0) visits.setAttribute('title', `${n} ${n === 1 ? 'visit' : 'visits'}`);
-      }
-      if (last) {
-        last.textContent = whenText(row?.lastSeen ?? '');
-        if (row?.lastSeen) last.title = row.lastSeen;
-      }
-    });
-    hide(m11);
+    msg(m9, `Deleting ${current.name}…`, 'busy');
+    const r = await post<{ code: string; audit?: { row: number } }>(
+      `/api/admin/clients/${encodeURIComponent(code)}/delete`,
+      { version: current.version },
+      api,
+    );
+    if (!r.ok) {
+      msg(
+        m9,
+        r.status === 409 ? 'This customer was changed elsewhere — reload the page and try again.' : r.message,
+        'err',
+      );
+      return;
+    }
+    clients.delete(code);
+    tr.remove();
+    msg(m9, `Deleted ${current.name}.`, 'ok');
   };
 
   const loadReport = async (): Promise<void> => {
@@ -520,53 +382,47 @@ ${password ?? ''}`,
   };
 
   /**
-   * The reset dialog. A per-row password input would clutter the table, and a browser prompt cannot
-   * be styled or validated, so the choice is made in a real <dialog> — the same control the rug page
-   * uses to confirm a destructive action.
+   * The rename dialog, re-using the control the password reset used to own. A per-row input would
+   * clutter the table and a browser prompt cannot be styled or validated, so the name is typed in a
+   * real <dialog>.
    */
-  const pwDialog = byId<HTMLDialogElement>('pwDialog', doc);
-  const pwDialogTitle = byId('pwDialogTitle', doc);
-  const pwDialogInput = byId<HTMLInputElement>('pwDialogInput', doc);
-  const pwDialogErr = byId('pwDialogErr', doc);
-  const pwDialogForm = byId<HTMLFormElement>('pwDialogForm', doc);
-  const pwDialogCancel = byId<HTMLButtonElement>('pwDialogCancel', doc);
-  let pwTarget = '';
+  const renameDialog = byId<HTMLDialogElement>('renameDialog', doc);
+  const renameDialogTitle = byId('renameDialogTitle', doc);
+  const renameDialogInput = byId<HTMLInputElement>('renameDialogInput', doc);
+  const renameDialogErr = byId('renameDialogErr', doc);
+  const renameDialogForm = byId<HTMLFormElement>('renameDialogForm', doc);
+  const renameDialogCancel = byId<HTMLButtonElement>('renameDialogCancel', doc);
+  let renameTarget = '';
 
-  const askPassword = (code: string): void => {
-    pwTarget = code;
-    pwDialogInput.value = '';
-    // hide() strips the `.on`/tone classes msg() added; the attribute goes back on top of that, or a
-    // stale error would be re-revealed the next time the dialog opens.
-    hide(pwDialogErr);
-    pwDialogErr.hidden = true;
-    pwDialogTitle.textContent = `Reset password for ${clients.get(code)?.name ?? code}`;
-    if (typeof pwDialog.showModal === 'function') pwDialog.showModal();
-    else void resetPassword(code); // no dialog support: fall back to generating one
-    pwDialogInput.focus();
+  const askRename = (code: string): void => {
+    const current = clients.get(code);
+    renameTarget = code;
+    renameDialogInput.value = current?.name ?? '';
+    // hide() strips the tone classes msg() added; the attribute goes back on top of that, or a stale
+    // error would be re-revealed the next time the dialog opens.
+    hide(renameDialogErr);
+    renameDialogErr.hidden = true;
+    renameDialogTitle.textContent = `Rename ${current?.name ?? code}`;
+    if (typeof renameDialog.showModal === 'function') renameDialog.showModal();
+    renameDialogInput.focus();
+    renameDialogInput.select();
   };
 
-  // Bound on the FORM, not on the button: the confirm is a real submit now, so Enter in the field
-  // and a click on "Set password" arrive through the same path instead of Enter quietly closing the
-  // dialog and throwing the password away. preventDefault stops the navigation the submit implies.
-  pwDialogForm.addEventListener('submit', (event) => {
+  // Bound on the FORM, not the button: Enter in the field and a click on Save then arrive through
+  // the same path. preventDefault stops the navigation the submit implies.
+  renameDialogForm.addEventListener('submit', (event) => {
     event.preventDefault();
-    const chosen = pwDialogInput.value.trim();
-    const problem = chosen ? customerPasswordProblem(chosen) : undefined;
-    if (problem) {
-      // `#pwDialogErr` is `class="msg err" hidden`, and `.msg` is `display: none` until `.on`
-      // (admin.css). Clearing `hidden` alone — which is all this did — left the element still
-      // display:none, so the password-policy error has never once been visible: a too-short password
-      // simply did nothing, with no explanation. `hidden` has to come off AND `msg()` has to add
-      // `.on`, which also gives it role="alert" so it is announced rather than only drawn.
-      pwDialogErr.hidden = false;
-      msg(pwDialogErr, problem, 'err');
-      pwDialogInput.focus();
+    const typed = renameDialogInput.value.trim();
+    if (!typed) {
+      renameDialogErr.hidden = false;
+      msg(renameDialogErr, 'A customer needs a name.', 'err');
+      renameDialogInput.focus();
       return;
     }
-    pwDialog.close();
-    void resetPassword(pwTarget, chosen);
+    renameDialog.close();
+    void rename(renameTarget, typed);
   });
-  pwDialogCancel.addEventListener('click', () => pwDialog.close());
+  renameDialogCancel.addEventListener('click', () => renameDialog.close());
 
   generate.addEventListener('click', () => void doGenerate());
   name.addEventListener('keydown', (e) => {
@@ -579,8 +435,12 @@ ${password ?? ''}`,
     const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-act]');
     const tr = b?.closest<HTMLTableRowElement>('tr[data-code]');
     if (!b || !tr?.dataset.code) return;
-    if (b.dataset.act === 'password') {
-      askPassword(tr.dataset.code);
+    if (b.dataset.act === 'rename') {
+      askRename(tr.dataset.code);
+      return;
+    }
+    if (b.dataset.act === 'delete') {
+      void remove(tr.dataset.code);
       return;
     }
     void setStatus(tr.dataset.code, b.dataset.act === 'revoke' ? 'revoked' : 'active');
@@ -597,10 +457,8 @@ ${password ?? ''}`,
     void setStatus(tr.dataset.code, input.checked ? 'active' : 'revoked');
   });
   reportBtn.addEventListener('click', () => void loadReport());
-  visitsBtn.addEventListener('click', () => void loadVisits());
-  void loadVisits();
   doc.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') doc.querySelectorAll<HTMLElement>('.msg.on').forEach(hide);
   });
-  return { generate: doGenerate, setStatus, resetPassword, loadReport, loadVisits };
+  return { generate: doGenerate, setStatus, rename, remove, loadReport };
 }

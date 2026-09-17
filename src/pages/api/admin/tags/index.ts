@@ -35,7 +35,7 @@ export const POST = adminPost(TagInput, async ({ context, body }) => {
   if (clash) {
     throw new AdminError(409, 'slug exists', `Tag "${clash.name}" already exists (${clash.slug}).`, { slug });
   }
-  const color = body.color ?? '';
+  const color = ''; // the column stays, written blank (owner, 2026-09-16)
   const audit = buildAuditRow({
     ...auditBase(context),
     action: 'tag.create',

@@ -69,12 +69,12 @@ describe('collections.ts', () => {
   const markup = (): string => `
     <div id="m5" class="msg"></div>
     <ul id="collectionList">${collections.map((c, i) => collectionRow(c, i).outerHTML).join('')}</ul>
-    <input id="c_name" /><input id="c_description" /><input id="c_cover" /><button id="btnAddCollection"></button><div id="m6" class="msg"></div>
+    <input id="c_name" /><input id="c_description" /><button id="btnAddCollection"></button><div id="m6" class="msg"></div>
     <div id="tagList" class="chips">${tags.map((t) => tagChip(t).outerHTML).join('')}</div>
-    <div id="tagEdit" hidden><input id="t_name" /><input id="t_color" type="color" value="#000000" /><input id="t_noColor" type="checkbox" />
-      <button id="btnSaveTag"></button><button id="btnCancelTag"></button><p id="tagEditHint"></p></div>
+    <div id="tagEdit" hidden><input id="t_name" />
+      <button id="btnSaveTag"></button><button id="btnCancelTag"></button><button id="btnDeleteTag"></button><p id="tagEditHint"></p></div>
     <div id="m7" class="msg"></div>
-    <input id="nt_name" /><input id="nt_color" type="color" value="#2f6b3a" /><input id="nt_noColor" type="checkbox" checked /><button id="btnAddTag"></button><div id="m8" class="msg"></div>
+    <input id="nt_name" /><button id="btnAddTag"></button><div id="m8" class="msg"></div>
     ${data({ collections, tags })}`;
 
   it('▲/▼ reorders the rows and posts the whole order; failure refreshes from the API', async () => {
@@ -163,12 +163,8 @@ describe('collections.ts', () => {
     const input = document.querySelector<HTMLInputElement>('[data-id="kilims"] input[data-field="name"]')!;
     input.value = 'Flatweaves';
     await page.saveCollection('kilims');
-    expect(calls[0]?.body).toEqual({
-      name: 'Flatweaves',
-      description: 'Flat',
-      coverImageUrl: '',
-      version: 'b'.repeat(16),
-    });
+    // Owner, 2026-09-16: name and description are the whole body — no cover image.
+    expect(calls[0]?.body).toEqual({ name: 'Flatweaves', description: 'Flat', version: 'b'.repeat(16) });
     expect(text('m5')).toContain('2 rugs still store the old name "Kilims"');
     expect(document.querySelector<HTMLElement>('[data-id="kilims"]')?.dataset.version).toBe('n'.repeat(16));
     conflict = true;
@@ -183,7 +179,7 @@ describe('collections.ts', () => {
     ).toContain('modern');
   });
 
-  it('tag chips open the edit panel; save posts name + colour with the version; add creates', async () => {
+  it('tag chips open the edit panel; save posts the name with the version; add creates', async () => {
     document.body.innerHTML = markup();
     const calls: Array<{ url: string; method: string; body: Record<string, unknown> }> = [];
     const page = initCollections(document, {
@@ -213,11 +209,12 @@ describe('collections.ts', () => {
     document.querySelector<HTMLButtonElement>('#tagList button[data-id="kilim"]')!.click();
     expect((document.getElementById('tagEdit') as HTMLElement).hidden).toBe(false);
     expect((document.getElementById('t_name') as HTMLInputElement).value).toBe('Kilim');
-    expect((document.getElementById('t_color') as HTMLInputElement).value).toBe('#bb3e03');
+    // The colour picker is gone (owner, 2026-09-16): a tag is a name.
+    expect(document.getElementById('t_color')).toBeNull();
     expect(text('tagEditHint')).toBe('1 rug use "Kilim". Renaming does not rewrite them.');
     (document.getElementById('t_name') as HTMLInputElement).value = 'Kilim weave';
     await page.saveTag();
-    expect(calls[0]?.body).toEqual({ name: 'Kilim weave', version: 'c'.repeat(16), color: '#bb3e03' });
+    expect(calls[0]?.body).toEqual({ name: 'Kilim weave', version: 'c'.repeat(16) });
     expect((document.getElementById('tagEdit') as HTMLElement).hidden).toBe(true);
     expect(document.querySelector<HTMLButtonElement>('#tagList button[data-id="kilim"]')?.dataset.name).toBe(
       'Kilim weave',
@@ -225,7 +222,7 @@ describe('collections.ts', () => {
     expect(text('m7')).toContain('1 rug still store "Kilim"');
     (document.getElementById('nt_name') as HTMLInputElement).value = 'Red';
     await page.addTag();
-    expect(calls[1]?.body).toEqual({ name: 'Red' }); // no colour box checked
+    expect(calls[1]?.body).toEqual({ name: 'Red' });
     expect(document.querySelectorAll('#tagList button[data-id]')).toHaveLength(2);
   });
 });
@@ -243,23 +240,20 @@ describe('clients.ts', () => {
     version: 'a'.repeat(16),
   };
   const markup = (): string => `
-    <input id="cl_name" /><input id="cl_note" /><input id="cl_pw" /><button id="btnGenerate"></button><div id="m8" class="msg"></div>
-    <dialog id="pwDialog"><form id="pwDialogForm"><h3 id="pwDialogTitle"></h3><input id="pwDialogInput" />
-      <p id="pwDialogErr" hidden></p>
-      <button id="pwDialogOk" type="submit"></button><button id="pwDialogCancel" type="button"></button></form></dialog>
+    <input id="cl_name" /><button id="btnGenerate"></button><div id="m8" class="msg"></div>
+    <dialog id="renameDialog"><form id="renameDialogForm"><h3 id="renameDialogTitle"></h3><input id="renameDialogInput" />
+      <p id="renameDialogErr" hidden></p>
+      <button id="renameDialogOk" type="submit"></button><button id="renameDialogCancel" type="button"></button></form></dialog>
     <div id="linkOut" hidden>
       <section class="credential">
         <div class="credential__value"><span data-credential-url></span>
           <button class="credential__copy" data-copy data-copy-what="url"></button></div>
-        <div class="credential__value"><span data-credential-password></span>
-          <button class="credential__copy" data-copy data-copy-what="password"></button></div>
         <button class="btn btn--primary credential__both" data-copy data-copy-what="both"></button>
       </section>
       <span id="linkCode"></span><span id="linkNote"></span></div>
     <div id="m9" class="msg"></div>
     <table id="clientTable"><tbody>${clientRow(client).outerHTML}</tbody></table>
     <button id="btnReport"></button><div id="m10" class="msg"></div><div id="reportOut"></div>
-    <button id="btnVisits"></button><div id="m11" class="msg"></div><div id="visitsOut"></div>
     ${data({ clients: [client], siteOrigin: 'https://s.test' })}`;
 
   it('generates a link, shows it with Copy, prepends the row; revoke posts the version; the report renders as text', async () => {
@@ -280,13 +274,12 @@ describe('clients.ts', () => {
             status: 201,
             body: { ok: true, client: created, password: 'amber-loom-serai-47', audit: { row: 2 } },
           };
-        if (url === '/api/admin/clients/nadia-k7m2pq/regenerate')
+        if (url === '/api/admin/clients/nadia-k7m2pq' && method === 'POST')
           return {
             status: 200,
             body: {
               ok: true,
-              client: { ...client, version: 'p'.repeat(16) },
-              password: 'cedar-quarry-tulip-11',
+              client: { ...client, name: 'Nadia K', version: 'p'.repeat(16) },
               audit: { row: 3 },
             },
           };
@@ -297,38 +290,6 @@ describe('clients.ts', () => {
               ok: true,
               client: { ...client, status: 'revoked', version: 'v'.repeat(16) },
               audit: { row: 2 },
-            },
-          };
-        if (url === '/api/admin/clients/visits')
-          return {
-            status: 200,
-            body: {
-              ok: true,
-              generatedAt: '2026-09-09T00:00:00Z',
-              rowsRead: 2,
-              rowsDropped: 0,
-              byClient: [
-                {
-                  code: 'nadia-k7m2pq',
-                  name: 'Nadia',
-                  known: true,
-                  status: 'active',
-                  visits: 2,
-                  firstSeen: '2026-09-01T09:00:00Z',
-                  lastSeen: '2026-09-08T17:30:00Z',
-                  devices: ['Safari/iOS'],
-                },
-              ],
-              recent: [
-                {
-                  customerSlug: 'nadia-k7m2pq',
-                  occurredAt: '2026-09-08T17:30:00Z',
-                  userAgent: 'Safari/iOS',
-                  referrer: '',
-                  name: 'Nadia',
-                  known: true,
-                },
-              ],
             },
           };
         if (url === '/api/admin/clients/report')
@@ -375,38 +336,24 @@ describe('clients.ts', () => {
     (document.getElementById('cl_name') as HTMLInputElement).value = 'Léa';
     await page.generate();
     const call = (url: string) => calls.find((c) => c.url === url);
-    expect(call('/api/admin/clients')).toMatchObject({
-      method: 'POST',
-      body: { name: 'Léa', note: '' },
-    });
+    // Owner, 2026-09-16: a name is the whole body — no note, and no password to choose or reveal.
+    expect(call('/api/admin/clients')).toMatchObject({ method: 'POST', body: { name: 'Léa' } });
+    expect(call('/api/admin/clients')?.body).not.toHaveProperty('note');
+    expect(call('/api/admin/clients')?.body).not.toHaveProperty('password');
     expect((document.getElementById('linkOut') as HTMLElement).hidden).toBe(false);
     expect(document.querySelector('[data-credential-url]')?.textContent).toBe('https://s.test/lea-abc123');
     expect(text('linkCode')).toBe('lea-abc123');
     expect(text('linkNote')).toContain('recorded under Léa');
-    // Reveal-once (brief §10): the plaintext is in the create response and nowhere else.
-    // The panel is one surface now: there is no separate password sub-block to unhide.
-    expect(document.querySelector('[data-credential-password]')?.textContent).toBe('amber-loom-serai-47');
-    // F4 (Figma 20:91): one control carries BOTH, because that is what gets pasted into a message.
+    // The panel carries the link and nothing else, so every copy control copies the same thing.
+    expect(document.querySelector('[data-credential-password]')).toBeNull();
     const both = document.querySelector<HTMLElement>('[data-copy-what="both"]')!;
-    expect(both.getAttribute('data-copy')).toContain('amber-loom-serai-47');
-    expect(both.getAttribute('data-copy')).toContain(
-      document.querySelector('[data-credential-url]')!.textContent!,
-    );
+    expect(both.getAttribute('data-copy')).toBe('https://s.test/lea-abc123');
     expect(document.querySelector<HTMLTableRowElement>('#clientTable tr')?.dataset.code).toBe('lea-abc123');
-    // Blank means "generate one for me": no password is sent and the server mints it.
-    await page.resetPassword('nadia-k7m2pq');
-    expect(call('/api/admin/clients/nadia-k7m2pq/regenerate')).toMatchObject({
+    // Renaming keeps the code, and so the link the buyer already has.
+    await page.rename('nadia-k7m2pq', 'Nadia K');
+    expect(call('/api/admin/clients/nadia-k7m2pq')).toMatchObject({
       method: 'POST',
-      body: { version: 'a'.repeat(16) },
-    });
-    expect(call('/api/admin/clients/nadia-k7m2pq/regenerate')?.body).not.toHaveProperty('password');
-    // The new plaintext replaces the old one in the same reveal-once panel.
-    expect(document.querySelector('[data-credential-password]')?.textContent).toBe('cedar-quarry-tulip-11');
-
-    // …and a password the owner types is sent through instead.
-    await page.resetPassword('nadia-k7m2pq', 'winter-loom-2026');
-    expect(calls.filter((c) => c.url.endsWith('/regenerate')).at(-1)?.body).toMatchObject({
-      password: 'winter-loom-2026',
+      body: { name: 'Nadia K', version: 'a'.repeat(16) },
     });
     await page.setStatus('nadia-k7m2pq', 'revoked');
     expect(call('/api/admin/clients/nadia-k7m2pq/status')).toMatchObject({

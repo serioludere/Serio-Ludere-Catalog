@@ -16,7 +16,7 @@ import {
 import { updateRow } from '../../../../lib/admin/write.ts';
 import { getClient } from '../../../../lib/runtime.ts';
 import { TABS } from '../../../../lib/sheets/contract.ts';
-import { checkCover, freshCollection, loadSnapshot } from '../_shared.ts';
+import { freshCollection, loadSnapshot } from '../_shared.ts';
 
 export const POST = adminPost(CollectionUpdate, async ({ context, body }) => {
   const id = context.params.id;
@@ -31,13 +31,11 @@ export const POST = adminPost(CollectionUpdate, async ({ context, body }) => {
   if (clash) {
     throw new AdminError(409, 'name exists', `Another collection is already called "${clash.name}".`);
   }
-  const cover = checkCover(body.coverImageUrl);
-  const before = {
-    name: current.name,
-    description: current.description,
-    coverImageUrl: current.coverImageUrl ?? '',
-  };
-  const after = { name: body.name, description: body.description, coverImageUrl: cover };
+  // The cover column is no longer edited (owner, 2026-09-16); whatever the row holds is carried
+  // through untouched rather than blanked by an edit that never asked about it.
+  const cover = current.coverImageUrl ?? '';
+  const before = { name: current.name, description: current.description };
+  const after = { name: body.name, description: body.description };
   const diff = diffFields(before, after);
   if (diff.changed.length === 0) return noStore({ ok: true, collection: current, unchanged: true });
   const audit = buildAuditRow({

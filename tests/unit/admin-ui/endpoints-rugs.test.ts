@@ -30,6 +30,7 @@ import {
 } from '../../../src/pages/api/admin/rugs/index.ts';
 import { GET as nextIdGet } from '../../../src/pages/api/admin/rugs/next-id.ts';
 import { GET as oneGet, POST as updatePost } from '../../../src/pages/api/admin/rugs/[id]/index.ts';
+import { POST as deletePost } from '../../../src/pages/api/admin/rugs/[id]/delete.ts';
 
 const session = newSession('owner', Date.now());
 const PHOTO = '1U8FwNPCdm-n8RUvSNRcJLBA_27u-Pjkb';
@@ -358,5 +359,53 @@ describe('GET/POST /api/admin/rugs/[id] (rug.update)', () => {
       }),
     );
     expect((await renamed.json()).rug.slug).toBe('sunny');
+  });
+});
+
+describe('POST /api/admin/rugs/[id]/delete (rug.delete)', () => {
+  it('removes the row for good, keeps the audit trail, and busts the cache', async () => {
+    const rug = (
+      await (await oneGet(ctx({ path: '/api/admin/rugs/SL-029', params: { id: 'SL-029' } }))).json()
+    ).rug;
+    expect(sheet.row('Products', rug.row)[PRODUCT_COLS.productId]).toBe('SL-029');
+    const res = await deletePost(
+      ctx({
+        path: '/api/admin/rugs/SL-029/delete',
+        method: 'POST',
+        params: { id: 'SL-029' },
+        body: { version: rug.version },
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ ok: true, id: 'SL-029' });
+    // Gone from the tab — and the rows below it moved up, which is why a stale row number is unsafe
+    // and why deleteRow re-checks column A inside the lock.
+    const list = await (await listGet(ctx({ path: '/api/admin/rugs' }))).json();
+    expect(list.rugs.map((r: { id: string }) => r.id)).toEqual(['SL-021', '1389']);
+    expect(sheet.auditRows()[0]![2]).toBe('rug.delete');
+    expect(JSON.parse(String(sheet.auditRows()[0]![5]))).toMatchObject({ id: 'SL-029' });
+    expect(cache.busts).toBe(1);
+  });
+
+  it('refuses a stale version and an unknown id, writing nothing', async () => {
+    const stale = await deletePost(
+      ctx({
+        path: '/api/admin/rugs/SL-029/delete',
+        method: 'POST',
+        params: { id: 'SL-029' },
+        body: { version: 'f'.repeat(16) },
+      }),
+    );
+    expect(stale.status).toBe(409);
+    const unknown = await deletePost(
+      ctx({
+        path: '/api/admin/rugs/SL-404/delete',
+        method: 'POST',
+        params: { id: 'SL-404' },
+        body: { version: 'a'.repeat(16) },
+      }),
+    );
+    expect(unknown.status).toBe(404);
+    expect(sheet.writes).toHaveLength(0);
   });
 });

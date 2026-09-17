@@ -210,6 +210,15 @@ export function fakeSheet(init: FakeTabs = {}): FakeSheet {
             const n = ins.range.endIndex - ins.range.startIndex;
             g.splice(ins.range.startIndex, 0, ...Array.from({ length: n }, () => [] as CellValue[]));
             rowCount.set(t, (rowCount.get(t) ?? 0) + n);
+          } else if (req.deleteDimension) {
+            const del = req.deleteDimension as {
+              range: { sheetId: number; startIndex: number; endIndex: number };
+            };
+            const t = titleOf(del.range.sheetId);
+            const g = grid(t);
+            const n = del.range.endIndex - del.range.startIndex;
+            g.splice(del.range.startIndex, n);
+            rowCount.set(t, Math.max(0, (rowCount.get(t) ?? 0) - n));
           } else if (req.updateCells) {
             const u = req.updateCells as {
               start: { sheetId: number; rowIndex: number; columnIndex: number };

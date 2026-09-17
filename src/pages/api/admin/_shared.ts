@@ -23,7 +23,6 @@ import {
 } from '../../../lib/admin/read.ts';
 import type { Cells, RugFields } from '../../../lib/admin/write.ts';
 import type { ScopeStatus } from '../../../lib/drive/index.ts';
-import { normaliseImageUrl } from '../../../lib/images.ts';
 import { getAdminDeps, getClient } from '../../../lib/runtime.ts';
 
 export type Client = Pick<
@@ -197,15 +196,6 @@ export function filterRugs(rugs: readonly AdminRug[], q: string | null): AdminRu
 /** Ids reserved by `rug.create` audit rows (a create whose verify failed still burnt its number). */
 export function reservedIds(snapshot: Pick<AdminSnapshot, 'audit'>): string[] {
   return snapshot.audit.filter((a) => a.action === 'rug.create').map((a) => a.targetId);
-}
-
-/** '' clears; anything else must be a Drive id/URL or an allow-listed https URL (stored as typed). */
-export function checkCover(input: string): string {
-  const s = input.trim();
-  if (!s) return '';
-  const res = normaliseImageUrl(s);
-  if (!res.url) throw new AdminError(400, 'bad cover', `Cover image: ${res.reason ?? 'not usable'}`);
-  return s;
 }
 
 /** Plain object (undefined → null) so `diffFields` and the audit JSON see every key. */

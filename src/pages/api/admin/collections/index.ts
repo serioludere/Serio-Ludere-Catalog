@@ -17,7 +17,7 @@ import { insertRowAtBottom } from '../../../../lib/admin/write.ts';
 import { getClient } from '../../../../lib/runtime.ts';
 import { TABS } from '../../../../lib/sheets/contract.ts';
 import { slugify } from '../../../../lib/text.ts';
-import { checkCover, freshCollection, loadSnapshot, nowIso } from '../_shared.ts';
+import { freshCollection, loadSnapshot, nowIso } from '../_shared.ts';
 
 export const GET = adminGet(async () => {
   const snapshot = await loadSnapshot();
@@ -37,7 +37,7 @@ export const POST = adminPost(CollectionInput, async ({ context, body }) => {
       slug,
     });
   }
-  const cover = checkCover(body.coverImageUrl);
+  const cover = ''; // the column stays, written blank (owner, 2026-09-16)
   const sortOrder = Math.max(0, ...snapshot.collections.map((c) => c.sortOrder ?? 0)) + 1;
   const audit = buildAuditRow({
     ...auditBase(context),

@@ -130,17 +130,14 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
                 value={c.description}
                 aria-label={`Description of ${c.name}`}
               />
-              <input
-                class="input"
-                data-field="cover"
-                value={c.coverImageUrl ?? ''}
-                aria-label={`Cover of ${c.name}`}
-              />
               <button type="button" class="btn btn--primary" data-act="save">
                 Save
               </button>
               <button type="button" class="btn btn--ghost" data-act="cancel">
                 Cancel
+              </button>
+              <button type="button" class="btn btn--destructive" data-act="delete">
+                Delete
               </button>
             </div>
           </li>
@@ -173,7 +170,6 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
           label="Description"
           hint="Shown to customers under the collection name."
         />
-        <Input name="c_cover" label="Cover image (Google Drive link)" />
       </div>
       <Fragment slot="footer">
         <Button style="ghost" data-close="new-collection">Cancel</Button>
@@ -186,7 +182,7 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
 
   <section class="stack" aria-labelledby="h-tags">
     <h3 id="h-tags">Tags</h3>
-    <p class="hint">Click a tag to rename it or give it a colour.</p>
+    <p class="hint">Click a tag to rename or delete it.</p>
     <div class="chips" id="tagList" role="group" aria-label="Tags">
       {
         tags.map((t) => (
@@ -210,16 +206,10 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
         <label for="t_name">Tag name</label>
         <input id="t_name" autocomplete="off" />
       </div>
-      <div class="f">
-        <label for="t_color">Colour</label>
-        <input id="t_color" type="color" value="#bb3e03" />
-      </div>
-      <div class="f">
-        <label class="chk" for="t_noColor"><input type="checkbox" id="t_noColor" /> no colour</label>
-      </div>
       <div class="f actions">
         <button class="btn btn--primary" id="btnSaveTag" type="button">Save tag</button>
         <button class="btn btn--secondary" id="btnCancelTag" type="button">Cancel</button>
+        <button class="btn btn--destructive" id="btnDeleteTag" type="button">Delete</button>
       </div>
       <p class="hint" id="tagEditHint"></p>
     </div>
@@ -228,14 +218,6 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
       <div class="f">
         <label for="nt_name">New tag</label>
         <input id="nt_name" placeholder="Name" autocomplete="off" />
-      </div>
-      <div class="f">
-        <label for="nt_color">Colour (optional)</label>
-        <input id="nt_color" type="color" value="#bb3e03" />
-      </div>
-      <div class="f">
-        <label class="chk" for="nt_noColor"><input type="checkbox" id="nt_noColor" checked /> no colour</label
-        >
       </div>
     </div>
     <div class="actions">

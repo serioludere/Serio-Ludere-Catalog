@@ -59,6 +59,13 @@ const CollectionList = z
   .pipe(z.array(z.string().min(1).max(80)).min(1).max(10));
 export const Version = z.string().regex(VERSION_RE);
 
+/**
+ * Every delete body (owner, 2026-09-16). The version is not optional anywhere: a delete has no undo,
+ * so the row must be the one the owner was looking at when they pressed the button.
+ */
+export const DeleteRequest = z.object({ version: Version });
+export type DeleteRequestT = z.infer<typeof DeleteRequest>;
+
 export const RugInput = z.object({
   id: Id.optional(), // create only; absent → server allocates the next SL-nnn
   slug: Slug.optional(), // absent → derived from name (create) / kept (update)
@@ -101,23 +108,20 @@ export const RugCommit = z.object({
   driveFolderUrl: z.string().trim().max(400).default(''),
 });
 export type RugCommitT = z.infer<typeof RugCommit>;
+/** Name and description only (owner, 2026-09-16): the studio never set a cover image, and the
+ *  column stays in the sheet written blank rather than shifting the Collections contract. */
 export const CollectionInput = z.object({
   name: z.string().trim().min(1).max(80),
   description: Text(1000),
-  coverImageUrl: z.string().trim().max(500).default(''), // validated with normaliseImageUrl(); '' clears
 });
 export type CollectionInputT = z.infer<typeof CollectionInput>;
 export const CollectionUpdate = CollectionInput.extend({ version: Version });
 export type CollectionUpdateT = z.infer<typeof CollectionUpdate>;
 export const CollectionReorder = z.object({ order: z.array(Id).min(1).max(200) }); // ids in the new sort order
 export type CollectionReorderT = z.infer<typeof CollectionReorder>;
-export const TagInput = z.object({
-  name: TagName,
-  color: z
-    .string()
-    .regex(/^#[0-9a-fA-F]{6}$/)
-    .optional(),
-});
+/** Just the name (owner, 2026-09-16): a tag's colour never meant anything on the buyer's side, and
+ *  the column stays in the sheet written blank. */
+export const TagInput = z.object({ name: TagName });
 export type TagInputT = z.infer<typeof TagInput>;
 export const TagUpdate = TagInput.extend({ version: Version });
 export type TagUpdateT = z.infer<typeof TagUpdate>;
@@ -127,12 +131,16 @@ const ChosenPassword = z
   .union([z.literal(''), z.string().trim().min(8, 'A password needs at least 8 characters.').max(200)])
   .optional();
 
-export const ClientInput = z.object({
-  name: z.string().trim().min(1).max(60),
-  note: Text(200),
-  password: ChosenPassword,
-});
+/**
+ * Just the name (owner, 2026-09-16). Every buyer signs in with the one shared catalogue password
+ * (CUSTOMER_SHARED_PASSWORD_HASH, src/lib/customer/auth.ts), so there is no per-customer password to
+ * choose or reveal, and the note nobody filled in is gone too. Creating a customer produces a link.
+ */
+export const ClientInput = z.object({ name: z.string().trim().min(1).max(60) });
 export type ClientInputT = z.infer<typeof ClientInput>;
+/** Renaming a customer (owner, 2026-09-16). The code, and so the link, never changes. */
+export const ClientUpdate = z.object({ name: z.string().trim().min(1).max(60), version: Version });
+export type ClientUpdateT = z.infer<typeof ClientUpdate>;
 export const ClientPassword = z.object({ version: Version, password: ChosenPassword });
 export type ClientPasswordT = z.infer<typeof ClientPassword>;
 export const ClientStatus = z.object({ status: z.enum(['active', 'revoked']), version: Version });

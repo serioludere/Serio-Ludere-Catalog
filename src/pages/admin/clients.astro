@@ -68,10 +68,7 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
     */
   }
   <Modal id="new-client" title="New customer link">
-    <p>
-      Enter the customer's name. We create a private link and a password for them; the password is shown once,
-      right after.
-    </p>
+    <p>Enter the customer's name. We create a private link for them, shown right after.</p>
     <div class="modal__fields">
       {
         /* These three were labelled by placeholder alone: the name of the field vanished on the
@@ -89,36 +86,17 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
           <label class="field__label" for="cl_name">Client name</label>
           <input class="input" id="cl_name" placeholder="e.g. Nadia" autocomplete="off" required />
         </div>
-        <div class="grow field">
-          <label class="field__label" for="cl_note">Note (optional)</label>
-          <input class="input" id="cl_note" autocomplete="off" />
-        </div>
-        <div class="grow field">
-          <label class="field__label" for="cl_pw">Password (optional)</label>
-          <input class="input" id="cl_pw" autocomplete="off" maxlength="200" />
-        </div>
         <button class="btn btn--primary" id="btnGenerate" type="button">Generate link</button>
       </div>
-      <p class="hint">
-        Leave the password blank and one is generated that is easy to read out. If you type your own, use at
-        least eight characters.
-      </p>
-      <div id="m8" class="msg"></div>
       {
-        /*
-          F4 · Customers — link created (reveal once), Figma 52:1115 / 20:91.
-
-          This replaces a pair of separate Copy and Copy-password buttons. The component
-          documentation is explicit that separating them is the failure mode the design removes:
-          one button copies BOTH, because a link and a password are pasted into one message, and
-          copying them one at a time is how half a credential gets sent.
-
-          Populated by src/scripts/admin/clients.ts after the create/reset response — the plaintext
-          exists only in that response body and is never re-read from the sheet.
-        */
+        /* Owner, 2026-09-16: a name is the whole form. Every buyer signs in with the one shared
+           catalogue password, so there is no per-customer password to choose, reveal or reset — the
+           link is the only thing a new customer produces. */
       }
+      <p class="hint">The buyer opens this link and signs in with the studio's catalogue password.</p>
+      <div id="m8" class="msg"></div>
       <div id="linkOut" class="stack" hidden>
-        <CredentialPanel url="" password="" />
+        <CredentialPanel url="" />
         <p class="hint">
           Code <span class="mono" id="linkCode"></span> — <span id="linkNote"></span>
         </p>
@@ -155,8 +133,6 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
             <th>Customer</th>
             <th>Link</th>
             <th>Created</th>
-            <th>Visited</th>
-            <th>Last seen</th>
             <th>Active</th>
             <th></th>
           </tr>
@@ -177,14 +153,6 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
                 </td>
                 <td>{day(c.createdAt)}</td>
                 <td>
-                  <span class="badge" data-visits>
-                    Not visited
-                  </span>
-                </td>
-                <td data-last-seen data-label="Last seen">
-                  —
-                </td>
-                <td>
                   <label class="toggle">
                     <input
                       type="checkbox"
@@ -198,8 +166,11 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
                 </td>
                 <td class="acts">
                   <CopyButton value={c.link} label="Copy link" />
-                  <button type="button" class="btn btn--secondary" data-act="password">
-                    Reset password
+                  <button type="button" class="btn btn--secondary" data-act="rename">
+                    Rename
+                  </button>
+                  <button type="button" class="btn btn--destructive" data-act="delete">
+                    Delete
                   </button>
                 </td>
               </tr>
@@ -217,21 +188,11 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
     {
       clients.length > 0 && (
         <p class="hint">
-          Send the link together with the password. Use the switch to pause a link, and Reset password if a
-          customer loses theirs.
+          Send the buyer their link. Use the switch to pause one without removing it; Delete takes the row out
+          of the sheet for good.
         </p>
       )
     }
-  </section>
-
-  <section class="stack" aria-labelledby="h-access">
-    <h3 id="h-access">Visits</h3>
-    <p class="hint">Every time a customer opens their link. Repeat visits within half an hour count once.</p>
-    <div class="actions">
-      <button class="btn btn--secondary" id="btnVisits" type="button">Refresh</button>
-    </div>
-    <div id="m11" class="msg"></div>
-    <div id="visitsOut"></div>
   </section>
 
   <section class="stack" aria-labelledby="h-report">
@@ -243,36 +204,32 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
     <div id="reportOut"></div>
   </section>
 
-  <dialog id="pwDialog">
-    {
-      /* NOT `method="dialog"`. That form had one field and no submit button, which is exactly the
-        shape that triggers HTML implicit submission: pressing Enter in the field submitted the
-        dialog form, closed the dialog with an empty returnValue, and silently discarded the typed
-        password — the confirm handler never ran. A real submit button makes Enter and the click do
-        the same thing, and clients.ts cancels the navigation. */
-    }
-    <form id="pwDialogForm" class="stack">
-      <h3 id="pwDialogTitle">Reset password</h3>
-      <p class="hint" id="pwDialogHint">
-        Leave blank to generate one. The new password replaces the old one straight away and is shown once.
+  {
+    /* Renaming re-uses the dialog the password reset used to own. NOT `method="dialog"`: a one-field
+      form with no submit button triggers HTML implicit submission, which closed the dialog with an
+      empty returnValue and silently discarded what was typed. A real submit button makes Enter and
+      the click do the same thing, and clients.ts cancels the navigation. */
+  }
+  <dialog id="renameDialog">
+    <form id="renameDialogForm" class="stack">
+      <h3 id="renameDialogTitle">Rename customer</h3>
+      <p class="hint" id="renameDialogHint">
+        The preview link never changes, so a rename costs the buyer nothing.
       </p>
-      {
-        /* A real visible label, not a placeholder standing in for one: the placeholder vanished on
-          first keystroke, leaving the field unlabelled exactly while it was being filled in. */
-      }
-      <label class="field__label" for="pwDialogInput">New password (optional)</label>
+      <label class="field__label" for="renameDialogInput">Client name</label>
       <input
         class="input"
-        id="pwDialogInput"
+        id="renameDialogInput"
         type="text"
         autocomplete="off"
-        aria-describedby="pwDialogHint"
-        maxlength="200"
+        aria-describedby="renameDialogHint"
+        maxlength="60"
+        required
       />
-      <p class="msg err" id="pwDialogErr" hidden></p>
+      <p class="msg err" id="renameDialogErr" hidden></p>
       <div class="actions">
-        <button class="btn btn--destructive" id="pwDialogOk" type="submit">Set password</button>
-        <button class="btn btn--secondary" id="pwDialogCancel" type="button">Cancel</button>
+        <button class="btn btn--primary" id="renameDialogOk" type="submit">Save name</button>
+        <button class="btn btn--secondary" id="renameDialogCancel" type="button">Cancel</button>
       </div>
     </form>
   </dialog>

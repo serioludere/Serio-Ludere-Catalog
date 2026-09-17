@@ -2,8 +2,13 @@
 // optimistic version token checked under the in-process mutex, the AuditLog row in the SAME
 // batchUpdate as the change (atomic per call), a read-back verification for Rugs, and the request
 // walker that guarantees Rugs A (id), Q:S (formulas) and T (created_at) are never touched by an
-// update. Rows are never deleted, never inserted at the top of Rugs, never appended with
-// `values.append` (the Q:S array-formula spill makes table detection unverified).
+// update. Rows are never inserted at the top of Rugs and never appended with `values.append` (the
+// Q:S array-formula spill makes table detection unverified).
+//
+// Deleting: until 2026-09-16 nothing here could remove a row, and `assertRugRequestsSafe` still
+// refuses a delete inside any insert/update batch. Deletion now has its own door — `deleteRow`, and
+// `assertDeleteRequestsSafe` guarding it — so a delete is always a single, whole, deliberate row on
+// a named tab, never a side effect of an edit.
 import type { CellValue, SheetsClient } from '../sheets/client.ts';
 import {
   HEADERS,
@@ -199,6 +204,65 @@ export function buildAuditInsert(auditSheetId: number, audit: AuditRow): unknown
 
 export function buildAppendRows(sheetId: number, length = APPEND_ROWS): unknown {
   return { appendDimension: { sheetId, dimension: 'ROWS', length } };
+}
+
+/** Delete: one row off the target tab + the audit row, in one batch. */
+export function buildRowDeleteRequests(
+  ids: { target: number; auditLog: number },
+  row: number,
+  audit: AuditRow,
+): unknown[] {
+  const requests = [
+    {
+      deleteDimension: {
+        range: { sheetId: ids.target, dimension: 'ROWS', startIndex: row - 1, endIndex: row },
+      },
+    },
+    ...buildAuditInsert(ids.auditLog, audit),
+  ];
+  assertDeleteRequestsSafe(requests, ids.target, row);
+  return requests;
+}
+
+/**
+ * The delete counterpart of `assertRugRequestsSafe`: refuses anything that is not exactly one
+ * single-row `deleteDimension` on the expected tab. A wrong `sheetId`, a span of more than one row,
+ * a `deleteSheet`, or a stray second write all throw before the request reaches Google — the whole
+ * point being that a delete is the one admin operation with no undo.
+ */
+export function assertDeleteRequestsSafe(
+  requests: readonly unknown[],
+  targetSheetId: number,
+  row: number,
+): void {
+  if (row < 2) throw new UnsafeRequestError('never delete the header row');
+  let deletes = 0;
+  for (const raw of requests) {
+    const req = raw as Record<string, unknown>;
+    if ('deleteSheet' in req || 'deleteRange' in req) {
+      throw new UnsafeRequestError('a delete removes one row, never a range or a sheet');
+    }
+    const del = req.deleteDimension as
+      | { range?: { sheetId?: number; dimension?: string; startIndex?: number; endIndex?: number } }
+      | undefined;
+    if (!del) {
+      // Everything else in the batch must be the audit insert, which never touches the target tab.
+      const insert = req.insertDimension as { range?: { sheetId?: number } } | undefined;
+      const update = req.updateCells as { start?: { sheetId?: number } } | undefined;
+      if (insert?.range?.sheetId === targetSheetId || update?.start?.sheetId === targetSheetId) {
+        throw new UnsafeRequestError('a delete batch writes nothing else to the target tab');
+      }
+      continue;
+    }
+    deletes += 1;
+    const r = del.range ?? {};
+    if (r.sheetId !== targetSheetId) throw new UnsafeRequestError('delete targets another sheet');
+    if (r.dimension !== 'ROWS') throw new UnsafeRequestError('a delete removes ROWS, never columns');
+    if (r.startIndex !== row - 1 || r.endIndex !== row) {
+      throw new UnsafeRequestError(`delete must span exactly row ${row}`);
+    }
+  }
+  if (deletes !== 1) throw new UnsafeRequestError(`a delete batch carries one deleteDimension, got ${deletes}`);
 }
 
 /** Update: B{row}:AP{row} (everything except the Product ID) + the audit row, in one batch. */
@@ -554,6 +618,61 @@ export async function insertTopRow(
       onSheetIdError(client, e);
     }
     return { row: TOP_ROW, audit: { row: TOP_ROW, action: args.audit.action }, verified: true };
+  });
+}
+
+/**
+ * Deletes one row for good (owner, 2026-09-16), from Products or from any of the row tabs.
+ *
+ * The row is re-read INSIDE the lock and must still carry both the expected column A and the
+ * expected version hash, or the call is a 409 carrying the fresh row. That is what makes a stale row
+ * number safe: rows shift up after a delete, so a number read before someone else's delete now
+ * points at a different id, column A no longer matches, and the caller is told to reload rather than
+ * removing an innocent row. Ids are unique, so a shifted row can never impersonate the target.
+ *
+ * The audit row rides in the SAME batchUpdate, so the trail survives the row it describes. There is
+ * nothing to verify afterwards — the row is gone — so the caller's snapshot bust is what makes the
+ * new row numbers visible.
+ */
+export async function deleteRow(
+  client: Client,
+  args: {
+    tab: TabName;
+    row: number;
+    /** The id/code in column A as it was read; the row is not touched unless it still matches. */
+    expectFirstCell: string;
+    version: string;
+    audit: AuditRow;
+  },
+): Promise<CommitResult> {
+  if (args.row < 2) throw new UnsafeRequestError('never delete the header row');
+  const products = args.tab === TABS.products;
+  return withAdminLock(async () => {
+    const fresh = products
+      ? await readRugRow(client, args.row)
+      : await readRow(client, args.tab as RowTab, args.row);
+    if (cellText(fresh[0]) !== args.expectFirstCell) {
+      throw new VersionMismatchError(
+        args.tab,
+        args.row,
+        fresh,
+        `expected "${args.expectFirstCell}" in column A — the row moved or was already deleted`,
+      );
+    }
+    const current = products ? rugVersion(fresh) : rowVersion(fresh, widthOf(args.tab as RowTab));
+    if (current !== args.version) {
+      throw new VersionMismatchError(args.tab, args.row, fresh, 'row changed since it was read');
+    }
+    const ids = {
+      target: await client.sheetIdByTitle(args.tab),
+      auditLog: await client.sheetIdByTitle(TABS.auditLog),
+    };
+    try {
+      await client.batchUpdate(buildRowDeleteRequests(ids, args.row, args.audit));
+    } catch (e) {
+      onSheetIdError(client, e);
+    }
+    return { row: args.row, audit: { row: TOP_ROW, action: args.audit.action }, verified: true };
   });
 }
 

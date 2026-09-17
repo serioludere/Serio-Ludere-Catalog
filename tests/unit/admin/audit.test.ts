@@ -55,7 +55,7 @@ describe('buildAuditRow (ADMIN_SPEC §3.2)', () => {
       buildAuditRow({ ...base, requestId: 'req-1', action: 'auth.login', targetTab: '-', targetId: 'x' }),
     ).toThrow(UnauditableError);
     expect(() =>
-      buildAuditRow({ ...base, action: 'rug.delete' as never, targetTab: 'Products', targetId: 'x' }),
+      buildAuditRow({ ...base, action: 'rug.teleport' as never, targetTab: 'Products', targetId: 'x' }),
     ).toThrow(/unknown audit action/);
   });
   it('refuses a mutation whose diff would be truncated, but truncates informational events', () => {

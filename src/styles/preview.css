@@ -323,6 +323,15 @@
   text-decoration: underline;
 }
 
+/* The mark sits ABOVE the contacts (owner, 2026-09-17), both hard against the left edge of the
+   footer rather than side by side in two columns. */
+.pv-footer-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--stack-lg);
+}
+
 /* The wordmark, black (owner, 2026-09-17): this footer only ever renders in [data-mode='preview'],
    where --ink is true black. Plain descendant selector, not :global(...) — that syntax only means
    anything inside an Astro component's own scoped <style>; this is an ordinary imported stylesheet,
@@ -334,10 +343,10 @@
   color: var(--ink);
 }
 
-/* Three icon-led groups on one row, 48px apart (--stack-2xl, mode-invariant) — overrides
-   .pv-footer-col's column direction and 4px gap above, both too tight for grouped contacts. */
+/* Three icon-led groups on one row, 48px apart (--stack-2xl, mode-invariant). Declares its own
+   `display` — it is no longer a `.pv-footer-col`, so there is nothing above it to override. */
 .pv-footer-contacts {
-  flex-direction: row;
+  display: flex;
   flex-wrap: wrap;
   gap: var(--stack-2xl);
 }

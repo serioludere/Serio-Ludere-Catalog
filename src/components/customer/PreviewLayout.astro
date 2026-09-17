@@ -25,11 +25,13 @@ interface Props {
   rates: RateTable;
   /** The signed-in customer slug; published so a reaction batch can name its realm. */
   customer?: string;
+  /** 'preview-dark' only for the signed-out gate (owner, 2026-09-17); the catalogue itself stays light. */
+  mode?: 'preview' | 'preview-dark';
 }
-const { title, rates, customer } = Astro.props;
+const { title, rates, customer, mode = 'preview' } = Astro.props;
 ---
 
-<html lang="en" data-mode="preview" data-customer={customer}>
+<html lang="en" data-mode={mode} data-customer={customer}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

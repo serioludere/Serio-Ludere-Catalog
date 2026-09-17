@@ -58,9 +58,18 @@ const collections = navTabs(rugs, catalogue).filter((t) => t.count > 0);
 // Never the buyer's name (owner, 2026-09-14): the tab title is read over a shoulder, lands in
 // browser history, and is what a screen-share shows before anything else.
 const title = 'Serio Ludere';
+
+// Black background on the gate itself only (owner, 2026-09-17): once signed in, the buyer sees the
+// ordinary light catalogue.
+const showGate = !error && Boolean(customer) && !signedIn;
 ---
 
-<PreviewLayout title={title} rates={rates} customer={signedIn ? slug : undefined}>
+<PreviewLayout
+  title={title}
+  rates={rates}
+  customer={signedIn ? slug : undefined}
+  mode={showGate ? 'preview-dark' : 'preview'}
+>
   {
     error && (
       <main class="pv-state">

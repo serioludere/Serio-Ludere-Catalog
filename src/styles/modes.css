@@ -379,12 +379,22 @@
 }
 
 /* ───────────────────────────────────────────────────────────────────────────────────────────────
-   ADMIN DARK — the optional third mode for long sessions. Prestige has no dark feedback tints, so
-   those fall back to surface and carry their meaning on the hue alone.
+   ADMIN DARK — the admin login screen only (owner, 2026-09-17: black background, everything else the
+   mode's own default). Prestige has no dark feedback tints, so those fall back to surface and carry
+   their meaning on the hue alone.
+
+   This sat unreachable for a long time (nothing set data-mode="admin-dark") because the feedback
+   hues below are a real, documented failure — success/danger backgrounds are 3.18:1 on --surface —
+   and that stays true. It is safe for the login screen specifically because that page has no badge,
+   no success/warning/danger background anywhere on it: the one feedback token it reads is --danger
+   as plain text for a wrong-password message, which is a separate, smaller gap (~3.9:1 on this
+   canvas, noted where --danger is set) rather than the 3.18:1 failure below. Do not point a second
+   screen at this mode without re-checking those backgrounds.
    ─────────────────────────────────────────────────────────────────────────────────────────────── */
 [data-mode='admin-dark'] {
-  --canvas: var(--color-neutral-900);
-  --surface: var(--color-neutral-800);
+  /* Literal black, not a softened neutral-900/800: the owner asked for black specifically. */
+  --canvas: var(--color-static-black);
+  --surface: var(--color-static-black);
   --surface-raised: var(--color-neutral-700);
   --bg-inset: var(--color-neutral-950);
   --subtle: var(--color-neutral-700);
@@ -398,7 +408,12 @@
   --text-on-action: var(--color-neutral-950);
 
   --action-primary: var(--color-neutral-0); /* paper on dark */
-  --action-primary-active: var(--color-brand-red-dark);
+  /* Both used to fall through to the light modes' brand-red hover/active, which pairs with the black
+     --text-on-action above at 3.10:1 / 2.46:1 (ui-audit F-01/F-02) — a button that fails contrast the
+     moment a pointer touches it. Neutral tints keep the same near-white family the resting state is
+     in, so --text-on-action stays legible throughout. */
+  --action-primary-hover: var(--color-neutral-200);
+  --action-primary-active: var(--color-neutral-300);
   --rule: var(--color-neutral-700);
   /* neutral-700 is 1.75:1 on this canvas, so control edges take 500 (5.39:1) here rather than the
      hairline. Same split as the light modes, opposite direction. */
@@ -409,8 +424,11 @@
   /* The three feedback hues are pinned back to Prestige's originals here. The light-mode values are
      darkened to pass on their light tints, and on this canvas darker is strictly worse — so pinning
      keeps this mode exactly where it was rather than letting the light fix drag it down. Dark mode
-     needs its own LIGHTENED pair and has never had one: success and danger are 3.18:1 on surface
-     today, which is why nothing should set data-mode="admin-dark" until they exist. */
+     needs its own LIGHTENED pair and has never had one: success and danger BACKGROUNDS are 3.18:1 on
+     --surface — nothing that reads --success-bg/--danger-bg/--warning-bg should use this mode.
+     --danger as plain text (the login's wrong-password message) is a smaller, separate gap: ~3.9:1 on
+     this literal-black canvas, under the 4.5:1 AA floor for small text but clear of the 3:1 floor a
+     transient one-line message is judged against elsewhere in this file. */
   --success: var(--color-feedback-success);
   --warning: var(--color-feedback-warning);
   --danger: var(--color-feedback-danger);
@@ -438,6 +456,35 @@
   --control-x: var(--space-16);
 
   --motion-transition: var(--duration-fast);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────────────────────────
+   PREVIEW DARK — the customer's own login screen only (owner, 2026-09-17), the private-preview
+   equivalent of admin-dark above. Colour only: everything else (spacing, type, radius, motion)
+   still resolves through the base `:root, [data-mode='preview']` block, because that selector list
+   matches :root unconditionally regardless of which data-mode is actually set. The signed-in
+   catalogue keeps [data-mode='preview'] — only the signed-out gate uses this one.
+   ─────────────────────────────────────────────────────────────────────────────────────────────── */
+[data-mode='preview-dark'] {
+  --canvas: var(--color-static-black);
+  --surface: var(--color-static-black);
+  --surface-raised: var(--color-neutral-700);
+  --bg-inset: var(--color-neutral-950);
+
+  --ink: var(--color-neutral-50);
+  --ink-soft: var(--color-neutral-300);
+  --ink-muted: var(--color-neutral-500);
+  --text-on-action: var(--color-neutral-950);
+
+  --action-primary: var(--color-neutral-0);
+  /* Same fix as admin-dark: brand-red hover/active under black button text is 3.10:1 / 2.46:1. */
+  --action-primary-hover: var(--color-neutral-200);
+  --action-primary-active: var(--color-neutral-300);
+
+  --rule: var(--color-neutral-700);
+  --border-control: var(--color-neutral-500);
+  --border-strong: var(--color-neutral-500);
+  --border-focus: var(--color-neutral-0);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════════════════════

@@ -59,12 +59,16 @@ if (request.method === 'POST') {
 Astro.response.status = status;
 ---
 
-<AdminLayout title="Serio Ludere — Admin login" nav={false} sub="Admin — sign in">
+<AdminLayout title="Serio Ludere — Admin login" nav={false} sub="Admin — sign in" mode="admin-dark">
   <!--
     A1 · Login — default (Figma 47:3), A2 · wrong password (47:28). The rate-limited A3 state went
     with the attempt limit (owner, 2026-09-17).
 
     One 400-wide card centred on the page ground; A2 reddens the field border and says why.
+
+    Black background, everything else the mode's own default (owner, 2026-09-17) — see
+    [data-mode='admin-dark'] in src/styles/modes.css. The "Admin" label under the logo is gone too;
+    the logo alone is the whole brand block now.
 
     The form still posts without JavaScript. The reveal eye on the password field is the one thing
     that needs it, and Input's own script adds it progressively.
@@ -74,7 +78,6 @@ Astro.response.status = status;
 
     <div class="alogin__brand">
       <AdminLogo />
-      <p class="alogin__realm">Admin</p>
     </div>
 
     <Input
@@ -119,13 +122,6 @@ Astro.response.status = status;
     width: 160px;
     height: auto;
     color: var(--ink);
-  }
-
-  .alogin__realm {
-    margin: 0;
-    font-size: var(--text-xs);
-    line-height: var(--leading-body);
-    color: var(--ink-muted);
   }
 
   /* 47:19 is full-bleed inside the card. */

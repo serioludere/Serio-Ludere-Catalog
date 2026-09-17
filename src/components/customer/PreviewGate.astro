@@ -1,21 +1,26 @@
 ---
 // The password gate (Figma 53:3 desktop, 58:206 at 390).
 //
-// A 560-wide column centred in the viewport, three groups separated by the same 64px the rest of the
-// site uses: the studio and what this page is, the form, and the consent note.
+// A 560-wide column centred in the viewport, groups separated by the same 64px the rest of the site
+// uses: the brand mark, then the form.
 //
-// Figma 53:3 draws a fourth group, "Welcome, {name}." The owner removed it (2026-09-14): the buyer's
-// name must not appear anywhere in the customer realm. The link is a locator that already leaks half
+// Figma 53:3 draws a "Welcome, {name}." group. The owner removed it (2026-09-14): the buyer's name
+// must not appear anywhere in the customer realm. The link is a locator that already leaks half
 // their letters, and printing the name in full on the page in front of the password turns a shared
-// screen or a shoulder-glance into an identification. "A private preview, prepared for you" already
-// says the page is theirs without naming them. The name is kept in the admin dashboard, which is
-// where the studio needs it.
+// screen or a shoulder-glance into an identification. The name is kept in the admin dashboard, which
+// is where the studio needs it.
 //
 // Two things are in the code that are not drawn in Figma, both necessary:
 //   - an error line under the button, because a wrong password has to say so somewhere;
 //   - a real <label>, visually hidden, because the field's placeholder is not an accessible name.
 // The eye control IS drawn, and it reveals the password rather than decorating the field.
-import { STUDIO_NAME } from '../../lib/studio.ts';
+//
+// Owner, 2026-09-17: the brand block is now the same logo mark the admin login uses, in place of the
+// "Serio Ludere" text and its "A private preview, prepared for you" line, and the whole screen runs
+// on the same black theme as the admin login (data-mode="preview-dark", set by the parent page — see
+// [data-mode='preview-dark'] in src/styles/modes.css). The consent note below the form ("The rugs
+// you like are shared…") is gone too.
+import AdminLogo from '../admin/AdminLogo.astro';
 
 interface Props {
   slug: string;
@@ -26,8 +31,7 @@ const { slug } = Astro.props;
 <main class="pv-gate">
   <section class="pv-gate-col">
     <div class="pv-gate-brand">
-      <p class="pv-h1">{STUDIO_NAME}</p>
-      <p class="pv-lede">A private preview, prepared for you</p>
+      <AdminLogo />
     </div>
 
     <form class="pv-gate-form" method="post" action={`/api/customers/${slug}/login`} data-gate={slug}>
@@ -62,14 +66,9 @@ const { slug } = Astro.props;
           <span class="sr-only">Show password</span>
         </button>
       </div>
-      <button type="submit" class="pv-btn" data-gate-submit>View the catalogue</button>
+      <button type="submit" class="pv-btn" data-gate-submit>Enter</button>
       <p class="pv-gate-error" data-gate-error role="alert" hidden></p>
     </form>
-
-    <div class="pv-gate-note">
-      <p>The rugs you like are shared with {STUDIO_NAME}.</p>
-      <p class="pv-gate-note-2">It helps us show you more of what you&rsquo;re drawn to.</p>
-    </div>
   </section>
 </main>
 
@@ -92,8 +91,14 @@ const { slug } = Astro.props;
   .pv-gate-brand {
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: var(--stack-sm);
     width: 100%;
+  }
+  .pv-gate-brand :global(.admin-logo) {
+    width: 200px;
+    height: auto;
+    color: var(--ink);
   }
   .pv-gate-form {
     display: flex;
@@ -146,24 +151,8 @@ const { slug } = Astro.props;
     color: var(--brand);
     text-align: left;
   }
-  .pv-gate-note {
-    display: flex;
-    flex-direction: column;
-    gap: var(--stack-xs);
-    width: 100%;
-  }
-  .pv-gate-note p {
-    font-size: var(--text-sm);
-    color: var(--ink-soft);
-  }
-  /* Caption, not Body S (53:31) — raised above `.pv-gate-note p`, which would otherwise win. */
-  .pv-gate-note p.pv-gate-note-2 {
-    font-size: var(--text-xs);
-    color: var(--ink-muted);
-  }
 
-  /* At 390 the gutter is 48, not the 16 the rest of the site uses: the form is 294 wide and the
-     second consent line is dropped, because one line of reassurance is enough on a phone. */
+  /* At 390 the gutter is 48, not the 16 the rest of the site uses: the form is 294 wide. */
   @media (max-width: 767px) {
     .pv-gate {
       padding-inline: var(--stack-2xl);
@@ -171,8 +160,8 @@ const { slug } = Astro.props;
     .pv-gate-col {
       max-width: 294px;
     }
-    .pv-gate-note-2 {
-      display: none;
+    .pv-gate-brand :global(.admin-logo) {
+      width: 160px;
     }
   }
 </style>

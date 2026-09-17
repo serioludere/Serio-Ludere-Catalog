@@ -45,19 +45,21 @@ interface Props {
   meta?: string;
   /** Heading shown on the bare (login) layout. */
   sub?: string;
+  /** 'admin-dark' only for the login screen (owner, 2026-09-17); every other admin page stays light. */
+  mode?: 'admin' | 'admin-dark';
 }
 // `nav={false}` (login) renders ONE centred card and nothing else. It used to print the wordmark
 // above the slot and a strapline under it — so the login page showed "SERIO LUDERE" twice with
 // "ADMIN — SIGN IN" in brand red between them, the only red in the panel, on the first screen the
 // owner sees each session. The card carries its own brand block; A1 (47:3) draws just the card.
 // `sub` is kept in the Props for the callers that still pass it, and is no longer rendered.
-const { title, active, nav = true, meta } = Astro.props;
+const { title, active, nav = true, meta, mode = 'admin' } = Astro.props;
 const shellTab = active ? TAB_TO_SHELL[active] : undefined;
 /** The topbar title is the page name, not the document title. */
 const heading = title.replace(/^Serio Ludere\s*—\s*/, '');
 ---
 
-<html lang="en" data-mode="admin">
+<html lang="en" data-mode={mode}>
   <head>
     <meta charset="utf-8" />
     {

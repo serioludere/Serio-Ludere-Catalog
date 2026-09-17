@@ -60,7 +60,8 @@ describe('A1 · Login card (Figma 47:3 / 47:4)', () => {
   it('centres the brand block and sizes the logo mark (owner, 2026-09-16)', () => {
     expect(rule(css, '.alogin__brand')).toMatch(/align-items:\s*center/);
     expect(rule(css, '.admin-logo')).toMatch(/width:\s*160px/);
-    expect(rule(css, '.alogin__realm')).toMatch(/font-size:\s*var\(--text-xs\)/);
+    // The "Admin" label under the logo is gone (owner, 2026-09-17): the logo is the whole brand block.
+    expect(css).not.toContain('alogin__realm');
   });
 });
 

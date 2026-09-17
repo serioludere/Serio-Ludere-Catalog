@@ -111,14 +111,18 @@ describe('/{slug} — the gate', () => {
     // into an identification, and the studio already has the name in the admin.
     expect(html).not.toContain('Welcome, Hala.');
     expect(html).not.toContain('Hala');
-    // The page still says whose it is, without saying who they are.
-    expect(html).toContain('A private preview, prepared for you');
-    expect(html).toContain('View the catalogue');
+    // Owner, 2026-09-17: the brand block is the logo mark, not a text title or a standfirst line,
+    // and the gate runs on the same black theme as the admin login.
+    expect(html).not.toContain('A private preview, prepared for you');
+    expect(html).toContain('aria-label="Serio Ludere"');
+    expect(html).toContain('data-mode="preview-dark"');
+    expect(html).toContain('Enter');
+    expect(html).not.toContain('View the catalogue');
     expect(html).toContain('action="/api/customers/hala/login"');
     expect(html).toContain('autocomplete="current-password"');
     expect(html).toContain('data-gate-reveal');
-    // The buyer is told, on the gate itself, that their reactions are shared.
-    expect(html).toContain('The rugs you like are shared with Serio Ludere.');
+    // The consent note below the form is gone too (owner, 2026-09-17).
+    expect(html).not.toContain('The rugs you like are shared with Serio Ludere.');
     // No username, no reset, no account: the brief's one-field form (§10).
     expect(html).not.toContain('name="email"');
     expect(html).not.toContain('Forgot');

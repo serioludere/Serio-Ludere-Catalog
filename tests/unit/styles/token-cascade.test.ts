@@ -37,10 +37,13 @@ const EXPECTED: Record<string, [preview: string, admin: string, dark: string]> =
   /* background — owner, 2026-09-17: every light-mode ground is pure white. The handoff drew three
      off-whites (ivory page, warmer card paper, grey admin canvas) and the studio wanted one surface,
      so preview and admin now agree on #ffffff and `--subtle` is the only light-mode grey left: it is
-     what still separates a photo well, a row hover and a skeleton from the page. Dark mode is
-     untouched — it was never in use and its own grounds still have to differ. */
-  '--canvas': ['#ffffff', '#ffffff', '#141413'],
-  '--surface': ['#ffffff', '#ffffff', '#1c1c1c'],
+     what still separates a photo well, a row hover and a skeleton from the page. Dark mode's canvas
+     and surface are OFF the handoff on purpose (owner, 2026-09-17): the admin and customer login
+     screens that use this mode asked for literal black, not the handoff's softened neutral-900/800 —
+     see src/styles/modes.css. --surface-raised/--bg-inset/--subtle keep the handoff value, since
+     neither login screen has a modal or an inset well. */
+  '--canvas': ['#ffffff', '#ffffff', '#000000'],
+  '--surface': ['#ffffff', '#ffffff', '#000000'],
   '--surface-raised': ['#ffffff', '#ffffff', '#403f3c'],
   '--bg-inset': ['#ffffff', '#ffffff', '#000000'],
   '--subtle': ['#efefef', '#efefef', '#403f3c'],
@@ -53,12 +56,16 @@ const EXPECTED: Record<string, [preview: string, admin: string, dark: string]> =
   '--text-on-brand': ['#fffff5', '#fffff5', '#fffff5'],
   // action
   '--action-primary': ['#000000', '#000000', '#fffff5'],
-  '--action-primary-hover': ['#b80d09', '#b80d09', '#b80d09'],
+  // a11y deviation (dark only): the handoff's brand-red hover/active paired with this mode's black
+  // --text-on-action at 3.10:1 / 2.46:1 (ui-audit F-01/F-02) — a button that fails the moment a
+  // pointer touches it. Dark keeps the same near-white family the resting state is in instead.
+  '--action-primary-hover': ['#b80d09', '#b80d09', '#efefef'],
   '--action-danger': ['#b80d09', '#b80d09', '#b80d09'],
   '--action-danger-hover': ['#9c0b08', '#9c0b08', '#9c0b08'],
-  // Same value as --action-danger-hover, different job: the primary button's :active. Asserted so
-  // the two cannot silently drift into one another again.
-  '--action-primary-active': ['#9c0b08', '#9c0b08', '#9c0b08'],
+  // Same value as --action-danger-hover in the light modes, different job: the primary button's
+  // :active. Asserted so the two cannot silently drift into one another again THERE — dark mode
+  // deliberately diverges (see --action-primary-hover above) so it is exempt from that equality.
+  '--action-primary-active': ['#9c0b08', '#9c0b08', '#d8d6cc'],
   '--brand': ['#b80d09', '#b80d09', '#b80d09'],
   // border — focus is ink in every mode, deliberately NOT the brand red: red is the error colour,
   // and a red focus ring on a red-bordered invalid field is unreadable (handoff 66:440).

@@ -58,6 +58,15 @@ describe('customer gate: default-deny classification (brief §10)', () => {
     expect(classify('/admin', off)).toEqual({ kind: 'public' });
   });
 
+  it('leaves no third login page: /enter is neither public nor a customer (owner, 2026-09-17)', () => {
+    const off = config({ publicCatalogue: false });
+    expect(classify('/enter', off)).toEqual({ kind: 'deny' });
+    expect(classify('/enter', config())).toEqual({ kind: 'deny' });
+    expect(classify('/tags/kilim', off)).toEqual({ kind: 'deny' });
+    expect(classify('/api/catalogue', off)).toEqual({ kind: 'deny' });
+    expect(classify('/admin/login', off)).toEqual({ kind: 'public' });
+  });
+
   it('classifies a customer realm and its product page', () => {
     expect(classify('/hala', config())).toEqual({ kind: 'customer', slug: 'hala' });
     expect(classify('/hala/SL-021', config())).toEqual({

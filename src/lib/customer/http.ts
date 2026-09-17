@@ -1,9 +1,7 @@
 // Astro glue for the customer realm (brief §7, §10): the runtime singletons wired from astro:env,
-// the gate configuration for src/middleware.ts, the login throttle, and the visit recorder. All the
+// the gate configuration for src/middleware.ts and the visit recorder. All the
 // logic lives in the pure modules next to this file — this is the only one that imports the runtime.
 import { AUTH_SECRET, PUBLIC_CATALOGUE } from 'astro:env/server';
-import { RateLimiter } from '../votes/ratelimit.ts';
-import { LoginThrottle } from '../admin/login.ts';
 import { isSecureSite } from '../api.ts';
 import { getClient } from '../runtime.ts';
 import { consoleLogger } from '../sheets/errors.ts';
@@ -14,17 +12,15 @@ import { VisitThrottle, recordVisit } from './visits.ts';
 
 const secret = AUTH_SECRET && AUTH_SECRET.length >= 32 ? AUTH_SECRET : undefined;
 // `astro:env/server` is generated at server start, so a dev process older than a newly added
-// variable exports `undefined` for it. Falling through to `false` here would 404 the public site
-// with no explanation, so the schema's own default is repeated rather than inferred from falsiness.
-const publicCatalogue = PUBLIC_CATALOGUE ?? true;
+// variable exports `undefined` for it. The schema's own default (off, owner 2026-09-17: buyers only
+// browse their /{slug} link) is repeated here rather than inferred from falsiness.
+const publicCatalogue = PUBLIC_CATALOGUE ?? false;
 
 export const customerRuntime = {
   secret,
   publicCatalogue,
   isSecureSite,
   configured: customerRealmEnabled({ secret }),
-  /** Its own limiter, so a buyer's failed logins can never lock the owner out of /admin. */
-  throttle: new LoginThrottle(new RateLimiter({ maxKeys: 2000 })),
   visits: new VisitThrottle(),
 };
 

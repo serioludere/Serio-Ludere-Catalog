@@ -59,10 +59,10 @@ describe('runtime.ts with a stale astro:env (every new variable undefined)', () 
     expect(getRates().health().source).toBe('fallback');
   });
 
-  it('keeps the public catalogue reachable and robots.txt honoured rather than flipping to falsy', async () => {
+  it('keeps the public catalogue off when PUBLIC_CATALOGUE is missing (its schema default)', async () => {
     const { customerRuntime } = await import('../../src/lib/customer/http.ts');
-    // A missing PUBLIC_CATALOGUE must not 404 the whole public site.
-    expect(customerRuntime.publicCatalogue).toBe(true);
+    // Owner, 2026-09-17: the old public catalogue is retired; buyers only browse their /{slug} link.
+    expect(customerRuntime.publicCatalogue).toBe(false);
     // A missing AUTH_SECRET does disable the realm — that one is a real "off" default (brief §10).
     expect(customerRuntime.configured).toBe(false);
   });

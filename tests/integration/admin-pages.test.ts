@@ -240,7 +240,7 @@ describe('/admin/rugs/[id]', () => {
     expect(html).toContain('id="btnSave"');
     expect(html).not.toContain('id="btnArchive"');
     expect(html).not.toContain('id="btnRestore"');
-    expect(html).toContain('href="/rugs/winks"');
+    expect(html).not.toContain('id="openSite"');
     expect(html).toContain('<dialog id="confirm">');
     expect(html).toContain('my &lt;note&gt;');
     expect(html).toContain('"supplierRef":"1389"');

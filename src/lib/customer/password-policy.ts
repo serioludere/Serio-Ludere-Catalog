@@ -18,8 +18,7 @@
 
 /**
  * The floor for a password the owner types in themselves. Shorter than the admin's twelve because
- * this one is read down a phone and typed on a handset, and the login is already throttled to five
- * attempts per address per fifteen minutes. Anything the studio picks should still be more than a
+ * this one is read down a phone and typed on a handset. Anything the studio picks should still be more than a
  * first name.
  */
 export const CUSTOMER_MIN_PASSWORD = 8;

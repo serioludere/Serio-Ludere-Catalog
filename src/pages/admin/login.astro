@@ -1,7 +1,9 @@
 ---
 // /admin/login (docs/ADMIN_SPEC.md §2.1, §8.3, §9.3): a plain form POST that works without JS.
-// Order on POST: throttle check (before scrypt) → verifyPassword → cookie → 303 to `next`.
-// Failures share one generic message; Retry-After is both a header and the "Try again in n s." hint.
+// Order on POST: verifyPassword → cookie → 303 to `next`. A wrong password is a plain 401.
+//
+// No attempt limit (owner, 2026-09-17): the login used to back off and lock after repeated misses,
+// and the studio found itself locked out of its own panel. There is one owner and one password.
 // The admin gate (src/middleware.ts) already answered 404 when the panel is not configured.
 export const prerender = false;
 
@@ -23,7 +25,6 @@ let next = sanitiseNext(url.searchParams.get('next'));
 if (locals.admin) return Astro.redirect(next, 303);
 
 let message = '';
-let retryAfter = 0;
 let status = 200;
 
 if (request.method === 'POST') {
@@ -35,24 +36,7 @@ if (request.method === 'POST') {
   }
   const password = String(form?.get('password') ?? '');
   next = sanitiseNext(form?.get('next') ?? next);
-  const ipHash = requestIpHash(request, socketAddressOf(Astro));
-  const requestId = locals.requestId ?? 'none';
-  const check = adminRuntime.throttle.check(ipHash);
-  if (!check.ok) {
-    status = 429;
-    retryAfter = check.retryAfterSec;
-    if (check.auditLockout) {
-      await recordAuditEvent({
-        action: 'auth.lockout',
-        targetTab: '-',
-        targetId: check.scope,
-        ipHash,
-        requestId,
-        note: `${check.scope} lockout; retry after ${retryAfter} s`,
-      });
-    }
-  } else if (verifyPassword(adminRuntime.passwordHash, password)) {
-    adminRuntime.throttle.succeed(ipHash);
+  if (verifyPassword(adminRuntime.passwordHash, password)) {
     const now = Date.now();
     const session = newSession(adminRuntime.user, now);
     setSessionCookie(cookies, session, adminRuntime.secret!, adminRuntime.isSecureSite, now);
@@ -60,55 +44,27 @@ if (request.method === 'POST') {
       action: 'auth.login',
       targetTab: '-',
       targetId: adminRuntime.user,
-      ipHash,
-      requestId,
+      ipHash: requestIpHash(request, socketAddressOf(Astro)),
+      requestId: locals.requestId ?? 'none',
       after: { user: adminRuntime.user, absoluteExpiry: new Date(session.abs).toISOString() },
     });
     return Astro.redirect(next, 303);
-  } else {
-    const fail = adminRuntime.throttle.fail(ipHash);
-    status = 401;
-    retryAfter = fail.retryAfterSec;
-    if (fail.auditLockout) {
-      await recordAuditEvent({
-        action: 'auth.lockout',
-        targetTab: '-',
-        targetId: fail.scope,
-        ipHash,
-        requestId,
-        note: `${fail.scope} lockout after ${fail.failures} failures; retry after ${retryAfter} s`,
-      });
-    }
   }
-  // Copy from Figma 47:44 (A2) and 47:67 (A3), which supersedes ADMIN_SPEC §8's generic
-  // "Login failed." — see the note there. The generic wording exists to stop username enumeration,
-  // and this form has no username: one shared password is the only secret, so "that password is not
-  // correct" tells an attacker exactly what a generic message already told them. The throttle, which
-  // is the control that actually matters, is unchanged.
-  message =
-    status === 429
-      ? `Too many attempts — wait 60s. ${retryAfter}s remaining.`
-      : retryAfter > 0
-        ? `That password is not correct. Try again in ${retryAfter} s.`
-        : 'That password is not correct.';
+  // Copy from Figma 47:44 (A2). There is no username, so naming the password as the problem tells an
+  // attacker nothing a generic message would not.
+  status = 401;
+  message = 'That password is not correct.';
 }
 
-// A3 is the locked state: the attempt was refused before the password was read, so the field is
-// unavailable rather than invalid, and the message is a warning rather than an error.
-const locked = status === 429;
-
 Astro.response.status = status;
-if (retryAfter > 0) Astro.response.headers.set('retry-after', String(retryAfter));
 ---
 
 <AdminLayout title="Serio Ludere — Admin login" nav={false} sub="Admin — sign in">
   <!--
-    A1 · Login — default (Figma 47:3), A2 · wrong password (47:28), A3 · rate limited (47:51).
+    A1 · Login — default (Figma 47:3), A2 · wrong password (47:28). The rate-limited A3 state went
+    with the attempt limit (owner, 2026-09-17).
 
-    One 400-wide card centred on the page ground, and the three states differ only in the field: A2
-    reddens the border and says why; A3 greys the whole control, swaps the button label to "Locked"
-    and carries a WARNING-toned line, because the buyer's password was never judged — the attempt was
-    refused before it was read. That distinction is why the locked state does not set aria-invalid.
+    One 400-wide card centred on the page ground; A2 reddens the field border and says why.
 
     The form still posts without JavaScript. The reveal eye on the password field is the one thing
     that needs it, and Input's own script adds it progressively.
@@ -127,14 +83,10 @@ if (retryAfter > 0) Astro.response.headers.set('retry-after', String(retryAfter)
       label="Password"
       autocomplete="current-password"
       required
-      disabled={locked}
       error={message || undefined}
-      errorTone={locked ? 'warning' : 'danger'}
     />
 
-    <Button type="submit" style="primary" disabled={locked} class="alogin__go">
-      {locked ? 'Locked' : 'Enter'}
-    </Button>
+    <Button type="submit" style="primary" class="alogin__go">Enter</Button>
   </form>
 </AdminLayout>
 
@@ -181,10 +133,3 @@ if (retryAfter > 0) Astro.response.headers.set('retry-after', String(retryAfter)
     width: 100%;
   }
 </style>
-
-<script>
-  // 63:487: the countdown must tick. A static "47s remaining" reads as a hung page, and the natural
-  // response to a hung page is a reload — the one action that makes a throttled login worse.
-  import { initLockout } from '../../scripts/admin/lockout.ts';
-  initLockout();
-</script>

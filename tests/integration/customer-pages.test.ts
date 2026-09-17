@@ -193,17 +193,18 @@ describe('/{slug} — the signed-in catalog', () => {
     expect(html).toContain('pv-card-likes');
   });
 
-  it('offers a type filter strip closing with the buyer’s own shortlist', async () => {
+  it('filters by collection only — no tag chips, no shortlist chip', async () => {
     state.down = false;
     const { html } = await render(CustomerCatalog, '/hala', { slug: 'hala' }, { customer: 'hala' });
-    // The design replaced the collection tabs with rug-type chips, so the standfirst is gone too.
+    // Owner, 2026-09-17: buyers filter by collection, never by tag.
     expect(html).not.toContain('Flatweaves from Denizli.');
     expect(html).toContain('data-filter="all"');
-    expect(html).toContain('data-filter="liked"');
-    expect(html).toContain('data-liked-count');
-    expect(html).toMatch(/data-filter="kilim"/);
-    // Each card publishes its tags so the strip can filter without a round trip.
-    expect(html).toMatch(/data-card[^>]*data-tags="[^"]*kilim/);
+    expect(html).toMatch(/data-filter="kilims"[^>]*>\s*Kilims\s*</);
+    expect(html).not.toContain('data-filter="liked"');
+    expect(html).not.toContain('data-filter="kilim"');
+    expect(html).not.toContain('data-tags=');
+    // Each card publishes its collections so the strip can filter without a round trip.
+    expect(html).toMatch(/data-card[^>]*data-collections="[^"]*kilims/);
   });
 });
 

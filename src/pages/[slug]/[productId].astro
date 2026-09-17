@@ -23,7 +23,7 @@ import { findCustomer } from '../../lib/customer/http.ts';
 import { baseCurrency, loadCatalogue, ratesFor } from '../../lib/runtime.ts';
 import { dims, PREVIEW_SEP } from '../../lib/units.ts';
 import { driveImageUrl } from '../../lib/images.ts';
-import { catalogueRugs, cardView, tagSlug, type CardView } from '../../lib/view.ts';
+import { catalogueRugs, cardView, type CardView } from '../../lib/view.ts';
 
 const slug = (Astro.params.slug ?? '').toLowerCase();
 const productId = Astro.params.productId ?? '';
@@ -53,27 +53,25 @@ if (error || !snapshot) {
   Astro.response.statusText = 'Not Found';
 }
 
-/* Where the buyer came from. The grid writes its active chip to `?tag=` (scripts/filters.ts) and
+/* Where the buyer came from. The grid writes its active chip to `?collection=` (scripts/filters.ts) and
    the card links carry it here, so every way OUT of this page — the back link, prev/next, the
    recovery link on a missing rug — returns them to the grid they were actually looking at. Without
    it, filtering to Kilim, opening a rug and pressing Back dropped them into the unfiltered grid
    with their place lost; only the browser's own Back button happened to work. */
-const TAG_RE = /^[a-z0-9-]{1,80}$/;
-const rawTag = Astro.url.searchParams.get('tag');
-const fromTag = rawTag && TAG_RE.test(rawTag) ? rawTag : undefined;
-const q = fromTag ? `?tag=${encodeURIComponent(fromTag)}` : '';
+const SLUG_RE = /^[a-z0-9-]{1,80}$/;
+const rawCollection = Astro.url.searchParams.get('collection');
+const fromCollection = rawCollection && SLUG_RE.test(rawCollection) ? rawCollection : undefined;
+const q = fromCollection ? `?collection=${encodeURIComponent(fromCollection)}` : '';
 const gridHref = `/${slug}${q}`;
 const hrefForCard = (c: CardView): string => `/${slug}/${encodeURIComponent(c.id)}${q}`;
 
 /* Prev/next run the flat grid order, not a collection run: the preview grid is one ungrouped wall
-   filtered by TAG, so `siblings()` — which walks the same-collection run the public catalogue is
-   built from — would step through rugs the buyer cannot currently see. `liked` is per-visitor and
-   lives only in their browser, so it cannot narrow a server-rendered run; it still rides along in
-   the href so returning to the grid restores the shortlist. */
-const inTag = (c: CardView): boolean =>
-  c.tags.some((t) => (t.slug || tagSlug(t.name, catalogue.tags)) === fromTag);
-const tagged = fromTag && fromTag !== 'liked' ? cards.filter(inTag) : [];
-const run = card && tagged.includes(card) ? tagged : cards;
+   narrowed by the chosen collection chip, so the run is the cards in that collection (a rug may
+   belong to several) and falls back to the whole wall when there is no chip or the rug is not in it. */
+const inCollection = (c: CardView): boolean =>
+  fromCollection !== undefined && c.collectionSlugs.includes(fromCollection);
+const filtered = fromCollection ? cards.filter(inCollection) : [];
+const run = card && filtered.includes(card) ? filtered : cards;
 const at = card ? run.indexOf(card) : -1;
 const sib = at >= 0 ? { index: at, total: run.length, prev: run[at - 1], next: run[at + 1] } : undefined;
 

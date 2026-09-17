@@ -17,13 +17,12 @@ beforeEach(() => {
 const STRIP = `
   <nav class="pv-filters">
     <button class="pv-chip is-on" data-filter="all" aria-pressed="true">All</button>
-    <button class="pv-chip" data-filter="kilim" aria-pressed="false">Kilim</button>
+    <button class="pv-chip" data-filter="kilims" aria-pressed="false">Kilims</button>
     <button class="pv-chip" data-filter="gabbeh" aria-pressed="false">Gabbeh</button>
-    <button class="pv-chip" data-filter="liked" aria-pressed="false">Liked <span data-liked-count>0</span></button>
   </nav>
-  <div data-card data-rug="SL-1" data-tags="kilim denizli"></div>
-  <div data-card data-rug="SL-2" data-tags="gabbeh"></div>
-  <div data-card data-rug="SL-3" data-tags=""></div>
+  <div data-card data-rug="SL-1" data-collections="kilims antique"></div>
+  <div data-card data-rug="SL-2" data-collections="gabbeh"></div>
+  <div data-card data-rug="SL-3" data-collections="more"></div>
   <p data-grid-empty hidden></p>`;
 
 /** A window stand-in: filters.ts reads the query string and rewrites it with replaceState. */
@@ -50,77 +49,46 @@ describe('filters.ts', () => {
     unbind = undefined;
   });
 
-  it('shows everything under All and narrows to one tag on click', () => {
+  it('shows everything under All and narrows to one collection on click', () => {
     page(STRIP);
     const { win, replaceState } = fakeWin();
     unbind = bindFilters({ win });
     expect(shown()).toEqual(['SL-1', 'SL-2', 'SL-3']);
 
-    document.querySelector<HTMLButtonElement>('[data-filter="kilim"]')!.click();
+    document.querySelector<HTMLButtonElement>('[data-filter="kilims"]')!.click();
     expect(shown()).toEqual(['SL-1']);
-    expect(document.querySelector('[data-filter="kilim"]')?.getAttribute('aria-pressed')).toBe('true');
+    expect(document.querySelector('[data-filter="kilims"]')?.getAttribute('aria-pressed')).toBe('true');
     expect(document.querySelector('[data-filter="all"]')?.getAttribute('aria-pressed')).toBe('false');
     // The choice survives a reload and the Back button.
-    expect(String(replaceState.mock.calls.at(-1)?.[2])).toContain('tag=kilim');
+    expect(String(replaceState.mock.calls.at(-1)?.[2])).toContain('collection=kilims');
 
     document.querySelector<HTMLButtonElement>('[data-filter="all"]')!.click();
     expect(shown()).toEqual(['SL-1', 'SL-2', 'SL-3']);
-    expect(String(replaceState.mock.calls.at(-1)?.[2])).not.toContain('tag=');
+    expect(String(replaceState.mock.calls.at(-1)?.[2])).not.toContain('collection=');
   });
 
-  it('honours ?tag= on load and ignores one that is not on the page', () => {
+  it('honours ?collection= on load and ignores one that is not on the page', () => {
     page(STRIP);
-    unbind = bindFilters({ win: fakeWin('?tag=gabbeh').win });
+    unbind = bindFilters({ win: fakeWin('?collection=gabbeh').win });
     expect(shown()).toEqual(['SL-2']);
     unbind();
 
     page(STRIP);
-    unbind = bindFilters({ win: fakeWin('?tag=nothing-like-this').win });
+    unbind = bindFilters({ win: fakeWin('?collection=nothing-like-this').win });
     expect(shown()).toEqual(['SL-1', 'SL-2', 'SL-3']);
   });
 
-  it('hides the shortlist chip until something is liked, and counts only likes', () => {
-    page(STRIP);
+  it('matches a rug in several collections under each of them', () => {
+    page(STRIP.replace('data-collections="gabbeh"', 'data-collections="gabbeh kilims"'));
     unbind = bindFilters({ win: fakeWin().win });
-    const chip = document.querySelector<HTMLButtonElement>('[data-filter="liked"]')!;
-    expect(chip.hidden).toBe(true);
-    expect(document.querySelector('[data-liked-count]')?.textContent).toBe('0');
-    unbind();
-
-    // A dislike is not a shortlist entry.
-    localStorage.setItem('sl-saved', JSON.stringify({ 'SL-1': 'liked', 'SL-2': 'disliked' }));
-    page(STRIP);
-    unbind = bindFilters({ win: fakeWin().win });
-    expect(document.querySelector<HTMLButtonElement>('[data-filter="liked"]')!.hidden).toBe(false);
-    expect(document.querySelector('[data-liked-count]')?.textContent).toBe('1');
-    document.querySelector<HTMLButtonElement>('[data-filter="liked"]')!.click();
-    expect(shown()).toEqual(['SL-1']);
-  });
-
-  it('follows the shortlist live as the visitor reacts, and steps back off an empty one', () => {
-    localStorage.setItem('sl-saved', JSON.stringify({ 'SL-1': 'liked' }));
-    page(STRIP);
-    unbind = bindFilters({ win: fakeWin().win });
-    document.querySelector<HTMLButtonElement>('[data-filter="liked"]')!.click();
-    expect(shown()).toEqual(['SL-1']);
-
-    // The buyer likes a second rug; votes.ts announces it rather than the strip polling.
-    localStorage.setItem('sl-saved', JSON.stringify({ 'SL-1': 'liked', 'SL-2': 'liked' }));
-    document.dispatchEvent(new CustomEvent('sl:reaction'));
+    document.querySelector<HTMLButtonElement>('[data-filter="kilims"]')!.click();
     expect(shown()).toEqual(['SL-1', 'SL-2']);
-    expect(document.querySelector('[data-liked-count]')?.textContent).toBe('2');
-
-    // …then un-likes both. Standing on an empty shortlist would be a blank grid with no way back.
-    localStorage.setItem('sl-saved', JSON.stringify({}));
-    document.dispatchEvent(new CustomEvent('sl:reaction'));
-    expect(shown()).toEqual(['SL-1', 'SL-2', 'SL-3']);
-    expect(document.querySelector<HTMLButtonElement>('[data-filter="liked"]')!.hidden).toBe(true);
+    document.querySelector<HTMLButtonElement>('[data-filter="gabbeh"]')!.click();
+    expect(shown()).toEqual(['SL-2']);
   });
 
   it('announces an empty result instead of leaving a blank band', () => {
-    page(
-      STRIP.replace('data-tags="gabbeh"', 'data-tags="kilim"').replace('data-tags=""', 'data-tags="kilim"'),
-    );
+    page(STRIP.replace('data-collections="gabbeh"', 'data-collections="kilims"'));
     unbind = bindFilters({ win: fakeWin().win });
     const empty = document.querySelector<HTMLElement>('[data-grid-empty]')!;
     expect(empty.hidden).toBe(true);

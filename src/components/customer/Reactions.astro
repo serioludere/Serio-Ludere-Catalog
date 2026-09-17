@@ -7,10 +7,11 @@
 //    border_radius 100, icon_size 18, icon_thickness 1, #000000 on #ffffff. This is the storefront's
 //    own wishlist control."
 //
-//   "Syncing: the tapped circle keeps its filled state at 45% glyph opacity plus a 4px muted dot.
-//    Reactions buffer 2-3s and flush in batches, so this state is common — it must read as 'noted,
-//    not yet stored'. Failed: the optimistic state is HELD and a 12px alert glyph appears. Retry is
-//    automatic."
+//   "Failed: the optimistic state is HELD and a 12px alert glyph appears. Retry is automatic."
+//
+// Owner, 2026-09-17: the like turns solid red the instant it is tapped. Reactions still buffer 2-3s
+// and flush in the background, but that is no longer drawn — the old 45% glyph and muted dot made
+// a like look as if it took seconds to register.
 //
 //   "Accessibility: real focusable buttons with text labels ('Like this rug'), never icon-only.
 //    Pressed maps to aria-pressed; the buffered pending state is deliberately NOT announced."
@@ -19,9 +20,8 @@
 // and silent. The label text is a visually hidden span rather than an aria-label so voice control
 // can address the button by the words the design gives it.
 //
-// The glyph is the exported 16×16 asset, unchanged except that the hard-coded stroke becomes
-// `currentColor` — which is what the icon documentation asks for. It sits at the top-left of an
-// 18×18 box, as drawn.
+// The glyph is the exported 16×16 asset drawn at 32×32 (owner, 2026-09-17: 100% bigger), with the
+// hard-coded stroke as `currentColor`. It sits at the top-left of a 36×36 box.
 interface Props {
   rugId: string;
   /** Where the like is offered: `card` on the grid, `detail` on the rug's own page. */
@@ -40,7 +40,7 @@ const { rugId, mode = 'card' } = Astro.props;
     aria-pressed="false"
   >
     <span class="pv-glyph" aria-hidden="true">
-      <svg viewBox="0 0 16 16" width="16" height="16" fill="none">
+      <svg viewBox="0 0 16 16" width="32" height="32" fill="none">
         <path
           d="M8 13.4C8 13.4 2.6 10.2 2.6 6.6C2.40109 5.88392 2.49479 5.11814 2.86048 4.47114C3.22618 3.82414 3.83392 3.34891 4.55 3.15C5.26608 2.95109 6.03186 3.04479 6.67886 3.41048C7.32586 3.77618 7.80109 4.38392 8 5.1C8.19891 4.38392 8.67414 3.77618 9.32114 3.41048C9.96814 3.04479 10.7339 2.95109 11.45 3.15C12.1661 3.34891 12.7738 3.82414 13.1395 4.47114C13.5052 5.11814 13.5989 5.88392 13.4 6.6C13.4 10.2 8 13.4 8 13.4Z"
           stroke="currentColor"
@@ -66,10 +66,10 @@ const { rugId, mode = 'card' } = Astro.props;
     display: flex;
     align-items: center;
     gap: var(--tight);
-    min-height: 44px;
+    min-height: 64px;
   }
 
-  /* 32px hit area, no container chrome (owner, 2026-09-16: no circle, no border — just the glyph).
+  /* 64px hit area, no container chrome (owner, 2026-09-16: no circle, no border — just the glyph).
      Neutral is ink; pressed fills the heart red through currentColor. */
   .pv-circle {
     position: relative;
@@ -77,8 +77,8 @@ const { rugId, mode = 'card' } = Astro.props;
     align-items: center;
     justify-content: center;
     flex: none;
-    width: 32px;
-    height: 32px;
+    width: 64px;
+    height: 64px;
     padding: 0;
     border: none;
     border-radius: var(--radius-pill);
@@ -98,12 +98,12 @@ const { rugId, mode = 'card' } = Astro.props;
     stroke: var(--brand);
   }
 
-  /* The glyph box is 18 with the 16px artwork at its top-left, exactly as the component is drawn. */
+  /* The glyph box is 36 with the 32px artwork at its top-left: the drawn 18/16 geometry, doubled. */
   .pv-glyph {
     position: relative;
     display: block;
-    width: 18px;
-    height: 18px;
+    width: 36px;
+    height: 36px;
   }
   .pv-glyph svg {
     position: absolute;
@@ -111,21 +111,10 @@ const { rugId, mode = 'card' } = Astro.props;
     top: 0;
   }
 
-  /* Syncing: the fill is held and the glyph drops to 45%. Never announced. */
-  .pv-circle[data-sync] .pv-glyph {
-    opacity: 0.45;
-  }
-
+  /* The background save is not drawn (owner, 2026-09-17): the marker stays in the markup for
+     votes.ts, but a tapped heart is fully red straight away. */
   .pv-sync {
     display: none;
-    flex: none;
-    width: 4px;
-    height: 4px;
-    border-radius: var(--radius-pill);
-    background: var(--ink-muted);
-  }
-  .pv-react[data-syncing] .pv-sync {
-    display: block;
   }
 
   /* Failed: the optimistic state stays put and this appears beside it. Retry is automatic, so there
@@ -139,19 +128,6 @@ const { rugId, mode = 'card' } = Astro.props;
   }
   .pv-react[data-failed] .pv-alert {
     display: block;
-  }
-  .pv-react[data-failed] .pv-sync {
-    display: none;
-  }
-
-  /* 44px target on a coarse pointer without moving the 32px circle. */
-  @media (pointer: coarse) {
-    .pv-circle::after {
-      content: '';
-      position: absolute;
-      inset: -6px;
-      border-radius: inherit;
-    }
   }
 </style>
 

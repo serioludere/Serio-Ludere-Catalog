@@ -54,7 +54,6 @@ const tagChips = tags.map((t) => ({
   label: t.name,
   pressed: pressed.has(t.name.toLowerCase()),
 }));
-const openSite = rug ? `/rugs/${rug.slug}` : '#';
 // Membership, not the primary: the form must tick every collection the rug is filed under.
 const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().toLowerCase()));
 ---
@@ -302,9 +301,6 @@ const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().t
           <button class="btn btn--primary" id="btnSave" type="button">
             Save
           </button>
-          <a id="openSite" class="chip" href={openSite} target="_blank" rel="noopener">
-            Open on site
-          </a>
         </>
       )
     }

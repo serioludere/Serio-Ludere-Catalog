@@ -1,8 +1,0 @@
----
-// The root path always sends visitors straight to the admin panel (owner, 2026-09-16): this
-// deployment is a build preview, not the public storefront. `/admin` is on the customer gate's own
-// always-public allowlist (src/lib/customer/gate.ts), so it is reachable regardless of the customer
-// realm or public-catalogue settings.
-export const prerender = false;
-return Astro.redirect('/admin', 303);
----

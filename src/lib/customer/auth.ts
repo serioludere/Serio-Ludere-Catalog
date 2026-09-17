@@ -18,7 +18,7 @@ export const RESERVED_SLUGS: readonly string[] = [
   'api',
   'login',
   'logout',
-  'enter', // the site password page (src/lib/site/gate.ts)
+  'enter', // the retired site-password page; kept reserved so no customer can take the slug
   '_astro',
   '_image',
   'assets',
@@ -126,7 +126,7 @@ export function hashCustomerPassword(password: string): string {
  * Every buyer unlocks their `/{slug}` preview with this same password (owner, 2026-09-16: one
  * password for the whole customer realm, so there is nothing to generate or read down a phone per
  * buyer). Built in so a plain `git push` deploys it — the same pattern as the public catalogue's
- * `DEFAULT_SITE_PASSWORD_HASH` (../site/http.ts). To change it: hash the new password with
+ * site-password constant this project used to have. To change it: hash the new password with
  * `hashCustomerPassword()` and paste the result here.
  */
 export const CUSTOMER_SHARED_PASSWORD_HASH =

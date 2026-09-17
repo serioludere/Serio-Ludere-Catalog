@@ -3,7 +3,6 @@
 //   npm run admin:password             prompt (echo off), print ADMIN_PASSWORD_HASH=scrypt.131072.8.1.<salt>.<key>
 //   npm run admin:password -- --write  also store it in .env (upsertEnv)
 //   echo 'p@ss…' | npm run admin:password   piped: the whole stdin (trailing newline stripped) is the password
-//   npm run admin:password -- --site   the SITE password instead (SITE_PASSWORD_HASH, the public catalogue)
 //
 // The password never leaves the process: nothing is logged but the hash. Requires ≥ 12 characters.
 import { createInterface } from 'node:readline';
@@ -70,7 +69,7 @@ async function main(): Promise<void> {
     if (again !== password) throw new Error('the two entries differ');
   }
   const started = Date.now();
-  const name = flag('site') === 'true' ? 'SITE_PASSWORD_HASH' : 'ADMIN_PASSWORD_HASH';
+  const name = 'ADMIN_PASSWORD_HASH';
   const hash = hashPassword(password);
   const ms = Date.now() - started;
   if (!verifyPassword(hash, password)) throw new Error('self-check failed');

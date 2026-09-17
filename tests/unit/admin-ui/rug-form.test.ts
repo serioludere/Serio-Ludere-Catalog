@@ -526,8 +526,8 @@ describe('edit mode', () => {
     // Products have no status since 2026-09-16: no Archive/Restore pair, and the site link is always live.
     expect(document.getElementById('btnArchive')).toBeNull();
     expect(document.getElementById('btnRestore')).toBeNull();
-    expect(document.getElementById('openSite')?.getAttribute('href')).toBe('/rugs/winks');
-    expect(document.getElementById('openSite')?.hasAttribute('aria-disabled')).toBe(false);
+    // The public /rugs pages are off (owner, 2026-09-17), so there is no 'Open on site' link to follow.
+    expect(document.getElementById('openSite')).toBeNull();
     set('f_name', 'Winks II');
     await form.save();
     expect(calls[0]?.url).toBe('/api/admin/rugs/SL-021');

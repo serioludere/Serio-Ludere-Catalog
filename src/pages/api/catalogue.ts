@@ -3,11 +3,10 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import { loadCatalogue } from '../../lib/runtime.ts';
-import { publicCachePolicy } from '../../lib/site/http.ts';
 import { catalogueDto } from '../../lib/votes/dto.ts';
 
 export const GET: APIRoute = async (context) => {
-  context.cache.set(publicCachePolicy());
+  context.cache.set(false); // the public catalogue is off by default since 2026-09-17
   const { snapshot, error } = await loadCatalogue();
   if (!snapshot) {
     context.cache.set(false);

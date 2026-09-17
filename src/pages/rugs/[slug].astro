@@ -16,7 +16,6 @@ import Specs from '../../components/Specs.astro';
 import VoteButtons from '../../components/VoteButtons.astro';
 import { money } from '../../lib/currency.ts';
 import { baseCurrency, loadCatalogue, ratesFor } from '../../lib/runtime.ts';
-import { publicCachePolicy } from '../../lib/site/http.ts';
 import {
   catalogueRugs,
   cardView,
@@ -45,7 +44,7 @@ if (error || !snapshot) {
   Astro.response.status = 404;
   Astro.response.statusText = 'Not Found';
 } else {
-  Astro.cache.set(publicCachePolicy());
+  Astro.cache.set(false); // the public catalogue is off by default since 2026-09-17
 }
 
 const priceText = card ? money(card.priceUsd, baseCurrency, rates, 'en-US') : '';

@@ -161,32 +161,24 @@ describe('/admin/login', () => {
     expect(writes.length).toBe(before + 1);
     expect(lastAuditAction()).toBe('auth.login');
   });
-  it('POST after repeated failures is throttled with Retry-After before scrypt runs', async () => {
+  it('POST never locks: ten wrong passwords are ten 401s, and the right one still signs in', async () => {
     const container = await AstroContainer.create();
-    for (let i = 0; i < 3; i++) {
-      await container.renderToResponse(Login, {
+    for (let i = 0; i < 10; i++) {
+      const res = await container.renderToResponse(Login, {
         request: form({ password: 'still wrong!!!' }),
         locals,
         partial: false,
       });
+      expect(res.status).toBe(401);
+      expect(res.headers.get('retry-after')).toBeNull();
     }
     const res = await container.renderToResponse(Login, {
       request: form({ password: PASSWORD }),
       locals,
       partial: false,
     });
-    expect(res.status).toBe(429);
-    expect(res.headers.get('retry-after')).toMatch(/^\d+$/);
-    // A3 (47:51/47:67). Locked, not invalid: the attempt never reached the password, so the field
-    // is disabled with a WARNING-toned line and the button reads "Locked" rather than "Enter".
-    const throttled = await res.text();
-    expect(throttled).toMatch(/Too many attempts — wait 60s\. \d+s remaining\./);
-    expect(throttled).toMatch(/<p class="field__message field__message--warning"/);
-    expect(throttled).not.toContain('aria-invalid');
-    expect(throttled).toMatch(/<button type="submit"[^>]*disabled[^>]*>\s*Locked\s*<\/button>/);
-    // the session cookie is not minted while throttled, even with the right password
-    expect([...App.getSetCookieFromResponse(res)]).toHaveLength(0);
-    adminRuntime.throttle.succeed('a'.repeat(32)); // not this ip; state is per ip hash
+    expect(res.status).toBe(303);
+    expect([...App.getSetCookieFromResponse(res)]).toHaveLength(1);
   });
   it('an already logged-in visitor is bounced to next', async () => {
     const container = await AstroContainer.create();

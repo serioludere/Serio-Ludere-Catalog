@@ -23,7 +23,6 @@ const ALWAYS_PUBLIC: readonly string[] = [
   '/admin',
   '/api/admin',
   '/api/customers',
-  '/enter', // the site password page (src/lib/site/gate.ts)
   '/api/health',
   '/api/revalidate',
   '/api/reactions',

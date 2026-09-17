@@ -60,24 +60,15 @@ describe('gate.ts', () => {
     unbind();
   });
 
-  it('names the throttle and survives a network failure without a redirect', async () => {
+  it('survives a network failure without a redirect', async () => {
     page(GATE);
-    const throttled = (async () =>
-      new Response(JSON.stringify({ ok: false, error: 'too many attempts' }), {
-        status: 429,
-      })) as unknown as typeof fetch;
     const reload = vi.fn();
-    let unbind = bindGate({ fetchImpl: throttled, reload });
     document.querySelector<HTMLInputElement>('input')!.value = 'x'.repeat(12);
-    document.querySelector<HTMLFormElement>('form')!.requestSubmit();
     const error = document.querySelector<HTMLElement>('[data-gate-error]')!;
-    await vi.waitFor(() => expect(error.textContent).toContain('Too many attempts'));
-    unbind();
-
     const dead = (async () => {
       throw new Error('offline');
     }) as unknown as typeof fetch;
-    unbind = bindGate({ fetchImpl: dead, reload });
+    const unbind = bindGate({ fetchImpl: dead, reload });
     document.querySelector<HTMLFormElement>('form')!.requestSubmit();
     await vi.waitFor(() => expect(error.textContent).toContain('network'));
     expect(reload).not.toHaveBeenCalled();

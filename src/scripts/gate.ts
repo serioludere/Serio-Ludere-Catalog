@@ -9,12 +9,10 @@ interface LoginResponse {
   ok: boolean;
   redirect?: string;
   error?: string;
-  retryAfterSec?: number;
 }
 
 const MESSAGES: Record<string, string> = {
   'invalid credentials': 'That password did not match. Check the message the studio sent you.',
-  'too many attempts': 'Too many attempts. Wait a moment and try again.',
   unavailable: 'The catalogue is not reachable right now. Try again in a minute.',
 };
 

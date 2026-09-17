@@ -1,0 +1,80 @@
+---
+// The filter strip (Figma 53:42), by collection only (owner, 2026-09-17: buyers never filter by tag).
+//
+// "All" plus one chip per collection that has rugs, in the Collections sort order. Square chips, 8px
+// apart, on the page's white ground with a hairline edge; the pressed one is filled with ink.
+//
+// The row wraps on desktop but not on a phone: at 390 it scrolls sideways and the last chip is cut
+// at the frame edge rather than folding onto a second line. The cut IS the affordance, which is why
+// no scrollbar is drawn.
+interface Props {
+  collections: Array<{ slug: string; name: string; count: number }>;
+}
+const { collections } = Astro.props;
+---
+
+<nav class="pv-filters" aria-label="Filter by collection">
+  <button type="button" class="pv-chip is-on" data-filter="all" aria-pressed="true">All</button>
+  {
+    collections.map((c) => (
+      <button type="button" class="pv-chip" data-filter={c.slug} aria-pressed="false">
+        {c.name}
+      </button>
+    ))
+  }
+</nav>
+
+<style>
+  .pv-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--stack-sm);
+  }
+
+  .pv-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: calc(var(--stack-sm) - var(--rule-width)) calc(var(--stack-lg) - var(--rule-width));
+    border: var(--rule-width) solid var(--rule);
+    border-radius: var(--radius);
+    background: #ffffff;
+    color: var(--ink);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    font-weight: 400;
+    line-height: var(--leading-body);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: border-color var(--motion-quick) var(--motion-ease);
+  }
+  .pv-chip:hover {
+    border-color: var(--ink);
+  }
+
+  .pv-chip.is-on,
+  .pv-chip[aria-pressed='true'] {
+    border-color: var(--ink);
+    background: var(--ink);
+    color: #ffffff;
+  }
+
+  @media (max-width: 767px) {
+    .pv-filters {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      scrollbar-width: none;
+    }
+    .pv-filters::-webkit-scrollbar {
+      display: none;
+    }
+    .pv-chip {
+      flex: none;
+    }
+  }
+</style>
+
+<script>
+  import { initFilters } from '../../scripts/filters.ts';
+  initFilters();
+</script>

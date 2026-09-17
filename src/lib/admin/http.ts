@@ -15,7 +15,6 @@ import {
 import type * as z from 'zod';
 import {
   ADMIN_MAX_JSON_BODY,
-  failLimiter,
   isSecureSite,
   noStore,
   rejectCrossSite,
@@ -38,7 +37,6 @@ import { UnauditableError, buildAuditRow, type AuditInput, type AuditRow } from 
 import { issuesOf } from './dto.ts';
 import { adminConfigured, type GateConfig } from './gate.ts';
 import { invalidateCatalogue, type InvalidateResult } from './invalidate.ts';
-import { LoginThrottle } from './login.ts';
 import { adminRugFromCells } from './read.ts';
 import { RowConflictError, VersionMismatchError, appendAudit } from './write.ts';
 
@@ -57,8 +55,6 @@ export const adminRuntime = {
   retailMarkup: RETAIL_MARKUP,
   configured: adminConfigured({ secret, passwordHash }),
   revocations: new Revocations(),
-  /** Login failures share the small attacker-driven limiter with /api/revalidate. */
-  throttle: new LoginThrottle(failLimiter),
   /** Per-session API limits (§1.3). */
   limiter: new RateLimiter({ maxKeys: 1000 }),
   /** Filled by the Drive scope check (Phase 10); undefined = not checked yet. */

@@ -240,7 +240,6 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
   const btnAdd = maybe<HTMLButtonElement>('btnAdd', doc);
   const btnClear = maybe<HTMLButtonElement>('btnClear', doc);
   const btnSave = maybe<HTMLButtonElement>('btnSave', doc);
-  const openSite = maybe<HTMLAnchorElement>('openSite', doc);
   const m2 = byId('m2', doc);
 
   const actionButtons = [btnFetch, btnAdd, btnSave, btnNewTag].filter(
@@ -322,11 +321,6 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     f.slug.value = slugify(f.name.value.trim() || (yourName?.value.trim() ?? '')) || '';
   };
 
-  /** Every product is on the site now that there is no status, so the link only tracks the slug. */
-  const applyOpenSiteHref = (): void => {
-    if (openSite) openSite.href = `/rugs/${encodeURIComponent(f.slug.value.trim())}`;
-  };
-
   /* ---------- fill / collect ---------- */
 
   const fill = (rug: RugLike): void => {
@@ -359,7 +353,6 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     f.notes.value = rug.notes;
     f.photos.value = rug.photos.join('\n');
     f.version.value = rug.version;
-    applyOpenSiteHref();
   };
 
   const collect = (): RugBody => {
@@ -877,7 +870,6 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
   else if (!edit) {
     if (!f.id.value) f.id.value = data.nextId ?? '';
   }
-  applyOpenSiteHref();
 
   // P5-P9. Built last so every handler it closes over already exists.
   const parts = fetchModalParts(doc);

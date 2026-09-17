@@ -112,14 +112,10 @@ export default defineConfig({
       // Customer realm + FX (brief §8, §10, §18). AUTH_SECRET signs customer session cookies; when it
       // is unset the customer realm stays disabled and /{slug} answers 404.
       AUTH_SECRET: envField.string({ context: 'server', access: 'secret', optional: true, min: 32 }),
-      // Keeps the public catalogue (/, /rugs/*, /tags/*) reachable without a customer session. Set
-      // it to false for the brief's posture, where the site serves only /{slug} and /admin (§10).
-      PUBLIC_CATALOGUE: envField.boolean({ context: 'server', access: 'secret', default: true }),
-      // Owner, 2026-09-15: one shared password in front of the public catalogue (/, /rugs/*, /tags/*).
-      // The default hash lives in src/lib/site/http.ts; this overrides it, and `none` turns the gate
-      // off. Generate with `npm run admin:password -- --site`. The cookie is signed with AUTH_SECRET
-      // (or ADMIN_SESSION_SECRET).
-      SITE_PASSWORD_HASH: envField.string({ context: 'server', access: 'secret', optional: true }),
+      // The old public catalogue (/rugs/*, /tags/*, /api/catalogue). Off by default since 2026-09-17:
+      // the site serves only /admin and each buyer's /{slug} (brief §10), and `/` redirects to /admin.
+      // Turning it on opens those pages to anyone — there is no longer a password in front of them.
+      PUBLIC_CATALOGUE: envField.boolean({ context: 'server', access: 'secret', default: false }),
       BASE_CURRENCY: envField.string({ context: 'server', access: 'secret', default: 'USD' }),
       FX_API_URL: envField.string({
         context: 'server',

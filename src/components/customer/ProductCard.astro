@@ -1,19 +1,11 @@
 ---
 // Product Card / Preview (Figma 53:62 and the 358-wide mobile variant).
 //
-// 300 × 457 on desktop: a 4:5 image box on the surface with the like control pinned to its bottom
-// right, then a 12px gap, then three lines 4px apart — title, size, price. No rating line, no meta
-// list, no collection label: the design strips the card back to what a buyer scanning a grid needs.
+// A 2:3 image box with the like control pinned to its bottom right, then a 12px gap, then three
+// centred lines 4px apart — title, size, price. No rating line, no meta list, no collection label.
 //
-// The photo is `contain`, not `cover`, even though the aspect box is described as a crop. What the
-// frame actually draws is a rug floating clear of the box edges on the surface colour, and a rug is
-// judged on its border — cropping one to fill a box cuts off the thing the buyer is looking at. The
-// 4:5 box is the crop; the artwork inside it is never trimmed.
-//
-// 2026-09 refresh: the image box takes a hairline so it reads as a plate (surface on canvas is
-// 1.02:1 — without an edge the grid was floating rugs with nothing to align them), the whole card
-// responds to hover with the storefront's own 600ms ease-out on the photo, and the name steps up to
-// the lead size in medium weight so a row of cards can be scanned by name rather than by picture.
+// Owner, 2026-09-17: no border on the card, everything centred, and the photo fills the 2:3 box —
+// `cover` at the full height, never shrunk inside padding. The photo keeps a gentle hover zoom.
 import { money, type RateTable } from '../../lib/currency.ts';
 import { dims, PREVIEW_SEP } from '../../lib/units.ts';
 import { badgesFor, visibleLikes, type CardView } from '../../lib/view.ts';
@@ -105,25 +97,18 @@ const likes = visibleLikes(card.likes);
 
   .pv-card-image {
     position: relative;
-    aspect-ratio: 4 / 5;
+    aspect-ratio: 2 / 3;
     background: var(--surface);
-    border: var(--rule-width) solid var(--rule);
     overflow: hidden;
-    transition: border-color var(--motion-quick) var(--motion-ease);
   }
   .pv-card-image img {
+    display: block;
     width: 100%;
     height: 100%;
-    object-fit: contain;
-    padding: 12%;
+    object-fit: cover;
   }
-  .pv-card:hover .pv-card-image,
-  .pv-card:focus-within .pv-card-image {
-    border-color: var(--border-control);
-  }
-  /* The storefront's own image hover, at a gentler amount: 600ms ease-out (product_card_image_zoom),
-     but 4% rather than 30% — a rug is `contain`ed with 12% of air, and a 30% zoom would push its
-     border out of the box, which is the one thing the buyer is looking at. Pointer devices only. */
+  /* The storefront's own image hover, at a gentler amount: 600ms ease-out, 4% rather than 30%.
+     Pointer devices only. */
   @media (hover: hover) and (prefers-reduced-motion: no-preference) {
     .pv-card-image img {
       transition: transform var(--motion-transition) var(--motion-ease);
@@ -204,7 +189,9 @@ const likes = visibleLikes(card.likes);
   .pv-card-text {
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: var(--stack-xs);
+    text-align: center;
   }
   .pv-card-name {
     font-size: var(--text-lg);

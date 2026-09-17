@@ -8,13 +8,15 @@
 // identical for "no such customer", "inactive customer" and "wrong password": one `invalid
 // credentials`, one 401, after the same amount of work — verification runs against the fixed shared
 // hash either way, so a slug that does not exist still pays the same scrypt cost and the timing does
-// not leak which slugs are real. Rate limiting runs BEFORE the scrypt verification (~184 ms of CPU
-// and 128 MiB).
+// not leak which slugs are real.
+//
+// No attempt limit (owner, 2026-09-17): a buyer who mistypes the studio's password a few times
+// should be able to keep trying, not be told to wait.
 export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import * as z from 'zod';
-import { noStore, rejectCrossSite, requestIpHash, socketAddressOf } from '../../../../lib/api.ts';
+import { noStore, rejectCrossSite } from '../../../../lib/api.ts';
 import {
   CUSTOMER_SHARED_PASSWORD_HASH,
   makeCustomerToken,
@@ -48,27 +50,13 @@ export const POST: APIRoute = async (context) => {
   const parsed = Body.safeParse(raw);
   if (!parsed.success) return noStore({ ok: false, error: 'bad request' }, 400);
 
-  const ip = requestIpHash(request, socketAddressOf(context));
-  const check = customerRuntime.throttle.check(ip);
-  if (!check.ok) {
-    return noStore({ ok: false, error: 'too many attempts', retryAfterSec: check.retryAfterSec }, 429, {
-      'retry-after': String(Math.max(1, check.retryAfterSec)),
-    });
-  }
-
   const { snapshot } = await loadCatalogue();
   if (!snapshot) return noStore({ ok: false, error: 'unavailable' }, 503, { 'retry-after': '30' });
 
   const customer = findCustomer(snapshot.catalogue.customers, slug);
   const ok = verifyPassword(CUSTOMER_SHARED_PASSWORD_HASH, parsed.data.password) && Boolean(customer);
-  if (!ok) {
-    const failure = customerRuntime.throttle.fail(ip);
-    return noStore({ ok: false, error: 'invalid credentials' }, 401, {
-      ...(failure.retryAfterSec ? { 'retry-after': String(failure.retryAfterSec) } : {}),
-    });
-  }
+  if (!ok) return noStore({ ok: false, error: 'invalid credentials' }, 401);
 
-  customerRuntime.throttle.succeed(ip);
   const now = Date.now();
   const session = newCustomerSession(slug, now);
   cookies.set(

@@ -2,50 +2,32 @@
 // tabs: the whole grid is already in the document, so filtering is showing and hiding rather than a
 // round trip.
 //
-// Three kinds of chip:
-//   * `all`   — everything;
-//   * a tag slug — the cards carrying that tag;
-//   * `liked` — the visitor's own shortlist, read from the same `sl-saved` key the reaction buffer
-//     writes. It is per-visitor and the page is cached, so its count is rendered as a placeholder on
-//     the server and corrected here on load, then kept live as the visitor reacts.
+// Collections only (owner, 2026-09-17): buyers think in collections, never in tags, so the strip is
+// "All" plus one chip per collection. The tag chips and the "Liked" shortlist chip are gone.
 //
-// The chosen filter is written to `?tag=` so a reload and the Back button keep it, which is what the
-// collection tabs already do with `?collection=`.
-import { readSaved } from './votes.ts';
+// The chosen filter is written to `?collection=` so a reload and the Back button keep it.
 import { initPager } from './ui/paginate.ts';
 
-const PARAM = 'tag';
+const PARAM = 'collection';
 const SLUG_RE = /^[a-z0-9-]{1,80}$/;
 
 export interface FilterBindings {
   doc?: Document;
   win?: Window;
-  storage?: Storage;
 }
 
-function likedIds(storage: Storage): Set<string> {
-  return new Set(
-    Object.entries(readSaved(storage))
-      .filter(([, state]) => state === 'liked')
-      .map(([id]) => id),
-  );
-}
-
-/** Cards carry their tag slugs space-separated; a card with no tags matches only `all`. */
-function tagsOf(card: HTMLElement): string[] {
-  return (card.dataset.tags ?? '').split(/\s+/).filter(Boolean);
+/** Cards carry every collection slug they belong to, space-separated. */
+function collectionsOf(card: HTMLElement): string[] {
+  return (card.dataset.collections ?? '').split(/\s+/).filter(Boolean);
 }
 
 export function bindFilters(opts: FilterBindings = {}): () => void {
   const doc = opts.doc ?? document;
   const win = opts.win ?? (typeof window !== 'undefined' ? window : undefined);
-  const storage = opts.storage ?? (typeof localStorage !== 'undefined' ? localStorage : undefined);
   const nav = doc.querySelector<HTMLElement>('.pv-filters');
   if (!nav) return () => {};
   const chips = [...nav.querySelectorAll<HTMLButtonElement>('button[data-filter]')];
   const cards = [...doc.querySelectorAll<HTMLElement>('[data-card]')];
-  const countEl = nav.querySelector<HTMLElement>('[data-liked-count]');
-  const likedChip = nav.querySelector<HTMLButtonElement>('button[data-filter="liked"]');
   const live = doc.querySelector<HTMLElement>('[data-grid-live]');
 
   let active = 'all';
@@ -64,30 +46,29 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
       })
     : undefined;
 
-  const liked = (): Set<string> => (storage ? likedIds(storage) : new Set<string>());
+  const matches = (card: HTMLElement): boolean => active === 'all' || collectionsOf(card).includes(active);
 
-  const matches = (card: HTMLElement, shortlist: Set<string> | undefined): boolean =>
-    active === 'all'
-      ? true
-      : shortlist
-        ? shortlist.has(card.dataset.rug ?? '')
-        : tagsOf(card).includes(active);
+  /* Written only when the number actually moves: re-setting identical text re-fires the live region,
+     which is how a status line turns into a screen reader repeating itself. */
+  let said: number | undefined;
+  const announce = (shown: number): void => {
+    if (!live || shown === said) return;
+    said = shown;
+    live.textContent = shown === 1 ? '1 rug shown' : `${shown} rugs shown`;
+  };
 
-  const apply = (resetPage = true): void => {
-    const shortlist = active === 'liked' ? liked() : undefined;
+  const apply = (): void => {
     // The pager owns `hidden` when the page renders one: filtering decides what is in the result,
-    // paging decides which 20 of it are on screen (owner, 2026-09-16).
-    if (pager) pager.apply((card) => matches(card, shortlist), resetPage);
-    else for (const card of cards) card.hidden = !matches(card, shortlist);
+    // paging decides which 20 of it are on screen.
+    if (pager) pager.apply(matches, true);
+    else for (const card of cards) card.hidden = !matches(card);
     for (const chip of chips) {
       const on = chip.dataset.filter === active;
       chip.classList.toggle('is-on', on);
       chip.setAttribute('aria-pressed', on ? 'true' : 'false');
     }
     /* Carry the chosen chip onto every card link, so opening a rug and coming back lands on the
-       same filtered grid. The detail page reads `?tag=` and rebuilds its back link and its prev/next
-       run from it; without this the parameter only ever existed on the grid's own URL and any
-       in-page route out of the detail page silently dropped the buyer's filter. */
+       same filtered grid. The detail page reads `?collection=` for its back link and prev/next run. */
     const q = active === 'all' ? '' : `?${PARAM}=${encodeURIComponent(active)}`;
     for (const card of cards) {
       for (const a of card.querySelectorAll<HTMLAnchorElement>('a[href]')) {
@@ -98,32 +79,10 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
     }
 
     // The RESULT, not the page: "3 rugs shown" while looking at page 2 of 3 would be a lie.
-    const shown = cards.filter((c) => matches(c, shortlist)).length;
+    const shown = cards.filter(matches).length;
     const empty = doc.querySelector<HTMLElement>('[data-grid-empty]');
     if (empty) empty.hidden = shown > 0;
     announce(shown);
-  };
-
-  /* Written only when the number actually moves. `apply()` also runs on load and on every reaction
-     while the shortlist is open, and re-setting identical text re-fires the live region — which is
-     how a status line turns into a screen reader repeating itself. */
-  let said: number | undefined;
-  const announce = (shown: number): void => {
-    if (!live || shown === said) return;
-    said = shown;
-    live.textContent = shown === 1 ? '1 rug shown' : `${shown} rugs shown`;
-  };
-
-  /** The shortlist count, and the chip itself, only exist when the visitor has liked something. */
-  const refreshCount = (): void => {
-    const n = liked().size;
-    if (countEl) countEl.textContent = String(n);
-    if (likedChip) likedChip.hidden = n === 0;
-    // Standing on an empty shortlist would show a blank grid with no way back.
-    if (n === 0 && active === 'liked') {
-      active = 'all';
-      apply();
-    }
   };
 
   const setActive = (next: string): void => {
@@ -146,27 +105,15 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
     setActive(chip.dataset.filter);
   };
 
-  const onReaction = (): void => {
-    refreshCount();
-    // Keep the page: un-liking a rug while reading page 2 of the shortlist should not throw the
-    // buyer back to the top of page 1. The pager clamps if the page no longer exists.
-    if (active === 'liked') apply(false);
-  };
-
   nav.addEventListener('click', onClick);
-  doc.addEventListener('sl:reaction', onReaction);
 
   // A deep link wins over the default, but only if that chip is actually on the page.
   const wanted = win ? new URLSearchParams(win.location.search).get(PARAM) : null;
-  refreshCount();
-  if (wanted && SLUG_RE.test(wanted) && chips.some((c) => c.dataset.filter === wanted)) {
-    if (wanted !== 'liked' || liked().size > 0) active = wanted;
-  }
+  if (wanted && SLUG_RE.test(wanted) && chips.some((c) => c.dataset.filter === wanted)) active = wanted;
   apply();
 
   return () => {
     nav.removeEventListener('click', onClick);
-    doc.removeEventListener('sl:reaction', onReaction);
   };
 }
 

@@ -10,9 +10,7 @@
 //   known customer, no session   → the password gate, which is header-less and footer-less as drawn
 //   known customer, session      → their catalog
 //
-// The design filters by rug type rather than by collection, so the collection tabs and the
-// standfirst that the public catalogue uses are gone; what replaces them is one title, one line, and
-// a strip of type chips closing with the buyer's own shortlist.
+// One title, one line, and a strip of collection chips (owner, 2026-09-17: never tags).
 export const prerender = false;
 
 import PreviewControls from '../../components/customer/PreviewControls.astro';
@@ -21,11 +19,11 @@ import PreviewGate from '../../components/customer/PreviewGate.astro';
 import PreviewHeader from '../../components/customer/PreviewHeader.astro';
 import PreviewLayout from '../../components/customer/PreviewLayout.astro';
 import ProductCard from '../../components/customer/ProductCard.astro';
-import TagFilters from '../../components/customer/TagFilters.astro';
+import CollectionFilters from '../../components/customer/CollectionFilters.astro';
 import PageNav from '../../components/ui/PageNav.astro';
 import { findCustomer, noteVisit } from '../../lib/customer/http.ts';
 import { baseCurrency, loadCatalogue, ratesFor } from '../../lib/runtime.ts';
-import { catalogueRugs, cardView, tagSlug, visibleLikes } from '../../lib/view.ts';
+import { catalogueRugs, cardView, navTabs, visibleLikes } from '../../lib/view.ts';
 
 const slug = (Astro.params.slug ?? '').toLowerCase();
 const { snapshot, error } = await loadCatalogue();
@@ -53,24 +51,9 @@ if (customer && signedIn) noteVisit(slug, Astro.request);
 const rugs = customer && signedIn ? catalogueRugs(catalogue) : [];
 const cards = rugs.map((r) => cardView(r, catalogue));
 
-// The chips are the rug types actually present, most-used first, then alphabetical for a stable
-// order when counts tie. A tag nothing carries is not offered.
-const counts = new Map<string, { slug: string; name: string; count: number }>();
-for (const card of cards) {
-  for (const t of card.tags) {
-    const key = t.slug || tagSlug(t.name, catalogue.tags);
-    const seen = counts.get(key);
-    if (seen) seen.count += 1;
-    else counts.set(key, { slug: key, name: t.name, count: 1 });
-  }
-}
-// Capped at the eight the design draws. A dev sheet with thirty tags would otherwise turn a
-// one-line strip into two dense rows and bury the grid; the least-used types are simply not offered
-// as shortcuts, and "All" still reaches every rug.
-const MAX_TAG_CHIPS = 8;
-const tags = [...counts.values()]
-  .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
-  .slice(0, MAX_TAG_CHIPS);
+// Collections only (owner, 2026-09-17): one chip per collection that has rugs, in the sheet's sort
+// order. A collection nothing belongs to is not offered.
+const collections = navTabs(rugs, catalogue).filter((t) => t.count > 0);
 
 // Never the buyer's name (owner, 2026-09-14): the tab title is read over a shoulder, lands in
 // browser history, and is what a screen-share shows before anything else.
@@ -116,9 +99,9 @@ const title = 'Serio Ludere';
             </p>
           </section>
 
-          {tags.length > 0 && (
+          {collections.length > 0 && (
             <section class="pv-wrap">
-              <TagFilters tags={tags} />
+              <CollectionFilters collections={collections} />
             </section>
           )}
 
@@ -129,7 +112,7 @@ const title = 'Serio Ludere';
                   <div
                     data-card
                     data-rug={card.id}
-                    data-tags={card.tags.map((t) => t.slug || tagSlug(t.name, catalogue.tags)).join(' ')}
+                    data-collections={card.collectionSlugs.join(' ')}
                     data-likes={visibleLikes(card.likes)}
                   >
                     <ProductCard

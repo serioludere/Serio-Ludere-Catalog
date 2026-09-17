@@ -49,7 +49,7 @@ function mount(): void {
     <input id="q" type="search" />
     <button type="button" class="filterbar__view" data-view="list" aria-pressed="false"></button>
     <button type="button" class="filterbar__view" data-view="grid" aria-pressed="false"></button>
-    <div class="chips" id="collectionChips" data-multi="true">
+    <div class="chips" id="collectionChips" data-multi="false">
       <button type="button" class="chip on" data-value="*" aria-pressed="true">All</button>
       <button type="button" class="chip" data-value="kilims" aria-pressed="false">Kilims</button>
       <button type="button" class="chip" data-value="tulu" aria-pressed="false">Tulu</button>
@@ -168,9 +168,11 @@ describe('one filter drives both views', () => {
     const shown = [...document.querySelectorAll<HTMLElement>('[data-card]')].filter((el) => !el.hidden);
     expect(shown.map((el) => el.dataset.id)).toEqual(['SL-021', 'SL-021']);
     expect(document.getElementById('count')?.textContent).toBe('1 rug shown');
-    // A second tab widens the selection rather than replacing it — both rugs are back, both twice.
+    // One collection at a time (owner, 2026-09-17): the second tab replaces the first.
     document.querySelector<HTMLButtonElement>('#collectionChips [data-value="tulu"]')!.click();
-    expect(document.getElementById('count')?.textContent).toBe('2 rugs shown');
+    const then = [...document.querySelectorAll<HTMLElement>('[data-card]')].filter((el) => !el.hidden);
+    expect(then.map((el) => el.dataset.id)).toEqual(['SL-022', 'SL-022']);
+    expect(document.getElementById('count')?.textContent).toBe('1 rug shown');
   });
 
   it('shows the no-results state, not the first-run one, when cards exist but none match', () => {

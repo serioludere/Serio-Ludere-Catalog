@@ -22,6 +22,7 @@ import PreviewHeader from '../../components/customer/PreviewHeader.astro';
 import PreviewLayout from '../../components/customer/PreviewLayout.astro';
 import ProductCard from '../../components/customer/ProductCard.astro';
 import TagFilters from '../../components/customer/TagFilters.astro';
+import PageNav from '../../components/ui/PageNav.astro';
 import { findCustomer, noteVisit } from '../../lib/customer/http.ts';
 import { baseCurrency, loadCatalogue, ratesFor } from '../../lib/runtime.ts';
 import { catalogueRugs, cardView, tagSlug, visibleLikes } from '../../lib/view.ts';
@@ -145,6 +146,8 @@ const title = 'Serio Ludere';
             ) : (
               <p class="pv-lede">No rugs published yet.</p>
             )}
+            {/* 20 per page (owner, 2026-09-16); filters.ts un-hides it only when there is a page 2. */}
+            <PageNav id="gridPager" label="Rugs" />
             <p class="pv-lede" data-grid-empty hidden>
               Nothing matches that filter yet.
             </p>

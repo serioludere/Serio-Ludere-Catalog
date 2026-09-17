@@ -14,6 +14,7 @@ import FilterBar from '../../../components/ui/FilterBar.astro';
 import Drawer from '../../../components/ui/Drawer.astro';
 import RugFields from '../../../components/admin/RugFields.astro';
 import FetchModal from '../../../components/ui/FetchModal.astro';
+import PageNav from '../../../components/ui/PageNav.astro';
 import { adminRuntime } from '../../../lib/admin/http.ts';
 import { nextRugId } from '../../../lib/admin/ids.ts';
 import { roundStepOf } from '../../../lib/admin/settings.ts';
@@ -134,16 +135,14 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
       autocomplete="off"
       aria-label="Search products"
     />
-    {
-      /* Owner, 2026-09-16: collections are tabs again, and this time they multi-select — picking
-        Kilims and Tulu shows the rugs in either. "All" is the reset: pressing it clears the rest,
-        pressing any collection releases it, and releasing the last one falls back to it, so the list
-        is never filtered down to nothing by a filter nobody can see. rug-list.ts owns that interplay. */
-    }
-    <div slot="filters" class="filterbar__filters">
-      <Chips id="collectionChips" label="Filter by collection" chips={collectionChips} multi />
-    </div>
   </FilterBar>
+  {
+    /* Owner, 2026-09-17: the collection tabs sit BELOW the search bar rather than inside it, and
+      select one at a time. They were briefly multi-select; a combined view of two collections read
+      as neither, and on a real catalogue the row was the widest thing in the bar. "All" is how you
+      get back to everything — rug-list.ts keeps exactly one pressed. */
+  }
+  <Chips id="collectionChips" label="Filter by collection" chips={collectionChips} class="rugfilters" />
   <p class="hint" id="count" role="status" aria-live="polite"></p>
   <div id="m-retry" class="msg"></div>
   <div id="empty-first" hidden={rugs.length !== 0}>
@@ -185,6 +184,11 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
       ))
     }
   </div>
+  {
+    /* One pager for BOTH views: rug-list.ts pages on `data-id`, which the table row and the gallery
+      card share, so switching view keeps you on the same 20 products. */
+  }
+  <PageNav id="rugPager" label="Products" />
   <Drawer id="add-rug" title="Add product">
     <RugFields
       mode="add"

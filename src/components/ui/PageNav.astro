@@ -1,0 +1,43 @@
+---
+// The 20-per-page control (owner, 2026-09-16), shared by /admin/rugs and the buyer's catalogue.
+//
+// Server-rendered and hidden; src/scripts/ui/paginate.ts un-hides it once it knows how many products
+// matched, so a catalogue that fits on one page never shows a pager at all. Prev/Next rather than
+// numbered pages: the list is filtered and searched constantly, so a page NUMBER is not a place
+// anyone returns to, and two controls stay honest at any length.
+//
+// `aria-live` on the label, not on the grid: the grid changing is the point, and announcing every
+// card would bury the one fact that matters — which page you are now on.
+interface Props {
+  id: string;
+  /** Names the control for a screen reader, e.g. "Products". */
+  label: string;
+  class?: string;
+}
+const { id, label, class: className } = Astro.props;
+---
+
+<nav class:list={['pagenav', className]} id={id} aria-label={`${label} pages`} hidden>
+  <button type="button" class="btn btn--secondary" data-page="prev">Previous</button>
+  <p class="pagenav__label" data-page="label" role="status" aria-live="polite"></p>
+  <button type="button" class="btn btn--secondary" data-page="next">Next</button>
+</nav>
+
+<style>
+  .pagenav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--stack-md);
+    margin-top: var(--section-gap);
+  }
+
+  .pagenav__label {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--ink-soft);
+    /* Fixed enough not to jog the buttons as the number of pages changes. */
+    min-width: 10ch;
+    text-align: center;
+  }
+</style>

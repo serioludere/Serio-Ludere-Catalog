@@ -13,11 +13,18 @@ interface Props {
   label: string;
   chips: Chip[];
   multi?: boolean;
+  class?: string;
 }
-const { id, label, chips, multi = false } = Astro.props;
+const { id, label, chips, multi = false, class: className } = Astro.props;
 ---
 
-<div class="chips" id={id} role="group" aria-label={label} data-multi={multi ? 'true' : 'false'}>
+<div
+  class:list={['chips', className]}
+  id={id}
+  role="group"
+  aria-label={label}
+  data-multi={multi ? 'true' : 'false'}
+>
   {
     chips.map((c) => (
       <button

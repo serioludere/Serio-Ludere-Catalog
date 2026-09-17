@@ -12,6 +12,7 @@
 // The chosen filter is written to `?tag=` so a reload and the Back button keep it, which is what the
 // collection tabs already do with `?collection=`.
 import { readSaved } from './votes.ts';
+import { initPager } from './ui/paginate.ts';
 
 const PARAM = 'tag';
 const SLUG_RE = /^[a-z0-9-]{1,80}$/;
@@ -49,19 +50,35 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
 
   let active = 'all';
 
+  /** 20 per page (owner, 2026-09-16), when the page renders the control. */
+  const pagerRoot = doc.getElementById('gridPager');
+  const pager = pagerRoot
+    ? initPager({
+        items: cards,
+        elements: {
+          root: pagerRoot,
+          prev: pagerRoot.querySelector<HTMLButtonElement>('[data-page="prev"]')!,
+          next: pagerRoot.querySelector<HTMLButtonElement>('[data-page="next"]')!,
+          label: pagerRoot.querySelector<HTMLElement>('[data-page="label"]')!,
+        },
+      })
+    : undefined;
+
   const liked = (): Set<string> => (storage ? likedIds(storage) : new Set<string>());
 
-  const apply = (): void => {
+  const matches = (card: HTMLElement, shortlist: Set<string> | undefined): boolean =>
+    active === 'all'
+      ? true
+      : shortlist
+        ? shortlist.has(card.dataset.rug ?? '')
+        : tagsOf(card).includes(active);
+
+  const apply = (resetPage = true): void => {
     const shortlist = active === 'liked' ? liked() : undefined;
-    for (const card of cards) {
-      const show =
-        active === 'all'
-          ? true
-          : shortlist
-            ? shortlist.has(card.dataset.rug ?? '')
-            : tagsOf(card).includes(active);
-      card.hidden = !show;
-    }
+    // The pager owns `hidden` when the page renders one: filtering decides what is in the result,
+    // paging decides which 20 of it are on screen (owner, 2026-09-16).
+    if (pager) pager.apply((card) => matches(card, shortlist), resetPage);
+    else for (const card of cards) card.hidden = !matches(card, shortlist);
     for (const chip of chips) {
       const on = chip.dataset.filter === active;
       chip.classList.toggle('is-on', on);
@@ -80,7 +97,8 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
       }
     }
 
-    const shown = cards.filter((c) => !c.hidden).length;
+    // The RESULT, not the page: "3 rugs shown" while looking at page 2 of 3 would be a lie.
+    const shown = cards.filter((c) => matches(c, shortlist)).length;
     const empty = doc.querySelector<HTMLElement>('[data-grid-empty]');
     if (empty) empty.hidden = shown > 0;
     announce(shown);
@@ -130,7 +148,9 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
 
   const onReaction = (): void => {
     refreshCount();
-    if (active === 'liked') apply();
+    // Keep the page: un-liking a rug while reading page 2 of the shortlist should not throw the
+    // buyer back to the top of page 1. The pager clamps if the page no longer exists.
+    if (active === 'liked') apply(false);
   };
 
   nav.addEventListener('click', onClick);

@@ -79,13 +79,18 @@ const { slug } = Astro.props;
     place-items: center;
     padding: var(--section-gap) var(--gutter);
   }
+  /* The admin login card's geometry, to the pixel (owner, 2026-09-17: "precisely like this"): 400
+     wide, centred, 12px between the mark, the field and the button. The 560-wide column this used to
+     be — with a 360-capped form inside it — left the field and the button floating in the middle of
+     the card with a wide empty margin either side, which is the padding the owner was seeing. */
   .pv-gate-col {
+    box-sizing: border-box;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--section-gap);
-    width: 100%;
-    max-width: 560px;
+    gap: var(--stack-md);
+    width: 400px;
+    max-width: 100%;
     text-align: center;
   }
   /* A bordered container, added for the black theme only (owner, 2026-09-17): same border colour and
@@ -110,17 +115,19 @@ const { slug } = Astro.props;
     gap: var(--stack-sm);
     width: 100%;
   }
+  /* 160, the admin card's own logo width — 40% of the 400 card, as drawn. */
   .pv-gate-brand :global(.admin-logo) {
-    width: 200px;
+    width: 160px;
     height: auto;
     color: var(--ink);
   }
+  /* No max-width: the field and the button run the full inner width of the card, as they do on the
+     admin login. */
   .pv-gate-form {
     display: flex;
     flex-direction: column;
     gap: var(--stack-md);
     width: 100%;
-    max-width: 360px;
   }
   /* The eye sits inside the field's padding box, so the input keeps its own 12.8px inline padding
      and the text simply stops short of the control. */
@@ -167,16 +174,14 @@ const { slug } = Astro.props;
     text-align: left;
   }
 
-  /* At 390 the gutter is 48, not the 16 the rest of the site uses: the form is 294 wide. */
+  /* At 390 the gutter is 48, not the 16 the rest of the site uses: the card is 294 wide. The logo
+     takes no override here — it is 160 at both widths now, as the admin card's is. */
   @media (max-width: 767px) {
     .pv-gate {
       padding-inline: var(--stack-2xl);
     }
     .pv-gate-col {
-      max-width: 294px;
-    }
-    .pv-gate-brand :global(.admin-logo) {
-      width: 160px;
+      width: 294px;
     }
   }
 </style>

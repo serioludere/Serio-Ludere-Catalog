@@ -70,7 +70,7 @@ const { rugId, mode = 'card' } = Astro.props;
   }
 
   /* 64px hit area, no container chrome (owner, 2026-09-16: no circle, no border — just the glyph).
-     Neutral is ink; pressed fills the heart red through currentColor. */
+     Neutral is a white outline (owner, 2026-09-17); pressed fills the heart red through currentColor. */
   .pv-circle {
     position: relative;
     display: flex;
@@ -83,7 +83,7 @@ const { rugId, mode = 'card' } = Astro.props;
     border: none;
     border-radius: var(--radius-pill);
     background: transparent;
-    color: var(--ink);
+    color: #ffffff;
     cursor: pointer;
   }
 

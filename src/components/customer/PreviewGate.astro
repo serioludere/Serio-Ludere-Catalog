@@ -92,8 +92,13 @@ const { slug } = Astro.props;
      padding as the admin login's card (.alogin, src/pages/admin/login.astro) — --rule and --stack-lg
      resolve to the same values in both [data-mode='admin-dark'] and this mode, so the two match
      exactly. --stack-lg (16px, mode-invariant), not --section-gap: that token is still the preview
-     realm's own roomy 64px here, which would not match the admin card at all. */
-  [data-mode='preview-dark'] .pv-gate-col {
+     realm's own roomy 64px here, which would not match the admin card at all.
+
+     `:global()` on the [data-mode] part, not just on a class: that attribute sits on <html>, which
+     PreviewLayout.astro renders, not this component, so Astro's scoping hash never reaches it and an
+     unscoped ancestor selector here silently matches nothing — the same problem
+     `.alogin__brand :global(.admin-logo)` solves on the child side, mirrored on the ancestor side. */
+  :global([data-mode='preview-dark']) .pv-gate-col {
     border: var(--rule-width) solid var(--rule);
     padding: var(--stack-lg);
     background: var(--surface);

@@ -29,6 +29,7 @@ export interface PhotoOutcome {
 export const POST = adminPost(
   PhotoImportRequest,
   async ({ context, body }) => {
+    const started = Date.now();
     const deps = getAdminDeps();
     if (!deps.drive) {
       adminRuntime.driveScopeOk = false;
@@ -79,6 +80,7 @@ export const POST = adminPost(
       }
     }
     const ids = photos.filter((p) => p.id && !p.error).map((p) => p.id!);
+    const transferMs = Date.now() - started;
     const failed = photos.filter((p) => p.error).map((p) => ({ url: p.url, error: p.error }));
     const audit = await recordAuditEvent({
       ...auditBase(context),
@@ -88,8 +90,10 @@ export const POST = adminPost(
       after: { ids, failed },
       note: `${ids.length}/${body.urls.length} imported`,
     });
+    const ms = Date.now() - started;
+    consoleLogger.info('photo import timing', { urls: body.urls.length, imported: ids.length, transferMs, ms });
     if (ids.length === 0) {
-      return noStore({ ok: false, error: 'upload_failed', photos, imported: 0, audit }, 502);
+      return noStore({ ok: false, error: 'upload_failed', photos, imported: 0, audit, ms }, 502);
     }
     return noStore({
       ok: true,
@@ -101,6 +105,7 @@ export const POST = adminPost(
         : {}),
       complete: commit ? commit.complete : ids.length === body.urls.length,
       audit,
+      ms,
     });
   },
   'photos',

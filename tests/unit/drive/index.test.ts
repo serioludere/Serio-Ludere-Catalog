@@ -34,9 +34,6 @@ describe('createDriveClient', () => {
         expect(body).toContain(`"parents":["${FOLDER}"]`);
         return json(200, { id: FILE_ID, name: 'rug-1.jpg' });
       }
-      if (url.startsWith('https://lh3.googleusercontent.com/d/')) {
-        return new Response(null, { status: 200, headers: { 'content-type': 'image/jpeg' } });
-      }
       return json(500, { error: { message: `unexpected ${method} ${url}` } });
     }) as unknown as typeof fetch;
 
@@ -68,7 +65,6 @@ describe('createDriveClient', () => {
       `POST ${DRIVE_API}/files/${FOLDER}/permissions`,
       'GET https://cdn.shopify.com/s/files/rug.jpg',
       `POST ${DRIVE_UPLOAD_API}/files`,
-      `HEAD https://lh3.googleusercontent.com/d/${FILE_ID}=w800`,
     ]);
     expect(seen.filter((s) => s.startsWith('POST') && s.endsWith('/files'))).toHaveLength(2); // tokeninfo excluded
     expect(PHOTOS_FOLDER_NAME).toBe('Serio Ludere catalogue photos');
@@ -94,9 +90,6 @@ describe('createDriveClient', () => {
       id: FILE_ID,
       name: 'rug-3.webp',
     });
-    expect(seen).toEqual([
-      `POST ${DRIVE_UPLOAD_API}/files`,
-      `HEAD https://lh3.googleusercontent.com/d/${FILE_ID}=w800`,
-    ]);
+    expect(seen).toEqual([`POST ${DRIVE_UPLOAD_API}/files`]);
   });
 });

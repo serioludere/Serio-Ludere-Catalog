@@ -38,7 +38,7 @@ export function createDriveClient(options: DriveClientOptions): DriveClient {
 }
 
 export { DriveApiError, describeDriveError } from './client.ts';
-export { DownloadError, buildMultipartBody, defaultDownload, fileNameFor, waitForLh3 } from './upload.ts';
+export { DownloadError, buildMultipartBody, defaultDownload, fileNameFor } from './upload.ts';
 export {
   DRIVE_MEDIA_ID_RE,
   PROXY_WIDTHS,

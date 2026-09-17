@@ -36,7 +36,7 @@ import { Revocations, type AdminSession } from './auth.ts';
 import { UnauditableError, buildAuditRow, type AuditInput, type AuditRow } from './audit.ts';
 import { issuesOf } from './dto.ts';
 import { adminConfigured, type GateConfig } from './gate.ts';
-import { invalidateCatalogue, type InvalidateResult } from './invalidate.ts';
+import { invalidateCatalogue } from './invalidate.ts';
 import { adminRugFromCells } from './read.ts';
 import { RowConflictError, VersionMismatchError, appendAudit } from './write.ts';
 
@@ -301,7 +301,16 @@ export async function recordAuditEvent(
   }
 }
 
-/** After a successful mutation: bust the data cache and purge the route cache (never throws). */
-export function invalidateAfterWrite(context: Pick<APIContext, 'cache'>): Promise<InvalidateResult> {
-  return invalidateCatalogue(getCache, context, { state: revalidateState, logger: consoleLogger });
+/**
+ * After a successful mutation: bust the data cache and purge the route cache, in the background.
+ *
+ * Not awaited (owner, 2026-09-17): the refresh re-reads the whole catalogue, which added a second or
+ * two to every save while the admin waited on a cache only buyers' pages read. The admin itself reads
+ * the sheet directly, so nothing it shows next depends on the refresh having finished. Never throws.
+ */
+export function invalidateAfterWrite(context: Pick<APIContext, 'cache'>): Promise<void> {
+  void invalidateCatalogue(getCache, context, { state: revalidateState, logger: consoleLogger }).catch(
+    (e: unknown) => consoleLogger.warn('background invalidation failed', { error: serializeError(e) }),
+  );
+  return Promise.resolve();
 }

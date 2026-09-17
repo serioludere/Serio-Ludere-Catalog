@@ -2,7 +2,7 @@
 //
 // The brief's order is the whole point, and it is the reverse of what this project did before:
 //
-//     validate the id → write the row `pending` → create the folders → upload one at a time
+//     validate the id → write the row `pending` → create the folders → upload (four at a time)
 //   → update the row and mark it `complete`
 //
 // The old order uploaded first and wrote the row afterwards, so a failure part-way left images in
@@ -70,15 +70,20 @@ export function photoName(prefix: string, index: number, primary: boolean): stri
   return primary ? `${n}-primary` : `${prefix}-${n}`;
 }
 
+/** How many photos transfer at once. Drive 429/503s are retried with backoff by drive/client.ts. */
+export const UPLOAD_CONCURRENCY = 4;
+
 /**
- * Creates the rug's folders, uploads each photo into `All Images` in order, and copies the first one
- * up into the rug folder as `01-primary`.
+ * Creates the rug's folders, uploads the photos into `All Images`, and copies the first one up into
+ * the rug folder as `01-primary`.
  *
- * Sequential on purpose: Drive rate-limits bursts, the studio cares about the order, and a failure
- * half way should leave a partial set the retry can finish rather than a scattered one.
+ * Four at a time (owner, 2026-09-17: a ten-photo save took ~30 s one by one). Order is not lost: every
+ * result is written back to its own index, and the filenames carry the position (`01-primary`,
+ * `<prefix>-02`…), so the row and the Drive folder read in the studio's order either way. A failure
+ * part-way still leaves a set the retry can finish, because the retry skips names already present.
  */
 export async function commitPhotos(input: CommitPhotosInput, deps: CommitDeps): Promise<CommitPhotosResult> {
-  const photos: PhotoOutcome[] = [];
+  const photos: PhotoOutcome[] = new Array<PhotoOutcome>(input.urls.length);
   let folders: ProductFolders;
   try {
     folders = await deps.drive.ensureProductFolders(input.productId, input.productName);
@@ -104,31 +109,40 @@ export async function commitPhotos(input: CommitPhotosInput, deps: CommitDeps): 
     }
   }
 
-  for (const [i, url] of input.urls.entries()) {
+  let primaryCopy: Promise<void> | undefined;
+  const one = async (i: number): Promise<void> => {
+    const url = input.urls[i]!;
     const name = photoName(input.namePrefix, i, i === 0);
     const already = existing.get(name);
     if (already) {
-      photos.push({ url, id: already, name, reused: true });
-      continue;
+      photos[i] = { url, id: already, name, reused: true };
+      return;
     }
     const result: UploadResult = await deps.drive.uploadFromUrl(url, name, folders.allImagesId, {
       supplier: input.supplier ?? '',
       index: i,
     });
     if ('error' in result) {
-      photos.push({ url, error: result.error, detail: result.detail });
-      continue;
+      photos[i] = { url, error: result.error, detail: result.detail };
+      return;
     }
-    photos.push({ url, id: result.id, name: result.name });
+    photos[i] = { url, id: result.id, name: result.name };
     // The primary is duplicated into the rug's own folder so the studio sees it without opening
-    // "All Images". A failure here is not a failed import: the photo itself is safely stored.
+    // "All Images". Started without holding up the pool, awaited before returning. A failure here is
+    // not a failed import: the photo itself is safely stored.
     if (i === 0) {
-      const copy = await deps.drive.copyFile(result.id, `01-primary`, folders.productId);
-      if ('error' in copy) {
-        deps.logger?.warn('photo commit: primary not duplicated', { detail: copy.detail });
-      }
+      primaryCopy = deps.drive.copyFile(result.id, `01-primary`, folders.productId).then((copy) => {
+        if ('error' in copy) deps.logger?.warn('photo commit: primary not duplicated', { detail: copy.detail });
+      });
     }
-  }
+  };
+
+  let next = 0;
+  const worker = async (): Promise<void> => {
+    while (next < input.urls.length) await one(next++);
+  };
+  await Promise.all(Array.from({ length: Math.min(UPLOAD_CONCURRENCY, input.urls.length) }, worker));
+  await primaryCopy;
 
   const ids = photos.filter((p) => p.id && !p.error).map((p) => p.id!);
   return { photos, ids, folders, complete: ids.length === input.urls.length && input.urls.length > 0 };

@@ -44,7 +44,7 @@ export type UploadErrorCode =
 
 export type UploadResult =
   | { id: string; name: string }
-  /** `id` is present when the file was uploaded but lh3 never answered (`not_visible`). */
+  /** `not_visible` (with `id`) is no longer produced — the lh3 wait is gone — but old audit rows carry it. */
   | { error: UploadErrorCode; detail?: string; id?: string };
 
 /** Why a media read produced no bytes (brief §12); mapped to a status code by drive/proxy.ts. */

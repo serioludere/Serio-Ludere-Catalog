@@ -4,7 +4,7 @@
 // retryable result rather than an exception, and the primary must be duplicated without a copy
 // failure counting as a failed import.
 import { describe, expect, it, vi } from 'vitest';
-import { commitPhotos, photoName } from '../../../src/lib/drive/commit.ts';
+import { UPLOAD_CONCURRENCY, commitPhotos, photoName } from '../../../src/lib/drive/commit.ts';
 import { productFolderName } from '../../../src/lib/drive/folder.ts';
 import type { ProductFolders } from '../../../src/lib/drive/folder.ts';
 import type { UploadResult } from '../../../src/lib/drive/types.ts';
@@ -96,8 +96,9 @@ describe('commitPhotos', () => {
     expect(out.ids).toEqual(['file-1', 'file-2']);
     expect(out.folders).toEqual(FOLDERS);
 
-    // Folders first, then each upload into All Images, with the primary copied up.
-    expect(calls.map((c) => c.op)).toEqual(['folders', 'upload', 'copy', 'upload']);
+    // Folders first, then the uploads into All Images (in parallel, so the primary's copy lands
+    // after both started), with the primary copied up exactly once.
+    expect(calls.map((c) => c.op)).toEqual(['folders', 'upload', 'upload', 'copy']);
     // The 4th argument carries the per-supplier first-image fixes (owner, 2026-09-13): the index
     // is what makes "first image" mean the primary rather than whichever photo uploads first.
     expect(calls[1]?.args).toEqual([
@@ -106,13 +107,41 @@ describe('commitPhotos', () => {
       'folder-all-images',
       { supplier: '', index: 0 },
     ]);
-    expect(calls[2]?.args).toEqual(['file-1', '01-primary', 'folder-product']);
-    expect(calls[3]?.args).toEqual([
+    expect(calls[3]?.args).toEqual(['file-1', '01-primary', 'folder-product']);
+    expect(calls[2]?.args).toEqual([
       'https://s/b.jpg',
       'winks-02',
       'folder-all-images',
       { supplier: '', index: 1 },
     ]);
+  });
+
+  it('uploads at most four at a time and still reports results in input order', async () => {
+    let running = 0;
+    let peak = 0;
+    const drive = {
+      ensureProductFolders: async () => FOLDERS,
+      listFolder: async () => new Map<string, string>(),
+      copyFile: vi.fn(async (): Promise<UploadResult> => ({ id: 'copy', name: '01-primary' })),
+      uploadFromUrl: async (url: string, name: string): Promise<UploadResult> => {
+        running++;
+        peak = Math.max(peak, running);
+        // Later photos finish first, so a result written by completion order would be scrambled.
+        await new Promise((r) => setTimeout(r, 40 - Number(url.slice(1)) * 3));
+        running--;
+        return { id: `file-${url.slice(1)}`, name };
+      },
+    };
+    const urls = Array.from({ length: 10 }, (_, i) => `u${i}`);
+    const out = await commitPhotos(
+      { productId: 'SL-021', productName: 'Winks', urls, namePrefix: 'winks' },
+      { drive, logger: silent },
+    );
+    expect(peak).toBe(UPLOAD_CONCURRENCY);
+    expect(out.ids).toEqual(urls.map((u) => `file-${u.slice(1)}`));
+    expect(out.photos.map((p) => p.name)).toEqual(['01-primary', ...urls.slice(1).map((_, i) => `winks-${String(i + 2).padStart(2, '0')}`)]);
+    expect(out.complete).toBe(true);
+    expect(drive.copyFile).toHaveBeenCalledTimes(1);
   });
 
   it('keeps going past one bad photo and reports it as incomplete', async () => {

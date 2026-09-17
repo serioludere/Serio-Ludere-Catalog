@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { DRIVE_UPLOAD_API, createDriveHttp } from '../../../src/lib/drive/client.ts';
-import { DownloadError, createUploader, defaultDownload, waitForLh3 } from '../../../src/lib/drive/upload.ts';
+import { DownloadError, createUploader, defaultDownload } from '../../../src/lib/drive/upload.ts';
 import { MAX_UPLOAD_BYTES, type Downloader } from '../../../src/lib/drive/types.ts';
 import { silentLogger } from '../../../src/lib/sheets/errors.ts';
 
 const FOLDER = '1B97RZtgjHCLNePWf40j2a1h8vPtaU6ee';
 const FILE_ID = '1U8FwNPCdm-n8RUvSNRcJLBA_27u-Pjkb';
-const LH3 = `https://lh3.googleusercontent.com/d/${FILE_ID}=w800`;
 const UPLOAD_URL = `${DRIVE_UPLOAD_API}/files?uploadType=multipart&fields=id%2Cname%2CmimeType`;
 const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]);
 
@@ -171,58 +170,8 @@ describe('defaultDownload', () => {
   });
 });
 
-describe('waitForLh3', () => {
-  it('HEADs the =w800 rendition and succeeds on the first 200', async () => {
-    const m = mockFetch((c) => {
-      expect(c.method).toBe('HEAD');
-      expect(c.url).toBe(LH3);
-      return new Response(null, { status: 200, headers: { 'content-type': 'image/jpeg' } });
-    });
-    const sleeps: number[] = [];
-    expect(
-      await waitForLh3(m.fn, FILE_ID, async (ms) => {
-        sleeps.push(ms);
-      }),
-    ).toBe(true);
-    expect(m.calls).toHaveLength(1);
-    expect(sleeps).toEqual([]);
-  });
-
-  it('retries up to 3 times with 2 s pauses on 500 / network errors, then gives up', async () => {
-    const sleeps: number[] = [];
-    const m = mockFetch((_c, n) => {
-      if (n === 1) throw new TypeError('fetch failed');
-      if (n === 2) return new Response(null, { status: 500 });
-      return new Response(null, { status: 200, headers: { 'content-type': 'image/jpeg' } });
-    });
-    expect(
-      await waitForLh3(m.fn, FILE_ID, async (ms) => {
-        sleeps.push(ms);
-      }),
-    ).toBe(true);
-    expect(m.calls).toHaveLength(3);
-    expect(sleeps).toEqual([2000, 2000]);
-
-    const never = mockFetch(() => new Response(null, { status: 500 }));
-    const s2: number[] = [];
-    expect(
-      await waitForLh3(never.fn, FILE_ID, async (ms) => {
-        s2.push(ms);
-      }),
-    ).toBe(false);
-    expect(never.calls).toHaveLength(4);
-    expect(s2).toEqual([2000, 2000, 2000]);
-  });
-
-  it('treats a 200 that is not an image as not yet visible', async () => {
-    const m = mockFetch(() => new Response(null, { status: 200, headers: { 'content-type': 'text/html' } }));
-    expect(await waitForLh3(m.fn, FILE_ID, async () => {}, { attempts: 2, delayMs: 0 })).toBe(false);
-    expect(m.calls).toHaveLength(2);
-  });
-});
-
 describe('uploadFromUrl', () => {
-  it('downloads, posts a multipart/related body into the folder and returns the id once lh3 serves it', async () => {
+  it('downloads, posts a multipart/related body into the folder and returns the id straight away', async () => {
     const m = mockFetch((c) => {
       if (c.url === UPLOAD_URL) {
         expect(c.method).toBe('POST');
@@ -236,13 +185,12 @@ describe('uploadFromUrl', () => {
         expect(body).toContain('Content-Type: image/jpeg\r\n\r\n');
         return json(200, { id: FILE_ID, name: 'khal-1.jpg', mimeType: 'image/jpeg' });
       }
-      if (c.url === LH3)
-        return new Response(null, { status: 200, headers: { 'content-type': 'image/jpeg' } });
       return json(500, { error: { message: `unexpected ${c.url}` } });
     });
     const out = await uploader(m.fn)('https://cdn.shopify.com/s/a.jpg', 'khal-1.jpg');
     expect(out).toEqual({ id: FILE_ID, name: 'khal-1.jpg' });
-    expect(m.calls.map((c) => `${c.method} ${c.url}`)).toEqual([`POST ${UPLOAD_URL}`, `HEAD ${LH3}`]);
+    expect(m.calls.map((c) => `${c.method} ${c.url}`)).toEqual([`POST ${UPLOAD_URL}`]);
+    // No lh3 wait (owner, 2026-09-17): pages read photos through the Drive API, not lh3.
   });
 
   it('fixes the extension to the downloaded type', async () => {
@@ -353,7 +301,7 @@ describe('uploadFromUrl', () => {
     });
   });
 
-  it('rejects an unexpected id shape and reports not_visible (with the id) when lh3 never answers', async () => {
+  it('rejects an unexpected id shape, and never waits on lh3 once Drive has returned an id', async () => {
     const odd = mockFetch(() => json(200, { id: 'x' }));
     expect(await uploader(odd.fn)('https://cdn.shopify.com/a.jpg', 'a.jpg')).toMatchObject({
       error: 'upload_failed',
@@ -364,8 +312,8 @@ describe('uploadFromUrl', () => {
       c.url === UPLOAD_URL ? json(200, { id: FILE_ID }) : new Response(null, { status: 500 }),
     );
     const out = await uploader(dark.fn, { sleeps })('https://cdn.shopify.com/a.jpg', 'a.jpg');
-    expect(out).toMatchObject({ error: 'not_visible', id: FILE_ID });
-    expect(dark.calls.filter((c) => c.method === 'HEAD')).toHaveLength(4);
-    expect(sleeps).toEqual([2000, 2000, 2000]);
+    expect(out).toEqual({ id: FILE_ID, name: 'a.jpg' });
+    expect(dark.calls.filter((c) => c.method === 'HEAD')).toHaveLength(0);
+    expect(sleeps).toEqual([]);
   });
 });

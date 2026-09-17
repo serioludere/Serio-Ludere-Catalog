@@ -1,10 +1,15 @@
 // Photo upload (docs/ADMIN_SPEC.md §5.2): download through the injected guarded client, guard the
 // bytes again (image/*, ≤ 5 MB — the multipart cap), `POST upload/drive/v3/files?uploadType=multipart`
-// with a hand-built `multipart/related` body, then HEAD the lh3 rendition until it answers (fresh
-// files may take a moment to propagate) before the id is accepted. `uploadFromUrl` never throws.
+// with a hand-built `multipart/related` body. The id Drive returns is accepted as is. `uploadFromUrl`
+// never throws.
+//
+// It used to HEAD the lh3 rendition until it answered, retrying with 2 s sleeps — often 6 s or more per
+// photo, and a slow lh3 threw away a photo that had in fact landed. Pages no longer read lh3 at all
+// (images.ts `driveImageUrl` goes through /api/image, which reads the Drive API), so the wait bought
+// nothing and was most of a 30 s save (owner, 2026-09-17).
 
 import { randomBytes } from 'node:crypto';
-import { lh3Url, DRIVE_ID_RE } from '../images.ts';
+import { DRIVE_ID_RE } from '../images.ts';
 import { scrub } from '../sheets/errors.ts';
 import { DRIVE_API, DRIVE_UPLOAD_API, DriveApiError, describeDriveError, type DriveHttp } from './client.ts';
 import { applyTransforms } from './transform.ts';
@@ -20,9 +25,6 @@ import {
 const DOWNLOAD_TIMEOUT_MS = 10_000;
 const MAX_REDIRECTS = 3;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
-export const LH3_ATTEMPTS = 4; // 1 try + 3 retries
-export const LH3_RETRY_DELAY_MS = 2000;
-const LH3_TIMEOUT_MS = 10_000;
 
 export class DownloadError extends Error {
   readonly code: Extract<UploadErrorCode, 'unsupported_host' | 'not_image' | 'too_large' | 'download_failed'>;
@@ -208,38 +210,9 @@ export async function defaultDownload(
   throw new DownloadError('download_failed', 'too many redirects');
 }
 
-/** HEADs `lh3.googleusercontent.com/d/<id>=w800` until it answers 200 (fresh files can lag). */
-export async function waitForLh3(
-  fetchImpl: typeof fetch,
-  id: string,
-  sleep: (ms: number) => Promise<void>,
-  opts: { attempts?: number; delayMs?: number } = {},
-): Promise<boolean> {
-  const attempts = opts.attempts ?? LH3_ATTEMPTS;
-  const delayMs = opts.delayMs ?? LH3_RETRY_DELAY_MS;
-  const url = lh3Url(id, 800);
-  for (let attempt = 1; attempt <= attempts; attempt++) {
-    try {
-      const res = await fetchImpl(url, {
-        method: 'HEAD',
-        redirect: 'manual',
-        signal: AbortSignal.timeout(LH3_TIMEOUT_MS),
-      });
-      await res.body?.cancel().catch(() => {});
-      const type = mimeOf(res.headers.get('content-type'));
-      if (res.ok && (type === '' || type.startsWith('image/'))) return true;
-    } catch {
-      /* network / timeout: retry */
-    }
-    if (attempt < attempts) await sleep(delayMs);
-  }
-  return false;
-}
-
 export interface UploaderDeps {
   download: Downloader;
   ensureFolder: () => Promise<string>;
-  lh3?: { attempts?: number; delayMs?: number };
 }
 
 function classifyDriveError(
@@ -327,12 +300,6 @@ export function createUploader(
     }
     const id = created.id ?? '';
     if (!DRIVE_ID_RE.test(id)) return { error: 'upload_failed', detail: 'unexpected file id' };
-
-    const visible = await waitForLh3(http.fetchImpl, id, http.sleep, deps.lh3);
-    if (!visible) {
-      http.logger.warn(`photo import: lh3 did not serve ${id} yet`, { name: fileName });
-      return { error: 'not_visible', id, detail: 'lh3 has not served the file yet; it may appear shortly' };
-    }
     http.logger.info(`photo import: uploaded ${fileName} as ${id}`, { bytes: size, mime });
     return { id, name: created.name ?? fileName };
   };

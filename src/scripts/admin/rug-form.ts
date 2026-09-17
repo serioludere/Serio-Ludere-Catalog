@@ -654,6 +654,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     hide(m2);
     if (!validate()) return;
     setBusy(true);
+    const startedAt = Date.now();
     let imported: string[] = [];
     let photoNote = '';
     let folderId = '';
@@ -723,7 +724,9 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
       return;
     }
     const link = el('a', { href: `/admin/rugs/${encodeURIComponent(r.data.rug.id)}` }, r.data.rug.id, doc);
-    msg(m2, ['Added ', link, `. ${photoNote}`.trimEnd(), ...auditLink(r.data.audit)], 'ok');
+    // How long the whole save took, so a slow one is visible rather than a feeling (owner, 2026-09-17).
+    const took = `(${((Date.now() - startedAt) / 1000).toFixed(1)} s)`;
+    msg(m2, ['Added ', link, `. ${photoNote} ${took}`.replace(/\s+/g, ' '), ...auditLink(r.data.audit)], 'ok');
     reset(true);
   };
 

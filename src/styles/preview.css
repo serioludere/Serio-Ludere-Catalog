@@ -165,6 +165,14 @@
   transition: border-color var(--motion-quick) var(--motion-ease);
 }
 
+/* Owner, 2026-09-17: same treatment as the admin login's field (admin.css) — a step lighter than the
+   black page, and the typed password's dots pure white rather than the mode's own cream ink. Both
+   literal, not token-derived, on the owner's instruction. */
+[data-mode='preview-dark'] .pv-input {
+  background: #202020;
+  color: #ffffff;
+}
+
 .pv-input::placeholder {
   color: var(--ink-muted);
   opacity: 1;

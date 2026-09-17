@@ -88,6 +88,16 @@ const { slug } = Astro.props;
     max-width: 560px;
     text-align: center;
   }
+  /* A bordered container, added for the black theme only (owner, 2026-09-17): same border colour and
+     padding as the admin login's card (.alogin, src/pages/admin/login.astro) — --rule and --stack-lg
+     resolve to the same values in both [data-mode='admin-dark'] and this mode, so the two match
+     exactly. --stack-lg (16px, mode-invariant), not --section-gap: that token is still the preview
+     realm's own roomy 64px here, which would not match the admin card at all. */
+  [data-mode='preview-dark'] .pv-gate-col {
+    border: var(--rule-width) solid var(--rule);
+    padding: var(--stack-lg);
+    background: var(--surface);
+  }
   .pv-gate-brand {
     display: flex;
     flex-direction: column;

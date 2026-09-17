@@ -173,10 +173,8 @@
   color: #ffffff;
 }
 
-.pv-input::placeholder {
-  color: var(--ink-muted);
-  opacity: 1;
-}
+/* The gate's field carries no placeholder since 2026-09-17 — a visible "PASSWORD" label replaced it
+   — and `.pv-input` is that one field, so there is no ::placeholder rule here any more. */
 
 .pv-input:hover {
   border-color: var(--border-strong);
@@ -191,6 +189,15 @@
   border-color: var(--brand);
   outline: var(--rule-width) solid var(--brand);
   outline-offset: calc(-1 * var(--rule-width));
+}
+
+/* White on the black gate (owner, 2026-09-17), not the brand red above: red on #202020 is 3.1:1 and
+   reads as an error next to a field that is merely focused. Literal white, like the dots and the
+   field's own ground — the same instruction. Only the two colours change, so the inset-outline
+   construction (and the forced-colors behaviour it exists for) is untouched. */
+[data-mode='preview-dark'] .pv-input:focus-visible {
+  border-color: #ffffff;
+  outline-color: #ffffff;
 }
 
 /* Button: Inter 700 / 12 / uppercase / square. Hover is the storefront's own primary hover, the

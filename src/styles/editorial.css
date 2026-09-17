@@ -751,7 +751,9 @@ main.detail {
   max-height: none;
 }
 .lb::backdrop {
-  background: rgba(255, 253, 242, 0.96);
+  /* The last hardcoded ivory: the lightbox scrim now follows the page ground like everything else
+     (owner, 2026-09-17), so it cannot drift from the palette again. */
+  background: color-mix(in srgb, var(--canvas) 96%, transparent);
 }
 .lb-stage {
   position: absolute;

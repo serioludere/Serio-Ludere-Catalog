@@ -8,6 +8,13 @@
 *::after {
   box-sizing: border-box;
 }
+
+:root {
+  /* The photo-count, like-count and Signed/Antique chips are one family drawn at one size; this was
+     three copies of the same optical pair, which is how families drift apart. Below the 4pt scale on
+     purpose: a corner mark on a photo is not laid out against the page grid. */
+  --corner-chip-pad: 2px 6px;
+}
 /* `[hidden] { display: none }` lives in the USER-AGENT origin, so any author `display` rule beats it
    and the attribute silently stops working. That is not hypothetical here: `.grid { display: grid }`
    (below) meant view-switch.ts could set `grid.hidden = true` and the Products grid stayed on screen,
@@ -559,23 +566,29 @@ td pre {
   gap: var(--stack-lg);
   margin-top: var(--space-form);
 }
+/* Owner, 2026-09-17: no border, and the text below the photo is centred.
+   With the border gone the PHOTO is what marks where one product ends and the next begins — which
+   is why `.grid` carries a generous gap and `.card .ph` keeps its `--subtle` well. Hover moves the
+   photo rather than an edge that is no longer drawn. */
 .card {
   display: flex;
   flex-direction: column;
   gap: var(--stack-sm);
   color: inherit;
   text-decoration: none;
-  /* The plate: border, background and padding mark where one product ends and the next begins. */
   padding: var(--stack-xs);
   background: var(--surface);
-  border: var(--rule-width) solid var(--rule);
-  border-radius: var(--radius);
-  transition: border-color var(--motion-transition) ease-out;
   align-self: stretch;
+  text-align: center;
+}
+.card .ph {
+  transition: opacity var(--motion-transition) ease-out;
 }
 .card:hover {
-  border-color: var(--border-strong);
   color: inherit;
+}
+.card:hover .ph {
+  opacity: 0.88;
 }
 .card .ph {
   position: relative;
@@ -648,7 +661,7 @@ td pre {
   color: var(--paper);
   font-family: var(--mono);
   font-size: var(--text-xs);
-  padding: 2px 6px;
+  padding: var(--corner-chip-pad);
 }
 /* The like count, bottom-right of the plate (owner, 2026-09-15): the same ink chip as the photo
    count, so the plate carries at most three quiet corner marks. */
@@ -661,7 +674,7 @@ td pre {
   font-family: var(--body);
   font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
-  padding: 2px 6px;
+  padding: var(--corner-chip-pad);
 }
 /* Signed / Antique corner badge (owner, 2026-09-13) — top-left, opposite the photo count, and
    styled exactly like it so the two corners read as one family rather than two ideas. */
@@ -682,14 +695,9 @@ td pre {
   font-size: var(--text-xs);
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  padding: 2px 6px;
+  padding: var(--corner-chip-pad);
 }
 
-/* Quiet, not broken: an archived rug dims rather than desaturates, and the status is spelled out
-   directly under the card. */
-.card.status-archived {
-  opacity: var(--opacity-quiet, 0.6);
-}
 .chip {
   font-family: var(--body);
   font-size: var(--size-label);
@@ -752,13 +760,17 @@ td pre {
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-.status-draft .status,
-.status.draft {
+/* Products have no status since 2026-09-16; what is left wearing `.status` is the customer link's
+   own active/revoked state and the "photos pending" mark on a half-imported row. */
+.status.revoked {
   color: var(--accent);
 }
-.status-archived .status,
-.status.archived {
-  color: var(--ink-soft);
+.status.active {
+  color: var(--success, var(--ink-soft));
+}
+/* A liked product that has since been deleted: named in the saves report, but no longer a link. */
+.rug-gone {
+  color: var(--ink-muted);
 }
 
 /* ── Dashboard tiles ──────────────────────────────────────────────────────────────────────────────
@@ -815,9 +827,9 @@ a:focus-visible {
 @media (prefers-reduced-motion: no-preference) {
   .chip {
     transition:
-      background-color 120ms ease-out,
-      color 120ms ease-out,
-      border-color 120ms ease-out;
+      background-color var(--motion-quick) var(--motion-ease),
+      color var(--motion-quick) var(--motion-ease),
+      border-color var(--motion-quick) var(--motion-ease);
   }
 }
 @media (prefers-reduced-motion: reduce) {

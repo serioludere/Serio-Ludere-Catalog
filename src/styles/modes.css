@@ -191,13 +191,17 @@
    ═══════════════════════════════════════════════════════════════════════════════════════════════ */
 :root,
 [data-mode='preview'] {
-  /* ---- background ---- */
-  --canvas: var(--color-neutral-50); /* the page ground — the storefront's ivory */
-  --surface: var(--color-neutral-0); /* cards, panels — the paper behind every rug image */
-  --surface-raised: var(--color-static-white); /* modals, popovers, the credential panel */
-  --bg-inset: var(--color-neutral-0); /* the ground behind rug imagery */
+  /* ---- background ----
+     Owner, 2026-09-17: pure white everywhere. The three realms used to sit on three different
+     off-whites — the storefront's ivory, a warmer card paper, and the admin's grey — and the studio
+     wanted one surface. `--subtle` is now the ONLY non-white ground: it is what still separates a
+     photo well, a table row hover and a skeleton from the page behind them. */
+  --canvas: var(--color-static-white); /* the page ground */
+  --surface: var(--color-static-white); /* cards, panels */
+  --surface-raised: var(--color-static-white); /* modals, popovers */
+  --bg-inset: var(--color-static-white); /* the ground behind rug imagery */
   --bg-overlay: var(--color-static-overlay); /* modal scrim */
-  --subtle: var(--color-neutral-200); /* ghost/secondary hover wash, table row hover */
+  --subtle: var(--color-neutral-200); /* ghost/secondary hover wash, table row hover, photo wells */
 
   /* ---- text ---- */
   --ink: var(--color-neutral-950); /* body and headings */
@@ -346,9 +350,9 @@
    the buyer will see it.
    ─────────────────────────────────────────────────────────────────────────────────────────────── */
 [data-mode='admin'] {
-  --canvas: var(--color-neutral-100);
-  --surface: var(--color-static-white);
-  --bg-inset: var(--color-neutral-50);
+  /* The admin used to drop its canvas to grey so white cards read as raised. Since 2026-09-17 every
+     ground is white in every realm, so there is nothing to override here — the three declarations
+     that were are gone rather than restating the base. */
 
   /* Admin drops the label to Medium, legible at 12px without shouting across a dense table. */
   --weight-label: var(--font-weight-medium);
@@ -483,8 +487,10 @@
   --focus: var(--focus-ring);
 
   /* --canvas-sunken has no Figma semantic; it is the catalogue's own sunken paper, kept so the
-     skeleton base and the plate wells do not lose their ground. */
-  --canvas-sunken: var(--color-neutral-200);
+     skeleton base and the plate wells do not lose their ground. One value with `--subtle` since
+     2026-09-17: with every board white, the faint grey behind a photo is the only thing keeping a
+     pale rug from dissolving into the page, and there is no reason for two spellings of it. */
+  --canvas-sunken: var(--subtle);
 }
 
 [data-mode='admin-dark'] {

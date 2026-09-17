@@ -34,11 +34,15 @@ const MODES_CSS = fs.readFileSync('src/styles/modes.css', 'utf8');
    written out explicitly here — an inherited value and a correctly-overridden one must both be
    asserted, or a missing override reads as a pass. */
 const EXPECTED: Record<string, [preview: string, admin: string, dark: string]> = {
-  // background
-  '--canvas': ['#fefcf0', '#f8f7f5', '#141413'],
-  '--surface': ['#fffff5', '#ffffff', '#1c1c1c'],
+  /* background — owner, 2026-09-17: every light-mode ground is pure white. The handoff drew three
+     off-whites (ivory page, warmer card paper, grey admin canvas) and the studio wanted one surface,
+     so preview and admin now agree on #ffffff and `--subtle` is the only light-mode grey left: it is
+     what still separates a photo well, a row hover and a skeleton from the page. Dark mode is
+     untouched — it was never in use and its own grounds still have to differ. */
+  '--canvas': ['#ffffff', '#ffffff', '#141413'],
+  '--surface': ['#ffffff', '#ffffff', '#1c1c1c'],
   '--surface-raised': ['#ffffff', '#ffffff', '#403f3c'],
-  '--bg-inset': ['#fffff5', '#fefcf0', '#000000'],
+  '--bg-inset': ['#ffffff', '#ffffff', '#000000'],
   '--subtle': ['#efefef', '#efefef', '#403f3c'],
   // text
   '--ink': ['#000000', '#000000', '#fefcf0'],

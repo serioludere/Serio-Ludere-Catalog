@@ -1,8 +1,10 @@
 ---
 // Product Card / Preview (Figma 53:62 and the 358-wide mobile variant).
 //
-// A 2:3 image box with the like control pinned to its bottom right, then a 12px gap, then three
-// centred lines 4px apart — title, size, price. No rating line, no meta list, no collection label.
+// A 2:3 image box with the like control pinned to its bottom right, then a 12px gap, then four
+// centred lines 4px apart — title, method, size, price (method added by the owner, 2026-09-17; it is
+// the one spec a buyer scanning a grid asks about before opening the rug). No rating line, no meta
+// list, no collection label.
 //
 // Owner, 2026-09-17: no border on the card, everything centred, and the photo fills the 2:3 box —
 // `cover` at the full height, never shrunk inside padding. The photo keeps a gentle hover zoom.
@@ -71,6 +73,7 @@ const likes = visibleLikes(card.likes);
 
   <div class="pv-card-text">
     <p class="pv-card-name"><a href={href}>{card.name}</a></p>
+    <p class="pv-card-method" hidden={!card.method}>{card.method}</p>
     <p
       class="pv-card-size"
       data-dims
@@ -205,6 +208,13 @@ const likes = visibleLikes(card.likes);
   }
   .pv-card-name a:hover {
     color: var(--brand);
+  }
+  /* The same weight as the size line below it: both are secondary facts about the rug, and giving
+     one of them its own tone would invent a hierarchy between them that the design does not have.
+     No tabular-nums — it is a word, not a measurement. */
+  .pv-card-method {
+    font-size: var(--text-sm);
+    color: var(--ink-soft);
   }
   .pv-card-size {
     font-size: var(--text-sm);

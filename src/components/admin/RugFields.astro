@@ -230,8 +230,8 @@ const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().t
       <label for="f_supplier">Supplier</label>
       <select id="f_supplier">
         <option value="" selected={!rug?.supplier}>Owned / other</option>
-        <option value="ecarpetgallery" selected={rug?.supplier === 'ecarpetgallery'}>ecarpetgallery</option>
-        <option value="karavanrug" selected={rug?.supplier === 'karavanrug'}>karavanrug</option>
+        <option value="ecarpetgallery" selected={rug?.supplier === 'ecarpetgallery'}>ECG</option>
+        <option value="karavanrug" selected={rug?.supplier === 'karavanrug'}>KV</option>
       </select>
     </div>
     <div class="f">

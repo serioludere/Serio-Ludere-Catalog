@@ -743,6 +743,7 @@
   gap: var(--space-inline);
   width: 100%;
   max-width: 520px;
+  margin-inline: auto;
   padding: var(--section-gap) var(--space-inline);
   text-align: center;
 }

@@ -12,8 +12,8 @@
 //
 // Two things are in the code that are not drawn in Figma, both necessary:
 //   - an error line under the button, because a wrong password has to say so somewhere;
-//   - a real <label>, which since 2026-09-17 is visible rather than sr-only: the owner asked for the
-//     admin login's own "PASSWORD" label here, and the placeholder that stood in for it is gone.
+//   - a real <label>, kept for assistive tech but visually hidden (owner, 2026-09-18): the field
+//     carries a "PASSWORD" placeholder instead, matching the admin login.
 //     A label is the right element for this anyway — a placeholder is not an accessible name, and it
 //     disappears the moment the buyer starts typing.
 // The eye control IS drawn, and it reveals the password rather than decorating the field.
@@ -39,7 +39,7 @@ const { slug } = Astro.props;
 
     <form class="pv-gate-form" method="post" action={`/api/customers/${slug}/login`} data-gate={slug}>
       <div class="pv-gate-field">
-        <label class="pv-label pv-gate-label" for="gate-password">Password</label>
+        <label class="sr-only" for="gate-password">Password</label>
         <div class="pv-field">
           <input
             class="pv-input"
@@ -52,6 +52,7 @@ const { slug } = Astro.props;
             spellcheck="false"
             required
             maxlength="200"
+            placeholder="PASSWORD"
           />
           <button type="button" class="pv-eye" data-gate-reveal aria-pressed="false">
             <svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true" focusable="false">
@@ -108,7 +109,6 @@ const { slug } = Astro.props;
      unscoped ancestor selector here silently matches nothing — the same problem
      `.alogin__brand :global(.admin-logo)` solves on the child side, mirrored on the ancestor side. */
   :global([data-mode='preview-dark']) .pv-gate-col {
-    border: var(--rule-width) solid var(--rule);
     padding: var(--stack-lg);
     background: var(--surface);
   }

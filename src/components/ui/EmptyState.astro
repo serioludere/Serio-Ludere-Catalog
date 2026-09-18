@@ -30,8 +30,7 @@ const PRESET: Record<
   'first-run': {
     icon: 'plus',
     title: 'No products yet',
-    message:
-      'Paste a supplier URL to fetch your first rug. It takes about 45 seconds from paste to committed.',
+    message: '',
     action: 'Add your first product',
     primary: true,
   },
@@ -67,7 +66,7 @@ const preset = PRESET[type];
 <div class:list={['empty', className]}>
   <Icon name={preset.icon} size={24} class="empty__icon" />
   <h2 class="empty__title">{title ?? preset.title}</h2>
-  <p class="empty__message">{message ?? preset.message}</p>
+  {(message ?? preset.message) && <p class="empty__message">{message ?? preset.message}</p>}
   <Button style={preset.primary ? 'primary' : 'secondary'} href={href} data-empty-action={type}>
     {preset.action}
   </Button>

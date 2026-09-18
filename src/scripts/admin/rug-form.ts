@@ -262,6 +262,12 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
   const btnDelete = maybe<HTMLButtonElement>('btnDelete', doc);
   const btnSave = maybe<HTMLButtonElement>('btnSave', doc);
   const m2 = byId('m2', doc);
+  // The Add drawer's footer (Cancel + Fetch) only matters before a fetch. Once the form is showing
+  // what was fetched it carries its own Save product / Cancel, so the footer pair would be noise.
+  const drawerFooter = btnFetch?.closest<HTMLElement>('.drawer__footer') ?? null;
+  const showFooter = (on: boolean): void => {
+    if (drawerFooter) drawerFooter.hidden = !on;
+  };
 
   const actionButtons = [btnFetch, btnAdd, btnSave, btnNewTag].filter(
     (b): b is HTMLButtonElement => b !== null,
@@ -544,6 +550,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     // can be corrected before it is saved, so the modal closes and hands the fields over.
     modal?.close();
     applyScrape(fetched);
+    showFooter(false);
     msg(
       m1,
       `Found it${n ? ` — ${n} photo${n > 1 ? 's' : ''} on the page` : ''}. Check the fields, then save.`,
@@ -568,6 +575,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     warnings.hidden = true;
     renderPhotoStrip([]);
     preview.classList.add('on');
+    showFooter(false);
     if (m1) msg(m1, 'Manual entry — fill what you need, then Add. No photos will be saved.', 'busy');
     f.name.focus();
   };
@@ -676,17 +684,16 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     const link = el('a', { href: `/admin/rugs/${encodeURIComponent(r.data.rug.id)}` }, r.data.rug.id, doc);
     // How long the whole save took, so a slow one is visible rather than a feeling (owner, 2026-09-17).
     const took = `(${((Date.now() - startedAt) / 1000).toFixed(1)} s)`;
-    msg(
-      m2,
-      [
-        'Product saved successfully — ',
-        link,
-        `. ${photoNote} ${took}`.replace(/\s+/g, ' '),
-        ...auditLink(r.data.audit),
-      ],
-      'ok',
-    );
+    const saved = [
+      'Product saved successfully — ',
+      link,
+      `. ${photoNote} ${took}`.replace(/\s+/g, ' '),
+      ...auditLink(r.data.audit),
+    ];
     reset(true);
+    // reset() folds the preview (and m2 inside it) away, so the confirmation goes to m1, which stays
+    // visible above the fresh form. Before this a save simply made the form vanish.
+    msg(m1 ?? m2, saved, 'ok');
   };
 
   const save = async (): Promise<void> => {
@@ -807,6 +814,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     warnings.hidden = true;
     renderPhotoStrip([]);
     preview.classList.remove('on');
+    showFooter(true);
     if (m1) hide(m1);
     yourName?.focus();
   };

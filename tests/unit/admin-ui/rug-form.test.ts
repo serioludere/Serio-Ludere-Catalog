@@ -482,11 +482,11 @@ describe('add mode', () => {
       roundPrice: true,
     });
     expect(calls.map((c) => c.url)).toEqual(['/api/admin/scrape', '/api/admin/photos', '/api/admin/rugs']);
-    expect(cls('m2')).toBe('msg on ok');
+    expect(cls('m1')).toBe('msg on ok');
     // The owner asked to be told plainly that it worked (2026-09-18), not just that a row appeared.
-    expect(text('m2')).toContain('Product saved successfully');
-    expect(text('m2')).toContain('380114. 1 photo saved, 1 failed.');
-    expect(document.querySelector('#m2 a')?.getAttribute('href')).toBe('/admin/rugs/380114');
+    expect(text('m1')).toContain('Product saved successfully');
+    expect(text('m1')).toContain('380114. 1 photo saved, 1 failed.');
+    expect(document.querySelector('#m1 a')?.getAttribute('href')).toBe('/admin/rugs/380114');
     // reset: name/url cleared, collection kept, preview closed
     expect(val('yourName')).toBe('');
     expect(val('url')).toBe('');

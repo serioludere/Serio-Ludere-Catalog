@@ -99,9 +99,9 @@ describe('/admin/login', () => {
     expect(html).toMatch(/<form method="post" action="\/admin\/login"/);
     expect(html).toMatch(/<input type="hidden" name="next" value="\/admin\/rugs\/SL-030"/);
     expect(html).toMatch(
-      /<input class="input input--password" type="password" id="password" name="password"[^>]*required[^>]*autocomplete="current-password"/,
+      /<input class="input input--password" type="password" placeholder="PASSWORD" id="password" name="password"[^>]*required[^>]*autocomplete="current-password"/,
     );
-    expect(html).toContain('<label class="field__label" for="password">Password</label>');
+    expect(html).toContain('<label class="field__label sr-only" for="password">Password</label>');
     expect(html).toMatch(/<button type="submit" class="btn btn--primary[^"]*"[^>]*>\s*Enter\s*<\/button>/);
     // Resting state says nothing: no message element at all, rather than an empty one.
     expect(html).not.toContain('field__message');

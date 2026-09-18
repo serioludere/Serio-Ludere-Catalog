@@ -84,6 +84,8 @@ Astro.response.status = status;
       type="password"
       name="password"
       label="Password"
+      hideLabel
+      placeholder="PASSWORD"
       autocomplete="current-password"
       required
       error={message || undefined}
@@ -106,7 +108,6 @@ Astro.response.status = status;
     /* 47:4 gap is --fieldset-gap (12); this repo already carries that value as --stack-md. */
     gap: var(--stack-md);
     padding: var(--section-gap);
-    border: var(--rule-width) solid var(--rule);
     background: var(--surface);
   }
 

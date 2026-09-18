@@ -1,17 +1,12 @@
 // @vitest-environment happy-dom
-// The fetch modal's five states — Figma P5 (81:1865), P6 (81:1974), P7 (85:2332), P8 (85:2508),
-// P9 (85:2652).
+// The fetch modal's states — Figma P5 (81:1865), P6 (81:1974), P9 (85:2652).
 //
-// The behaviour worth guarding is the REVEAL ORDER and the promise attached to it: the photo lands
-// before the fields, Cancel is available throughout, and nothing is written until "Use these". A
-// modal that applied the scrape on arrival would look identical in a screenshot and be a different
-// product.
+// P7/P8, the read-only summary with "Use these", are gone (owner, 2026-09-18): the form below the
+// modal is the editable preview, so the steps hand the fields straight to it rather than showing the
+// same values twice, once uneditable. What is left to guard is the reveal order — the photo lands
+// before the modal closes, and Cancel is available throughout, costing nothing.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  FetchModalView,
-  fetchModalParts,
-  type FetchedResult,
-} from '../../../src/scripts/admin/fetch-modal.ts';
+import { FetchModalView, fetchModalParts } from '../../../src/scripts/admin/fetch-modal.ts';
 
 /** happy-dom implements <dialog> only partially. */
 function stubDialog(el: HTMLElement): void {
@@ -56,19 +51,6 @@ const footerLabels = (): string[] =>
   [...document.querySelectorAll('[data-fetch-footer] button')].map((b) => b.textContent!.trim());
 const isOpen = (): boolean => document.getElementById('fetch-result')!.hasAttribute('open');
 
-const RESULT: FetchedResult = {
-  id: 'SL-0413',
-  title: 'Kashan — hand-knotted wool',
-  fields: [
-    { label: 'Material', value: 'Wool on cotton warp' },
-    { label: 'Method', value: 'Hand-knotted' },
-    { label: 'Origin', value: 'Kashan, Iran' },
-  ],
-  tags: ['wool', 'vintage', 'persian'],
-  photoCount: 12,
-  found: 3,
-  total: 3,
-};
 
 describe('P5 · fetching', () => {
   it('names the product and the host, and lists the three stages in order', () => {
@@ -127,80 +109,11 @@ describe('P6 · photo revealed before the fields', () => {
     expect(document.querySelectorAll('[data-fetch-photo]')).toHaveLength(1);
   });
 
-  it('keeps the photo when the fields land', () => {
+  it('keeps the photo as the stages advance', () => {
     view.fetching('SL-0413', 'supplier.example');
     view.photo('https://img.test/a.jpg');
-    view.result(RESULT);
+    view.stage('parsing');
     expect(document.querySelectorAll('[data-fetch-photo]')).toHaveLength(1);
-  });
-});
-
-describe('P7 · result, editable', () => {
-  beforeEach(() => view.result(RESULT));
-
-  it('names the subject and reports a full read', () => {
-    expect(title()).toBe('Fetched result');
-    expect(body()).toContain('SL-0413 · Kashan — hand-knotted wool');
-    expect(body()).toContain('3 of 3 fields found. Everything below is editable before you save.');
-  });
-
-  it('hides the progress bar once there is nothing in flight', () => {
-    expect(document.querySelector<HTMLElement>('[data-fetch-bar]')!.hidden).toBe(true);
-  });
-
-  it('lists the fields, the tags and what saving will cost', () => {
-    expect(body()).toContain('Wool on cotton warp');
-    expect(body()).toContain('persian');
-    expect(body()).toContain('12 images will be uploaded to Drive on save.');
-  });
-
-  it('is NOT flagged partial when everything was found', () => {
-    expect(body()).not.toContain('Partial');
-  });
-
-  it('offers exactly two CTAs, and applies nothing until the primary is pressed', () => {
-    expect(footerLabels()).toEqual(['Cancel', 'Use these']);
-    expect(on.onUse).not.toHaveBeenCalled();
-    document.querySelectorAll<HTMLButtonElement>('[data-fetch-footer] button')[1]!.click();
-    expect(on.onUse).toHaveBeenCalled();
-  });
-});
-
-describe('P8 · partial fetch, field errors', () => {
-  const partial: FetchedResult = {
-    ...RESULT,
-    fields: [
-      { label: 'Material', value: '', missing: true },
-      { label: 'Method', value: 'Hand-knotted' },
-      {
-        label: 'Price',
-        value: 'POA',
-        error: 'Couldn’t read a number from “POA”. Enter a price, or clear the field.',
-      },
-    ],
-    found: 1,
-    total: 3,
-  };
-
-  it('flags itself partial and says the photo proves the product was right', () => {
-    view.result(partial);
-    expect(body()).toContain('Partial');
-    expect(body()).toContain('1 of 3 fields found. The rest are flagged below');
-    expect(body()).toContain('The photo came through, so the right product was found');
-  });
-
-  it('distinguishes ABSENT from UNREADABLE — they need different actions', () => {
-    view.result(partial);
-    // Absent: the page never said. Unreadable: the page said something and it was refused, and the
-    // owner has to know which, or they will assume a price simply was not listed.
-    expect(body()).toContain('Not found on the page.');
-    expect(body()).toContain('Couldn’t read a number from “POA”');
-    expect(body()).toContain('POA');
-  });
-
-  it('still offers Use these — a partial result is savable', () => {
-    view.result(partial);
-    expect(footerLabels()).toEqual(['Cancel', 'Use these']);
   });
 });
 
@@ -240,7 +153,7 @@ describe('the dialog itself', () => {
     view.fetching('SL-0413', 'supplier.example');
     const dialog = document.getElementById('fetch-result') as HTMLDialogElement;
     const spy = vi.spyOn(dialog, 'showModal');
-    view.result(RESULT);
+    view.failed('supplier.example refused the request', 'supplier.example');
     expect(spy).not.toHaveBeenCalled();
   });
 });

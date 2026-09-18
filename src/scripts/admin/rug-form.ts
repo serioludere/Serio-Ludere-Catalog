@@ -17,7 +17,7 @@ import {
 import { initTagTokens, type TagTokens } from './tag-tokens.ts';
 import { byId, clear, el, maybe, money, readJson, setDisabled } from './dom.ts';
 import { hide, hideVisible, msg } from './msg.ts';
-import { FetchModalView, fetchModalParts, type FetchedResult } from './fetch-modal.ts';
+import { FetchModalView, fetchModalParts } from './fetch-modal.ts';
 import { bindMultiSelects, multiSelectValues, setMultiSelect } from '../ui/multi-select.ts';
 import { parsePrice, roundUpToStep } from './price.ts';
 
@@ -129,8 +129,6 @@ export interface RugFormOptions extends ApiOptions {
 export interface RugForm {
   mode: 'add' | 'edit';
   fetchUrl(force?: boolean): Promise<void>;
-  /** Confirms the fetch modal's result into the form (P7/P8 "Use these"). */
-  useFetched(): void;
   manualEntry(): void;
   add(): Promise<void>;
   save(): Promise<void>;
@@ -210,7 +208,6 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
    * flow then degrades to applying the scrape directly, which is what it did before this existed.
    */
   let modal: FetchModalView | undefined;
-  let pending: Partial<ScrapedLike> | undefined;
   // The form owns the control, so the form binds it: every page that renders RugFields gets the
   // summary line, Esc-to-close and close-on-outside-click without having to remember to ask.
   bindMultiSelects(doc);
@@ -541,16 +538,11 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     const fetched = r.data.data;
     const n = fetched.photos.length;
 
-    // P7/P8: the result is REVIEWED before it is applied. That ordering is the whole point of the
-    // modal — a scrape of the wrong rug is recognised from its photo and thrown away before a single
-    // field has been read, and nothing has been written either way.
-    if (modal) {
-      pending = fetched;
-      if (fetched.photos[0]?.url) modal.photo(fetched.photos[0].url);
-      modal.result(resultOf(fetched));
-      return;
-    }
-
+    // The steps finish straight into the form (owner, 2026-09-18). There used to be a read-only
+    // summary here with a "Use these" button, and the form below it was the SECOND place you saw the
+    // same values — the first one you could not edit. One preview is enough, and this is the one that
+    // can be corrected before it is saved, so the modal closes and hands the fields over.
+    modal?.close();
     applyScrape(fetched);
     msg(
       m1,
@@ -558,42 +550,6 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
       'ok',
     );
     f.name.focus();
-  };
-
-  /** The scrape as P7 lists it: the fields the frame shows, in its order, flagged when absent. */
-  const resultOf = (d: Partial<ScrapedLike>): FetchedResult => {
-    const rows: Array<[string, string | undefined]> = [
-      ['Material', d.material],
-      ['Method', d.method],
-      ['Origin', d.origin],
-      ['Age', d.age],
-      ['Size', d.widthCm && d.lengthCm ? `${d.widthCm} · ${d.lengthCm} cm` : undefined],
-      ['Price', d.priceUsd === undefined ? undefined : `$${d.priceUsd.toLocaleString('en-US')}`],
-    ];
-    const fields = rows.map(([label, value]) => ({
-      label,
-      value: value ?? '',
-      missing: !value,
-    }));
-    // P8: a price the page carried but could not be read is an ERROR, not a blank — the owner needs
-    // to know the page said something and it was refused, or they will assume it was simply absent.
-    const priceRow = fields.find((x) => x.label === 'Price');
-    if (priceRow && d.priceUsd === undefined && d.retailEstimate) {
-      priceRow.value = d.retailEstimate;
-      priceRow.missing = false;
-      (priceRow as { error?: string }).error =
-        `Couldn't read a number from “${d.retailEstimate}”. Enter a price, or clear the field.`;
-    }
-    return {
-      id: f.id.value.trim() || data.nextId || '',
-      title: d.supplierTitle ?? f.name.value.trim(),
-      fields,
-      tags: d.tagsSuggested ?? [],
-      photoUrl: d.photos?.[0]?.url,
-      photoCount: d.photos?.length ?? 0,
-      found: fields.filter((x) => !x.missing).length,
-      total: fields.length,
-    };
   };
 
   const manualEntry = (): void => {
@@ -720,7 +676,16 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     const link = el('a', { href: `/admin/rugs/${encodeURIComponent(r.data.rug.id)}` }, r.data.rug.id, doc);
     // How long the whole save took, so a slow one is visible rather than a feeling (owner, 2026-09-17).
     const took = `(${((Date.now() - startedAt) / 1000).toFixed(1)} s)`;
-    msg(m2, ['Added ', link, `. ${photoNote} ${took}`.replace(/\s+/g, ' '), ...auditLink(r.data.audit)], 'ok');
+    msg(
+      m2,
+      [
+        'Product saved successfully — ',
+        link,
+        `. ${photoNote} ${took}`.replace(/\s+/g, ' '),
+        ...auditLink(r.data.audit),
+      ],
+      'ok',
+    );
     reset(true);
   };
 
@@ -924,27 +889,11 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
       {
         // Nothing was written, so cancelling costs exactly nothing — which is what P5 promises.
         onCancel: () => {
-          pending = undefined;
           modal?.close();
           if (m1) msg(m1, 'Fetch cancelled — nothing was written.', 'busy');
         },
-        onUse: () => {
-          if (pending) applyScrape(pending);
-          const n = pending?.photos?.length ?? 0;
-          pending = undefined;
-          modal?.close();
-          if (m1) {
-            msg(
-              m1,
-              `Using the fetched values${n ? ` — ${n} photo${n > 1 ? 's' : ''} will upload on save` : ''}. Check the fields, then save.`,
-              'ok',
-            );
-          }
-          f.name.focus();
-        },
         // P9: the link is kept as source attribution either way, which manualEntry() already does.
         onManual: () => {
-          pending = undefined;
           modal?.close();
           manualEntry();
         },
@@ -976,7 +925,6 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     mode,
     fetchUrl,
     /** P7/P8: take the reviewed result into the form. Exposed so tests drive the real path. */
-    useFetched: () => doc.querySelector<HTMLButtonElement>('[data-fetch-footer] .btn--primary')?.click(),
     manualEntry,
     add,
     save,

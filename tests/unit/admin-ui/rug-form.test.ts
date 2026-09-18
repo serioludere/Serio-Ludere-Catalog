@@ -483,7 +483,9 @@ describe('add mode', () => {
     });
     expect(calls.map((c) => c.url)).toEqual(['/api/admin/scrape', '/api/admin/photos', '/api/admin/rugs']);
     expect(cls('m2')).toBe('msg on ok');
-    expect(text('m2')).toContain('Added 380114. 1 photo saved, 1 failed.');
+    // The owner asked to be told plainly that it worked (2026-09-18), not just that a row appeared.
+    expect(text('m2')).toContain('Product saved successfully');
+    expect(text('m2')).toContain('380114. 1 photo saved, 1 failed.');
     expect(document.querySelector('#m2 a')?.getAttribute('href')).toBe('/admin/rugs/380114');
     // reset: name/url cleared, collection kept, preview closed
     expect(val('yourName')).toBe('');
@@ -694,32 +696,32 @@ describe('the fetch modal gates the form (P5-P9)', () => {
     await pending;
   });
 
-  it('does NOT touch the form until the result is accepted', async () => {
+  it('closes on success and fills the form — the form IS the preview now', async () => {
+    // Owner, 2026-09-18: the read-only summary with "Use these" is gone. The steps run, and then the
+    // fields land in the form below, which is editable and carries Save product / Cancel of its own.
     const form = mountWithModal(ok);
     set('url', scraped.sourceUrl);
     await form.fetchUrl();
 
-    // P7 is on screen with the values…
-    expect(document.querySelector('[data-fetch-body]')?.textContent).toContain('Hand-knotted');
-    // …and the form behind it is still untouched. This is the whole point of the modal: a scrape of
-    // the wrong rug is thrown away before a single field has been read.
-    expect(val('f_material')).toBe('');
-    expect(val('f_method')).toBe('');
-
-    form.useFetched();
+    expect(document.getElementById('fetch-result')?.hasAttribute('open')).toBe(false);
     expect(val('f_material')).toBe('Wool');
     expect(val('f_method')).toBe('Hand-knotted');
-    expect(document.getElementById('fetch-result')?.hasAttribute('open')).toBe(false);
+    // …and the SKU is the id, so what is about to be saved is filed under the supplier's number.
+    expect(val('f_id')).toBe('380114');
+    expect(text('m1')).toContain('Found it');
+    // Nothing has been written — the scrape is a read, and the save is still a separate press.
+    expect(calls.map((c) => c.url)).toEqual(['/api/admin/scrape']);
   });
 
-  it('cancelling leaves the form exactly as it was, and says nothing was written', async () => {
+  it('cancelling DURING the fetch leaves the form as it was, and says nothing was written', async () => {
     const form = mountWithModal(ok);
     set('url', scraped.sourceUrl);
-    await form.fetchUrl();
+    const pending = form.fetchUrl();
+    // Cancel is only reachable while the request is in flight now, which is the window it is for.
     document.querySelector<HTMLButtonElement>('[data-fetch-footer] .btn--ghost')!.click();
-    expect(val('f_material')).toBe('');
     expect(text('m1')).toContain('nothing was written');
     expect(document.getElementById('fetch-result')?.hasAttribute('open')).toBe(false);
+    await pending;
   });
 
   it('a refused fetch shows P9 with the host named, and manual entry still works', async () => {

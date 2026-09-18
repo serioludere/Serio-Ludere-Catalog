@@ -32,17 +32,6 @@ export interface FetchedField {
   error?: string;
 }
 
-export interface FetchedResult {
-  id: string;
-  title: string;
-  /** Fields the page yielded, in the order P7 lists them. */
-  fields: FetchedField[];
-  tags: string[];
-  photoUrl?: string;
-  photoCount: number;
-  found: number;
-  total: number;
-}
 
 export interface FetchModalParts {
   dialog: HTMLDialogElement;
@@ -83,7 +72,6 @@ export interface FetchModalHandlers {
   /** P5/P9: abandon the scrape. Nothing has been written, so this only closes. */
   onCancel: () => void;
   /** P7/P8: take these values into the form behind. */
-  onUse: () => void;
   /** P9: give up on scraping and fill the form by hand, keeping the link as attribution. */
   onManual: () => void;
   /** P9: the supplier may simply have been busy. */
@@ -176,87 +164,6 @@ export class FetchModalView {
     this.parts.body.prepend(wrap);
     const lede = this.parts.body.querySelector<HTMLElement>('.fetch__lede');
     if (lede) lede.textContent = 'Is this the right rug? The fields are still loading.';
-  }
-
-  /**
-   * P7 · result, editable — and P8 when fields are missing or unreadable. One method, because the
-   * two frames differ only in what the field rows carry; branching them would duplicate the layout.
-   */
-  result(r: FetchedResult): void {
-    const { title, bar, body, footer } = this.parts;
-    const partial = r.found < r.total;
-    title.textContent = 'Fetched result';
-    bar.hidden = true;
-
-    const photo = body.querySelector('[data-fetch-photo]');
-    clear(body);
-    if (photo) body.append(photo);
-
-    const head = el('div', { class: 'fetch__meta' }, [], this.doc);
-    head.append(el('p', { class: 'fetch__subject' }, `${r.id} · ${r.title}`, this.doc));
-    if (partial) head.append(el('span', { class: 'badge badge--warning' }, 'Partial', this.doc));
-    body.append(head);
-
-    body.append(
-      el(
-        'p',
-        { class: 'fetch__lede' },
-        partial
-          ? `${r.found} of ${r.total} fields found. The rest are flagged below — fill what you can, or save without them.`
-          : `${r.found} of ${r.total} fields found. Everything below is editable before you save.`,
-        this.doc,
-      ),
-    );
-    if (partial) {
-      body.append(
-        el(
-          'p',
-          { class: 'hint' },
-          'The photo came through, so the right product was found — only some metadata is missing.',
-          this.doc,
-        ),
-      );
-    }
-
-    const fields = el('dl', { class: 'fetch__fields', 'data-fetch-fields': '' }, [], this.doc);
-    for (const f of r.fields) {
-      fields.append(el('dt', {}, f.label, this.doc));
-      const dd = el('dd', {}, [], this.doc);
-      if (f.error) {
-        dd.append(el('span', { class: 'fetch__value' }, f.value, this.doc));
-        dd.append(el('span', { class: 'fetch__flag fetch__flag--error' }, f.error, this.doc));
-      } else if (f.missing) {
-        dd.append(el('span', { class: 'fetch__flag' }, 'Not found on the page.', this.doc));
-      } else {
-        dd.append(el('span', { class: 'fetch__value' }, f.value, this.doc));
-      }
-      fields.append(dd);
-    }
-    body.append(fields);
-
-    if (r.tags.length) {
-      const tags = el('ul', { class: 'fetch__tags' }, [], this.doc);
-      for (const t of r.tags) tags.append(el('li', { class: 'tag' }, t, this.doc));
-      body.append(tags);
-    }
-
-    if (r.photoCount > 0) {
-      body.append(
-        el(
-          'p',
-          { class: 'hint' },
-          `${r.photoCount} image${r.photoCount === 1 ? '' : 's'} will be uploaded to Drive on save.`,
-          this.doc,
-        ),
-      );
-    }
-
-    clear(footer);
-    footer.append(
-      action('Cancel', 'ghost', this.on.onCancel, this.doc),
-      action('Use these', 'primary', this.on.onUse, this.doc),
-    );
-    this.open();
   }
 
   /**

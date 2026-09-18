@@ -117,8 +117,6 @@ export const CollectionInput = z.object({
 export type CollectionInputT = z.infer<typeof CollectionInput>;
 export const CollectionUpdate = CollectionInput.extend({ version: Version });
 export type CollectionUpdateT = z.infer<typeof CollectionUpdate>;
-export const CollectionReorder = z.object({ order: z.array(Id).min(1).max(200) }); // ids in the new sort order
-export type CollectionReorderT = z.infer<typeof CollectionReorder>;
 /** Just the name (owner, 2026-09-16): a tag's colour never meant anything on the buyer's side, and
  *  the column stays in the sheet written blank. */
 export const TagInput = z.object({ name: TagName });

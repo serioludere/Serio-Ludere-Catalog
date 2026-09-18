@@ -12,6 +12,7 @@ import {
   adminPost,
   adminRuntime,
   auditBase,
+  invalidateAfterWrite,
   methodNotAllowed,
 } from '../../../../lib/admin/http.ts';
 import { insertTopRow } from '../../../../lib/admin/write.ts';
@@ -71,6 +72,11 @@ export const POST = adminPost(ClientInput, async ({ context, body, actor }) => {
     audit,
   });
   const created = clientView(await freshClient(client, result.row));
+  // AWAITED, unlike every other mutation here (owner, 2026-09-18): `/{slug}` resolves the buyer out of
+  // this cache, so until it is rebuilt the link this call just handed back answers 404 — which is
+  // exactly the "the link doesn't work until I refresh" the studio hit. This endpoint was in fact the
+  // only mutation that never invalidated at all; the wait makes the link live the moment it exists.
+  await invalidateAfterWrite(context, { wait: true });
   // Creating a customer produces one thing the studio needs: their link.
   return noStore({ ok: true, client: created, audit: result.audit }, 201);
 });

@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   AuditQuery,
   CLIENT_CODE_RE,
-  CollectionReorder,
   PhotoImportRequest,
   RugInput,
   RugUpdate,
@@ -69,8 +68,6 @@ describe('admin DTO schemas (ADMIN_SPEC §2.3)', () => {
     expect(TagInput.safeParse({ name: 'Kilim' }).success).toBe(true);
     expect(TagInput.parse({ name: 'Kilim', color: '#A32020' })).toEqual({ name: 'Kilim' });
     expect(TagInput.safeParse({ name: '' }).success).toBe(false);
-    expect(CollectionReorder.safeParse({ order: [] }).success).toBe(false);
-    expect(CollectionReorder.safeParse({ order: ['kilims', 'tulu'] }).success).toBe(true);
     expect(SettingsUpdate.safeParse({ key: 'price_round_step', value: ' 50 ' })).toMatchObject({
       success: true,
       data: { value: '50' },

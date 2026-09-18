@@ -14,16 +14,24 @@
 // the frame edge rather than folding onto a second line. The cut IS the affordance, which is why no
 // scrollbar is drawn.
 interface Props {
-  collections: Array<{ slug: string; name: string; count: number }>;
+  collections: Array<{ slug: string; name: string; count: number; description?: string }>;
 }
 const { collections } = Astro.props;
 ---
 
+{/* Each tab carries its own description; filters.ts moves the pressed one into the intro line the
+    page renders under this strip (owner, 2026-09-18). "All" has none — it is not a collection. */}
 <nav class="pv-filters" aria-label="Filter by collection">
   <button type="button" class="pv-chip is-on" data-filter="all" aria-pressed="true">All</button>
   {
     collections.map((c) => (
-      <button type="button" class="pv-chip" data-filter={c.slug} aria-pressed="false">
+      <button
+        type="button"
+        class="pv-chip"
+        data-filter={c.slug}
+        data-description={c.description || undefined}
+        aria-pressed="false"
+      >
         {c.name}
       </button>
     ))

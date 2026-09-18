@@ -14,7 +14,6 @@ import {
   insertRug,
   insertTopRow,
   productFieldsToCells,
-  updateColumnCells,
   updateRow,
   updateRug,
   type Cells,
@@ -570,40 +569,6 @@ describe('row tabs (Collections / Tags / Clients / Settings)', () => {
     expect(f.writes).toHaveLength(0);
   });
 
-  it('updateColumnCells rewrites one column for many rows after checking each id', async () => {
-    const f = fake({ rows: { 'Collections!A2:A2': ['kilims'], 'Collections!A3:A3': ['tulu'] } });
-    const reorder = buildAuditRow({
-      ...audit,
-      action: 'collection.reorder',
-      targetTab: 'Collections',
-      targetId: '-',
-      after: { order: ['tulu', 'kilims'] },
-    });
-    await updateColumnCells(f.client, {
-      tab: 'Collections',
-      columnIndex: 5,
-      updates: [
-        { row: 2, expectFirstCell: 'kilims', value: 2 },
-        { row: 3, expectFirstCell: 'tulu', value: 1 },
-      ],
-      audit: reorder,
-    });
-    const reqs = f.writes[0] as Req[];
-    expect(reqs[0]!.updateCells!.start).toEqual({ sheetId: IDS.Collections, rowIndex: 1, columnIndex: 5 });
-    expect(reqs[1]!.updateCells!.start).toEqual({ sheetId: IDS.Collections, rowIndex: 2, columnIndex: 5 });
-    expect(reqs).toHaveLength(4);
-    await expect(
-      updateColumnCells(f.client, {
-        tab: 'Collections',
-        columnIndex: 5,
-        updates: [{ row: 2, expectFirstCell: 'tulu', value: 1 }],
-        audit: reorder,
-      }),
-    ).rejects.toBeInstanceOf(VersionMismatchError);
-    await expect(
-      updateColumnCells(f.client, { tab: 'Collections', columnIndex: 0, updates: [], audit: reorder }),
-    ).rejects.toThrow(/column out of range/);
-  });
   it('appendAudit writes a stand-alone row at AuditLog row 2', async () => {
     const f = fake({});
     const login = buildAuditRow({ ...audit, action: 'auth.login', targetTab: '-', targetId: 'owner' });

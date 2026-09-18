@@ -104,6 +104,10 @@ const showGate = !error && Boolean(customer) && !signedIn;
               <span class="pv-spacer" aria-hidden="true" />
               <PreviewControls rates={rates} />
             </div>
+            {/* The selected collection's own description, as the intro to the cards below it (owner,
+                2026-09-18). filters.ts fills it from the pressed tab; blank under "All", and hidden
+                outright rather than left as an empty line that would still take its gap. */}
+            <p class="pv-lede pv-collection-intro" data-collection-intro hidden />
           </section>
 
           <section class="pv-wrap">

@@ -1,6 +1,6 @@
 // Add + edit rug form (docs/ADMIN_SPEC.md §8.3), the legacy "Add rug" flow rebuilt: Fetch →
 // preview → photos strip → Add to sheet (photos first, then the row), manual entry on any scrape
-// failure, "Round to 5", swap sides, suggested tags, "+ new tag"; in edit mode Save with the version
+// failure, "Round to 5", swap sides, "+ new tag"; in edit mode Save with the version
 // token (409 → the form reloads the fresh row). Keyboard:
 // Enter in the link field fetches, Enter in "your name" moves to the link, Escape hides the
 // banner, Ctrl/⌘+S saves. Buttons are disabled while a request is in flight.
@@ -15,7 +15,7 @@ import {
   type ApiOptions,
 } from './api.ts';
 import { initChips, type ChipGroup } from './chips.ts';
-import { append, byId, clear, el, maybe, money, readJson, setDisabled } from './dom.ts';
+import { byId, clear, el, maybe, money, readJson, setDisabled } from './dom.ts';
 import { hide, hideVisible, msg } from './msg.ts';
 import { FetchModalView, fetchModalParts, type FetchedResult } from './fetch-modal.ts';
 import { bindMultiSelects, multiSelectValues, setMultiSelect } from '../ui/multi-select.ts';
@@ -121,10 +121,9 @@ export interface RugBody {
   driveFolderUrl?: string;
 }
 
-export interface RugFormOptions extends ApiOptions {
-  /** Replaces window.confirm for "use these" tag creation (tests). */
-  confirmImpl?: (text: string) => boolean;
-}
+// Nothing on this form confirms any more: the one prompt was the scrape's "use these" tag creation
+// (owner, 2026-09-18), so RugFormOptions is ApiOptions verbatim.
+export type RugFormOptions = ApiOptions;
 
 export interface RugForm {
   mode: 'add' | 'edit';
@@ -165,6 +164,23 @@ function intOf(text: string): number | undefined {
   return Number.isFinite(n) ? Math.round(n) : undefined;
 }
 
+/**
+ * The supplier's SKU as OUR product id (owner, 2026-09-18): a scraped rug is filed under the number
+ * the supplier already calls it, rather than the next SL-nnn in the sequence.
+ *
+ * Sanitised to the id format the sheet accepts (dto.ts ID_RE: letters, digits, `_` and `-`, ≤64) —
+ * suppliers put spaces, slashes and dots in stock codes, and an id is a key, not prose. A SKU with
+ * nothing usable in it returns undefined and the caller keeps the allocated number.
+ */
+export function idFromSku(sku: string | undefined): string | undefined {
+  const cleaned = (sku ?? '')
+    .trim()
+    .replace(/[^A-Za-z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 64);
+  return cleaned || undefined;
+}
+
 export function initRugForm(doc: Document = document, opts: RugFormOptions = {}): RugForm {
   const data = readJson<FormData>('admin-data', doc);
   const mode = data.mode;
@@ -174,8 +190,6 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     location: opts.location,
     onUnauthorized: opts.onUnauthorized,
   };
-  const confirmImpl =
-    opts.confirmImpl ?? ((text: string) => (typeof confirm === 'function' ? confirm(text) : true));
 
   /* Unsaved-work guard. This screen is a <div class="addform">, not a <form>: there is no native
      submit, so the browser offers none of its own protection, and a click on the nav rail with half
@@ -409,6 +423,9 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     f.sourceUrl.value = d.sourceUrl ?? '';
     f.supplier.value = d.supplier ?? '';
     f.supplierRef.value = d.supplierRef ?? '';
+    // The scraped SKU becomes the product id (owner, 2026-09-18). Only on add: an existing rug's id is
+    // its reference and never moves. Falls back to the allocated SL-nnn when the SKU is unusable.
+    if (!edit) f.id.value = idFromSku(d.supplierRef) ?? data.nextId ?? '';
     if (supplierTitle)
       setHint(supplierTitle, d.supplierTitle ? `Supplier calls it: ${d.supplierTitle}` : null);
     setHint(ftHint, d.sizeRaw ? `Supplier measurement: ${d.sizeRaw}` : null);
@@ -423,38 +440,16 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
         setHint(priceHint, `Supplier price ${seen} — set retail_markup in Settings to derive retail prices`);
       }
     } else setHint(priceHint, 'No supplier price found — enter the retail price by hand.');
+    // The scrape no longer offers its guessed tags (owner, 2026-09-18): tags are chosen on this form,
+    // by hand, and a supplier's own words are not the studio's vocabulary. `tagsSuggested` still
+    // arrives in the payload — the scrapers gather it — it is simply not put in front of anyone.
     clear(tagHint);
-    const suggested = (d.tagsSuggested ?? []).filter((t) => t.trim());
-    if (suggested.length) {
-      const use = el('button', { type: 'button', class: 'chip', id: 'btnUseTags' }, 'use these', doc);
-      use.addEventListener('click', () => void useSuggestedTags(suggested));
-      append(tagHint, [`Suggested tags: ${suggested.join(', ')} · `, use]);
-      tagHint.hidden = false;
-    } else tagHint.hidden = true;
+    tagHint.hidden = true;
     clear(warnings);
     for (const w of d.warnings ?? []) warnings.appendChild(el('li', {}, w, doc));
     warnings.hidden = (d.warnings ?? []).length === 0;
     renderPhotoStrip(d.photos ?? []);
     preview.classList.add('on');
-  };
-
-  const useSuggestedTags = async (suggested: string[]): Promise<void> => {
-    const wanted = new Set(chips.values());
-    const missing: string[] = [];
-    for (const s of suggested) {
-      const existing = hasTag(s);
-      if (existing) wanted.add(existing);
-      else missing.push(s);
-    }
-    chips.set([...wanted]);
-    if (missing.length === 0) return;
-    if (
-      !confirmImpl(
-        `Create ${missing.length} new tag${missing.length === 1 ? '' : 's'}: ${missing.join(', ')}?`,
-      )
-    )
-      return;
-    for (const name of missing) await createTag(name, true);
   };
 
   const createTag = async (name: string, press: boolean): Promise<boolean> => {

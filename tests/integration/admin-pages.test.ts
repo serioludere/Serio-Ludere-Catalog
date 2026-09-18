@@ -261,7 +261,7 @@ describe('/admin/rugs/[id]', () => {
 });
 
 describe('/admin/collections', () => {
-  it('renders the ordered table with inputs, rug counts, the tag chips and the add forms', async () => {
+  it('renders the ordered table with inputs, rug counts and the add form — no reorder, no tags', async () => {
     state.down = false;
     const { status, html } = await render(CollectionsPage, '/admin/collections');
     expect(status).toBe(200);
@@ -269,13 +269,16 @@ describe('/admin/collections', () => {
     expect(html).toMatch(/<li class="crow" data-id="kilims" data-version="[a-f0-9]{16}" data-name="Kilims"/);
     expect(html).toContain('data-field="description" value="Flat &quot;weaves&quot;"');
     expect(html.replace(/\s+/g, ' ')).toContain('<span class="crow__count"> 1 product </span>'); // one rug in Kilims
-    expect(html).toContain('data-act="up"');
     expect(html).toContain('id="btnAddCollection"');
-    expect(html).toMatch(
-      /<button type="button" class="chip" data-id="kilim" data-version="[a-f0-9]{16}" data-name="Kilim" data-color="#bb3e03" data-rugs="3">/,
-    );
-    expect(html).toMatch(/id="tagEdit" class="fields" hidden/);
-    expect(html).toContain('"tags":[{');
+    // Owner, 2026-09-18: the ▲/▼ pair and the whole tag half of this page are gone, and so are the
+    // two hint lines that explained the ordering and the description clamp.
+    expect(html).not.toContain('data-act="up"');
+    expect(html).not.toContain('data-act="down"');
+    expect(html).not.toContain('id="tagList"');
+    expect(html).not.toContain('id="btnAddTag"');
+    expect(html).not.toContain('"tags":[{');
+    expect(html).not.toContain('Collections appear on the site in this order');
+    expect(html).not.toContain('press See more');
     expectCspClean(html);
   });
 });

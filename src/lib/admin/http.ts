@@ -307,10 +307,20 @@ export async function recordAuditEvent(
  * Not awaited (owner, 2026-09-17): the refresh re-reads the whole catalogue, which added a second or
  * two to every save while the admin waited on a cache only buyers' pages read. The admin itself reads
  * the sheet directly, so nothing it shows next depends on the refresh having finished. Never throws.
+ *
+ * `{ wait: true }` is for the one case where that is not true: creating a customer hands the studio a
+ * link they open straight away, and `/{slug}` is served from exactly this cache (owner, 2026-09-18 —
+ * the link used to 404 until the cache caught up). Correctness beats the second there.
  */
-export function invalidateAfterWrite(context: Pick<APIContext, 'cache'>): Promise<void> {
-  void invalidateCatalogue(getCache, context, { state: revalidateState, logger: consoleLogger }).catch(
-    (e: unknown) => consoleLogger.warn('background invalidation failed', { error: serializeError(e) }),
+export function invalidateAfterWrite(
+  context: Pick<APIContext, 'cache'>,
+  opts: { wait?: boolean } = {},
+): Promise<void> {
+  const done = invalidateCatalogue(getCache, context, {
+    state: revalidateState,
+    logger: consoleLogger,
+  }).catch((e: unknown) =>
+    consoleLogger.warn('background invalidation failed', { error: serializeError(e) }),
   );
-  return Promise.resolve();
+  return opts.wait ? done.then(() => undefined) : Promise.resolve();
 }

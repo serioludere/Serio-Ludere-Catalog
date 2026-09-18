@@ -1,12 +1,16 @@
 ---
-// /admin/collections — collections (reorder ▲/▼, inline edit, add) and tags (chips + edit panel,
-// add) on one page (docs/ADMIN_SPEC.md §2.1, §8.3). Wired by src/scripts/admin/collections.ts.
-// Renaming never rewrites rugs (they store display names); the rug counts show what would detach.
+// /admin/collections — collections only: inline edit, add, delete (docs/ADMIN_SPEC.md §2.1, §8.3).
+// Wired by src/scripts/admin/collections.ts.
+//
+// Owner, 2026-09-18, three removals: the ▲/▼ reorder pair (and its endpoint) is gone, the tag
+// section is gone — tags are assigned on the product form and nowhere else, so there is nothing to
+// keep here — and the two hint lines went with them.
+//
+// Renaming never rewrites rugs (they store display names); the rug counts show what carries each one.
 export const prerender = false;
 
 import AdminLayout from '../../components/admin/AdminLayout.astro';
 import Button from '../../components/ui/Button.astro';
-import Icon from '../../components/ui/Icon.astro';
 import Input from '../../components/ui/Input.astro';
 import Modal from '../../components/ui/Modal.astro';
 import EmptyState from '../../components/ui/EmptyState.astro';
@@ -27,16 +31,10 @@ try {
 const rugs = snapshot?.rugs ?? [];
 const rugCount = (name: string): number =>
   rugs.filter((r) => r.collection.trim().toLowerCase() === name.trim().toLowerCase()).length;
-const tagCount = (name: string): number =>
-  rugs.filter((r) => r.tags.some((t) => t.trim().toLowerCase() === name.trim().toLowerCase())).length;
 const collections = (snapshot?.collections ?? [])
   .slice()
   .sort((a, b) => (a.sortOrder ?? 1e9) - (b.sortOrder ?? 1e9) || a.name.localeCompare(b.name));
-const tags = snapshot?.tags ?? [];
-const data = {
-  collections: collections.map((c) => ({ ...c, rugs: rugCount(c.name) })),
-  tags: tags.map((t) => ({ ...t, rugs: tagCount(t.name) })),
-};
+const data = { collections: collections.map((c) => ({ ...c, rugs: rugCount(c.name) })) };
 
 // Figma 25:236 — the topbar's status line. Empty on every screen until now.
 const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
@@ -58,10 +56,6 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
       <Button icon="plus" data-open="new-collection">New collection</Button>
     </div>
 
-    <p class="hint">
-      Collections appear on the site in this order. If you rename one, re-save its products so they follow the
-      new name.
-    </p>
     <div id="m5" class="msg"></div>
 
     <div class="crow__columns" aria-hidden="true">
@@ -87,31 +81,6 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
               <span class="crow__count">
                 {rugCount(c.name)} {rugCount(c.name) === 1 ? 'product' : 'products'}
               </span>
-              {/* The reorder pair was two ghost buttons whose entire label was the text character
-                  ▲ / ▼, so they rendered as bare black triangles in the heading font, wedged between
-                  the muted count and the letterspaced EDIT — stray typography rather than controls.
-                  `chevron-up` is not in the handoff's icon set (69:2, pinned by icons.test.ts), so
-                  "up" is the same chevron rotated rather than a nineteenth glyph.
-                  Disabled at the ends: `move()` already returns silently when the index is out of
-                  range, so these used to take focus and do nothing. */}
-              <button
-                type="button"
-                class="btn btn--ghost crow__move crow__move--up"
-                data-act="up"
-                disabled={i === 0}
-                aria-label={`Move ${c.name} up`}
-              >
-                <Icon name="chevron-down" />
-              </button>
-              <button
-                type="button"
-                class="btn btn--ghost crow__move"
-                data-act="down"
-                disabled={i === collections.length - 1}
-                aria-label={`Move ${c.name} down`}
-              >
-                <Icon name="chevron-down" />
-              </button>
               <button type="button" class="btn btn--secondary" data-act="edit">
                 Edit
               </button>
@@ -155,11 +124,6 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
       )
     }
 
-    <p class="hint">
-      The description shows on the site under the collection's name; this list keeps it to one line until you
-      press See more.
-    </p>
-
     <Modal id="new-collection" title="New collection">
       <p>Collections group the catalogue for the buyer. A rug can sit in several at once.</p>
       <div class="modal__fields">
@@ -179,60 +143,6 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
 
     <div id="m6" class="msg"></div>
   </section>
-
-  <section class="stack" aria-labelledby="h-tags">
-    <h3 id="h-tags">Tags</h3>
-    <p class="hint">Click a tag to rename or delete it.</p>
-    <div class="chips" id="tagList" role="group" aria-label="Tags">
-      {
-        tags.map((t) => (
-          <button
-            type="button"
-            class="chip"
-            data-id={t.id}
-            data-version={t.version}
-            data-name={t.name}
-            data-color={t.color ?? ''}
-            data-rugs={tagCount(t.name)}
-          >
-            {t.name}
-          </button>
-        ))
-      }
-    </div>
-    {tags.length === 0 && <div class="msg busy on">No tags yet.</div>}
-    <div id="tagEdit" class="fields" hidden>
-      <div class="f">
-        <label for="t_name">Tag name</label>
-        <input id="t_name" autocomplete="off" />
-      </div>
-      <div class="f actions">
-        <button class="btn btn--primary" id="btnSaveTag" type="button">Save tag</button>
-        <button class="btn btn--secondary" id="btnCancelTag" type="button">Cancel</button>
-        <button class="btn btn--destructive" id="btnDeleteTag" type="button">Delete</button>
-      </div>
-      <p class="hint" id="tagEditHint"></p>
-    </div>
-    <div id="m7" class="msg"></div>
-    <div class="fields">
-      <div class="f">
-        <label for="nt_name">New tag</label>
-        <input id="nt_name" placeholder="Name" autocomplete="off" />
-      </div>
-    </div>
-    <div class="actions">
-      <button class="btn btn--primary" id="btnAddTag" type="button">Add tag</button>
-    </div>
-    <div id="m8" class="msg"></div>
-  </section>
-
-  {
-    /* Cloned by scripts/admin/collections.ts so a rebuilt row carries the same icon markup as the
-      server's, instead of the literal ▲ character it used to insert. */
-  }
-  <template id="moveTpl"
-    ><button type="button" class="btn btn--ghost crow__move"><Icon name="chevron-down" /></button></template
-  >
 
   <script is:inline type="application/json" id="admin-data" set:html={jsonForScript(data)} />
   <script>

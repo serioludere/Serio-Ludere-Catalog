@@ -112,6 +112,11 @@ describe('clients', () => {
     // The password_hash and note columns stay in the sheet, written blank.
     expect(sheet.row('Customers', 2)[2]).toBe('');
     expect(sheet.row('Customers', 2)[3]).toBe('');
+    // …and the catalogue cache is busted BEFORE the link is handed back (owner, 2026-09-18).
+    // `/{slug}` resolves the buyer out of that cache, so a create that skipped this — which is what
+    // this endpoint used to do, the only mutation that never invalidated — returned a link that
+    // answered 404 until the cache next refreshed by itself.
+    expect(cache.busts).toBe(1);
     const empty = await clientsPost(ctx({ path: '/api/admin/clients', method: 'POST', body: { name: '' } }));
     expect(empty.status).toBe(400);
   });

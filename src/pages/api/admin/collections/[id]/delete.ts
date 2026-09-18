@@ -1,9 +1,17 @@
 // POST /api/admin/collections/[id]/delete — collection.delete (owner, 2026-09-16).
 //
-// Refused while any product is still filed under it. Products store the collection's DISPLAY NAME as
-// text, matched case-insensitively, so deleting the definition would not detach anything — it would
-// silently relabel every one of those rugs to the fallback collection on the buyer's side. Telling
-// the owner how many rugs are in the way is more useful than a cascade they did not ask for.
+// Deletes the DEFINITION only, never the products (owner, 2026-09-18). This used to refuse with a 409
+// while any product was still filed under the collection; the studio wants to retire a grouping
+// without first moving every rug out of it.
+//
+// Nothing is orphaned by that. Products store the collection's display NAME as text, and the buyer's
+// side keys on the name, not on this row: `orderedCollectionNames` (sheets/parse.ts) appends any name
+// a product claims but the Collections tab does not define, and `collectionSlug` falls back to
+// slugifying it. So the rugs keep their label and still group under it — what the row was carrying,
+// and what deleting it drops, is the collection's sort position and its description.
+//
+// The count of affected products still goes into the audit row, because "23 rugs lost their
+// description" is the kind of thing worth being able to look up afterwards.
 export const prerender = false;
 
 import { noStore } from '../../../../../lib/api.ts';
@@ -33,22 +41,14 @@ export const POST = adminPost(DeleteRequest, async ({ context, body }) => {
   const inUse = snapshot.rugs.filter((r) =>
     r.collections.some((name) => name.trim().toLowerCase() === key),
   ).length;
-  if (inUse > 0) {
-    throw new AdminError(
-      409,
-      'collection in use',
-      `${inUse} ${inUse === 1 ? 'product is' : 'products are'} still in "${current.name}". Move them to another collection first.`,
-      { inUse },
-    );
-  }
 
   const audit = buildAuditRow({
     ...auditBase(context),
     action: 'collection.delete',
     targetTab: 'Collections',
     targetId: current.id,
-    before: { id: current.id, name: current.name, slug: current.slug },
-    note: `row ${current.row}`,
+    before: { id: current.id, name: current.name, slug: current.slug, products: inUse },
+    note: `row ${current.row}${inUse > 0 ? `, ${inUse} product(s) keep the name "${current.name}"` : ''}`,
   });
   const result = await deleteRow(client, {
     tab: TABS.collections,
@@ -58,7 +58,7 @@ export const POST = adminPost(DeleteRequest, async ({ context, body }) => {
     audit,
   });
   await invalidateAfterWrite(context);
-  return noStore({ ok: true, id: current.id, audit: result.audit });
+  return noStore({ ok: true, id: current.id, products: inUse, audit: result.audit });
 });
 
 export const ALL = methodNotAllowed('POST');

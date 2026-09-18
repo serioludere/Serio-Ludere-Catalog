@@ -29,6 +29,7 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
   const chips = [...nav.querySelectorAll<HTMLButtonElement>('button[data-filter]')];
   const cards = [...doc.querySelectorAll<HTMLElement>('[data-card]')];
   const live = doc.querySelector<HTMLElement>('[data-grid-live]');
+  const intro = doc.querySelector<HTMLElement>('[data-collection-intro]');
 
   let active = 'all';
 
@@ -62,10 +63,19 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
     // paging decides which 20 of it are on screen.
     if (pager) pager.apply(matches, true);
     else for (const card of cards) card.hidden = !matches(card);
+    let description = '';
     for (const chip of chips) {
       const on = chip.dataset.filter === active;
       chip.classList.toggle('is-on', on);
       chip.setAttribute('aria-pressed', on ? 'true' : 'false');
+      if (on) description = chip.dataset.description ?? '';
+    }
+    /* The chosen collection's description, as the intro to the cards (owner, 2026-09-18). Hidden
+       rather than emptied: the band is a flex column with a gap, so an empty <p> would still push
+       the grid down by one gap under "All", which has no description of its own. */
+    if (intro) {
+      intro.textContent = description;
+      intro.hidden = !description;
     }
     /* Carry the chosen chip onto every card link, so opening a rug and coming back lands on the
        same filtered grid. The detail page reads `?collection=` for its back link and prev/next run. */

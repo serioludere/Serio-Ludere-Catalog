@@ -97,6 +97,49 @@ describe('filters.ts', () => {
     expect(empty.hidden).toBe(false);
   });
 
+  it('moves the pressed collection’s description into the intro line, and hides it when there is none', () => {
+    // Owner, 2026-09-18: the description introduces that tab's cards. "All" is not a collection and
+    // has none, and a collection may simply not have one — both hide the line rather than leaving an
+    // empty paragraph, which would still cost its gap above the grid.
+    page(`
+      <nav class="pv-filters">
+        <button class="pv-chip is-on" data-filter="all" aria-pressed="true">All</button>
+        <button class="pv-chip" data-filter="kilims" data-description="Flatweaves from Denizli." aria-pressed="false">Kilims</button>
+        <button class="pv-chip" data-filter="gabbeh" aria-pressed="false">Gabbeh</button>
+      </nav>
+      <p data-collection-intro hidden></p>
+      <div data-card data-rug="SL-1" data-collections="kilims"></div>
+      <div data-card data-rug="SL-2" data-collections="gabbeh"></div>`);
+    unbind = bindFilters({ win: fakeWin().win });
+    const intro = document.querySelector<HTMLElement>('[data-collection-intro]')!;
+    expect(intro.hidden).toBe(true);
+
+    document.querySelector<HTMLButtonElement>('[data-filter="kilims"]')!.click();
+    expect(intro.textContent).toBe('Flatweaves from Denizli.');
+    expect(intro.hidden).toBe(false);
+
+    // A collection with no description of its own, then back to All.
+    document.querySelector<HTMLButtonElement>('[data-filter="gabbeh"]')!.click();
+    expect(intro.hidden).toBe(true);
+    document.querySelector<HTMLButtonElement>('[data-filter="all"]')!.click();
+    expect(intro.textContent).toBe('');
+    expect(intro.hidden).toBe(true);
+  });
+
+  it('deep-links straight to a collection with its description already showing', () => {
+    page(`
+      <nav class="pv-filters">
+        <button class="pv-chip is-on" data-filter="all" aria-pressed="true">All</button>
+        <button class="pv-chip" data-filter="kilims" data-description="Flatweaves from Denizli." aria-pressed="false">Kilims</button>
+      </nav>
+      <p data-collection-intro hidden></p>
+      <div data-card data-rug="SL-1" data-collections="kilims"></div>`);
+    unbind = bindFilters({ win: fakeWin('?collection=kilims').win });
+    const intro = document.querySelector<HTMLElement>('[data-collection-intro]')!;
+    expect(intro.textContent).toBe('Flatweaves from Denizli.');
+    expect(intro.hidden).toBe(false);
+  });
+
   it('does nothing on a page with no strip', () => {
     page('<p>no filters here</p>');
     expect(() => bindFilters()()).not.toThrow();

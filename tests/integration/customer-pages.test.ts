@@ -204,7 +204,6 @@ describe('/{slug} — the signed-in catalog', () => {
     state.down = false;
     const { html } = await render(CustomerCatalog, '/hala', { slug: 'hala' }, { customer: 'hala' });
     // Owner, 2026-09-17: buyers filter by collection, never by tag.
-    expect(html).not.toContain('Flatweaves from Denizli.');
     expect(html).toContain('data-filter="all"');
     expect(html).toMatch(/data-filter="kilims"[^>]*>\s*Kilims\s*</);
     expect(html).not.toContain('data-filter="liked"');
@@ -212,6 +211,17 @@ describe('/{slug} — the signed-in catalog', () => {
     expect(html).not.toContain('data-tags=');
     // Each card publishes its collections so the strip can filter without a round trip.
     expect(html).toMatch(/data-card[^>]*data-collections="[^"]*kilims/);
+  });
+
+  it('carries each collection’s description on its tab, for the intro line under the strip', async () => {
+    state.down = false;
+    const { html } = await render(CustomerCatalog, '/hala', { slug: 'hala' }, { customer: 'hala' });
+    // Owner, 2026-09-18: the selected collection's description introduces its cards. It ships as an
+    // attribute on the tab and filters.ts moves the pressed one into the intro line, so the server
+    // renders that line empty and hidden — "All" has no description of its own.
+    expect(html).toMatch(/data-filter="kilims"[^>]*data-description="Flatweaves from Denizli\."/);
+    expect(html).toContain('data-collection-intro');
+    expect(html).toMatch(/data-collection-intro[^>]*hidden/);
   });
 });
 

@@ -1,6 +1,9 @@
-// /admin/collections (docs/ADMIN_SPEC.md §8.3): ▲/▼ reorder (POST …/reorder with the whole order),
-// inline edit + Save (version-guarded; 409 → refresh from the API), add form; tags as chips with an
-// edit panel (name only) and an add form; Delete on both. Rows are rebuilt from API answers as text.
+// /admin/collections (docs/ADMIN_SPEC.md §8.3): inline edit + Save (version-guarded; 409 → refresh
+// from the API), an add form, and Delete. Rows are rebuilt from API answers as text.
+//
+// Owner, 2026-09-18: the ▲/▼ reorder pair and the whole tag half of this page are gone. Tags are
+// assigned on the product form and nowhere else, so there was nothing here to manage; the reorder
+// endpoint went with its controls.
 import { get, issuesText, post, type ApiOptions } from './api.ts';
 import { byId, clear, el, readJson } from './dom.ts';
 import { hide, msg } from './msg.ts';
@@ -16,51 +19,9 @@ export interface CollectionLike {
   rugs?: number;
 }
 
-export interface TagLike {
-  id: string;
-  slug: string;
-  name: string;
-  color?: string;
-  row: number;
-  version: string;
-  rugs?: number;
-}
-
-
 export function collectionRow(c: CollectionLike, index: number, doc: Document = document): HTMLElement {
   const input = (field: string, value: string, label: string): HTMLInputElement =>
     el('input', { 'data-field': field, value, 'aria-label': label, class: 'input' }, [], doc);
-
-  /**
-   * A reorder control, cloned from the `#moveTpl` template the page renders with the Icon component.
-   *
-   * This used to insert the literal character ▲ / ▼ as the button's text, so a rebuilt row showed a
-   * bare triangle in the heading font where the server had rendered an icon. `chevron-up` is not in
-   * the handoff's icon set, so "up" is the same chevron rotated by `.crow__move--up`.
-   */
-  const moveButton = (act: 'up' | 'down', aria: string, d: Document): HTMLButtonElement => {
-    const tpl = d.getElementById('moveTpl');
-    const node =
-      tpl instanceof HTMLTemplateElement ? tpl.content.firstElementChild?.cloneNode(true) : undefined;
-    if (node instanceof HTMLButtonElement) {
-      node.setAttribute('data-act', act);
-      node.setAttribute('aria-label', aria);
-      if (act === 'up') node.classList.add('crow__move--up');
-      return node;
-    }
-    // No template (an older page, or a test fixture): still a working, labelled control.
-    return el(
-      'button',
-      {
-        type: 'button',
-        class: `btn btn--ghost crow__move${act === 'up' ? ' crow__move--up' : ''}`,
-        'data-act': act,
-        'aria-label': aria,
-      },
-      '',
-      d,
-    );
-  };
 
   const ghost = (act: string, label: string, aria?: string): HTMLButtonElement =>
     el(
@@ -84,9 +45,7 @@ export function collectionRow(c: CollectionLike, index: number, doc: Document = 
         `${c.rugs ?? 0} ${(c.rugs ?? 0) === 1 ? 'product' : 'products'}`,
         doc,
       ),
-      moveButton('up', `Move ${c.name} up`, doc),
-      moveButton('down', `Move ${c.name} down`, doc),
-      ghost('edit', 'Edit'),
+      el('button', { type: 'button', class: 'btn btn--secondary', 'data-act': 'edit' }, 'Edit', doc),
     ],
     doc,
   );
@@ -137,38 +96,15 @@ export function collectionRow(c: CollectionLike, index: number, doc: Document = 
   );
 }
 
-export function tagChip(t: TagLike, doc: Document = document): HTMLButtonElement {
-  const b = el(
-    'button',
-    {
-      type: 'button',
-      class: 'chip',
-      'data-id': t.id,
-      'data-version': t.version,
-      'data-name': t.name,
-      'data-rugs': t.rugs ?? 0,
-    },
-    [],
-    doc,
-  );
-  b.appendChild(doc.createTextNode(t.name));
-  return b;
-}
-
 /** `confirmImpl` replaces window.confirm so the delete paths are testable. */
 export interface CollectionsOptions extends ApiOptions {
   confirmImpl?: (text: string) => boolean;
 }
 
 export interface CollectionsPage {
-  move(id: string, dir: 'up' | 'down'): Promise<void>;
   saveCollection(id: string): Promise<void>;
   deleteCollection(id: string): Promise<void>;
-  deleteTag(): Promise<void>;
   addCollection(): Promise<void>;
-  openTag(id: string): void;
-  saveTag(): Promise<void>;
-  addTag(): Promise<void>;
   refresh(): Promise<void>;
 }
 
@@ -176,11 +112,9 @@ export function initCollections(doc: Document = document, opts: CollectionsOptio
   const { confirmImpl: confirmOpt, ...api } = opts;
   const confirmImpl =
     confirmOpt ?? ((text: string) => (typeof confirm === 'function' ? confirm(text) : true));
-  const data = readJson<{ collections: CollectionLike[]; tags: TagLike[] }>('admin-data', doc);
+  const data = readJson<{ collections: CollectionLike[] }>('admin-data', doc);
   const rugCounts = new Map(data.collections.map((c) => [c.id, c.rugs ?? 0]));
-  const tagCounts = new Map(data.tags.map((t) => [t.id, t.rugs ?? 0]));
   let collections = new Map(data.collections.map((c) => [c.id, c]));
-  let tags = new Map(data.tags.map((t) => [t.id, t]));
 
   const list = byId('collectionList', doc);
   const m5 = byId('m5', doc);
@@ -188,18 +122,6 @@ export function initCollections(doc: Document = document, opts: CollectionsOptio
   const cName = byId<HTMLInputElement>('c_name', doc);
   const cDescription = byId<HTMLInputElement>('c_description', doc);
   const addCollectionBtn = byId<HTMLButtonElement>('btnAddCollection', doc);
-  const tagList = byId('tagList', doc);
-  const tagEdit = byId('tagEdit', doc);
-  const tName = byId<HTMLInputElement>('t_name', doc);
-  const tagEditHint = byId('tagEditHint', doc);
-  const saveTagBtn = byId<HTMLButtonElement>('btnSaveTag', doc);
-  const cancelTagBtn = byId<HTMLButtonElement>('btnCancelTag', doc);
-  const deleteTagBtn = byId<HTMLButtonElement>('btnDeleteTag', doc);
-  const m7 = byId('m7', doc);
-  const ntName = byId<HTMLInputElement>('nt_name', doc);
-  const addTagBtn = byId<HTMLButtonElement>('btnAddTag', doc);
-  const m8 = byId('m8', doc);
-  let editingTag: string | undefined;
 
   const ordered = (): CollectionLike[] =>
     [...collections.values()].sort(
@@ -213,25 +135,11 @@ export function initCollections(doc: Document = document, opts: CollectionsOptio
     );
   };
 
-  const renderTags = (): void => {
-    clear(tagList);
-    for (const t of [...tags.values()].sort((a, b) => a.name.localeCompare(b.name))) {
-      tagList.appendChild(tagChip({ ...t, rugs: tagCounts.get(t.id) ?? 0 }, doc));
-    }
-  };
-
   const refresh = async (): Promise<void> => {
-    const [c, t] = await Promise.all([
-      get<{ collections: CollectionLike[] }>('/api/admin/collections', api),
-      get<{ tags: TagLike[] }>('/api/admin/tags', api),
-    ]);
+    const c = await get<{ collections: CollectionLike[] }>('/api/admin/collections', api);
     if (c.ok) {
       collections = new Map(c.data.collections.map((x) => [x.id, x]));
       renderCollections();
-    }
-    if (t.ok) {
-      tags = new Map(t.data.tags.map((x) => [x.id, x]));
-      renderTags();
     }
   };
 
@@ -239,33 +147,6 @@ export function initCollections(doc: Document = document, opts: CollectionsOptio
     const v = (field: string): string =>
       tr.querySelector<HTMLInputElement>(`input[data-field="${field}"]`)?.value.trim() ?? '';
     return { name: v('name'), description: v('description') };
-  };
-
-  const move = async (id: string, dir: 'up' | 'down'): Promise<void> => {
-    const rows = [...list.querySelectorAll<HTMLElement>('[data-id]')];
-    const i = rows.findIndex((r) => r.dataset.id === id);
-    const j = dir === 'up' ? i - 1 : i + 1;
-    if (i < 0 || j < 0 || j >= rows.length) return;
-    const me = rows[i]!;
-    const other = rows[j]!;
-    if (dir === 'up') list.insertBefore(me, other);
-    else list.insertBefore(other, me);
-    const order = [...list.querySelectorAll<HTMLElement>('[data-id]')].map((r) => r.dataset.id ?? '');
-    msg(m5, 'Saving the order…', 'busy');
-    const r = await post<{ collections: CollectionLike[]; audit?: { row: number } }>(
-      '/api/admin/collections/reorder',
-      { order },
-      api,
-    );
-    if (!r.ok) {
-      msg(m5, r.message, 'err');
-      await refresh();
-      return;
-    }
-    collections = new Map(r.data.collections.map((x) => [x.id, x]));
-    renderCollections();
-    msg(m5, r.data.audit ? 'Order saved.' : 'Order unchanged.', 'ok');
-    list.querySelector<HTMLButtonElement>(`[data-id="${CSS.escape(id)}"] button[data-act="${dir}"]`)?.focus();
   };
 
   const saveCollection = async (id: string): Promise<void> => {
@@ -340,19 +221,28 @@ export function initCollections(doc: Document = document, opts: CollectionsOptio
   };
 
   /**
-   * Deleting is permanent (owner, 2026-09-16), so it asks first and names what is going. The server
-   * refuses while products still reference it and says how many, which is the answer the owner wants
-   * — this only has to pass that message through.
+   * Deleting is permanent (owner, 2026-09-16), so it asks first and names what is going.
+   *
+   * It no longer takes the products with it, and no longer refuses while they exist (owner,
+   * 2026-09-18): the rugs keep the collection's NAME, which is what the buyer's side groups on, so
+   * they stay together under that heading — what they lose is the description. The confirm says so
+   * when there are any, because that is the part the studio cannot see from here.
    */
   const deleteCollection = async (id: string): Promise<void> => {
     const tr = list.querySelector<HTMLElement>(`[data-id="${CSS.escape(id)}"]`);
     const current = collections.get(id);
     if (!tr || !current) return;
-    if (!confirmImpl(`Delete "${current.name}"? This removes the row from the sheet for good.`)) return;
+    const n = rugCounts.get(id) ?? 0;
+    const keep =
+      n > 0
+        ? ` ${n} product${n === 1 ? '' : 's'} stay${n === 1 ? 's' : ''} in "${current.name}" and keep${n === 1 ? 's' : ''} the name; the description is lost.`
+        : '';
+    if (!confirmImpl(`Delete "${current.name}"? This removes the row from the sheet for good.${keep}`))
+      return;
     const buttons = tr.querySelectorAll<HTMLButtonElement>('button');
     buttons.forEach((b) => (b.disabled = true));
     msg(m5, `Deleting ${current.name}…`, 'busy');
-    const r = await post<{ id: string; audit?: { row: number } }>(
+    const r = await post<{ id: string; products?: number; audit?: { row: number } }>(
       `/api/admin/collections/${encodeURIComponent(id)}/delete`,
       { version: tr.dataset.version ?? current.version },
       api,
@@ -366,110 +256,13 @@ export function initCollections(doc: Document = document, opts: CollectionsOptio
     collections.delete(id);
     rugCounts.delete(id);
     renderCollections();
-    msg(m5, `Deleted ${current.name}.`, 'ok');
-  };
-
-  const openTag = (id: string): void => {
-    const t = tags.get(id);
-    if (!t) return;
-    editingTag = id;
-    tName.value = t.name;
-    const n = tagCounts.get(id) ?? 0;
-    tagEditHint.textContent = `${n} rug${n === 1 ? '' : 's'} use "${t.name}". Renaming does not rewrite them.`;
-    tagEdit.hidden = false;
-    tName.focus();
-  };
-
-  const closeTag = (): void => {
-    editingTag = undefined;
-    tagEdit.hidden = true;
-  };
-
-  const saveTag = async (): Promise<void> => {
-    const id = editingTag;
-    const t = id ? tags.get(id) : undefined;
-    if (!id || !t) return;
-    const name = tName.value.trim();
-    if (!name) {
-      msg(m7, 'A tag needs a name.', 'err');
-      return;
-    }
-    saveTagBtn.disabled = true;
-    msg(m7, `Saving ${t.name}…`, 'busy');
-    const body: Record<string, unknown> = { name, version: t.version };
-    const r = await post<{ tag: TagLike; audit?: { row: number }; detached?: number; unchanged?: boolean }>(
-      `/api/admin/tags/${encodeURIComponent(id)}`,
-      body,
-      api,
-    );
-    saveTagBtn.disabled = false;
-    if (!r.ok) {
-      msg(m7, r.status === 400 ? issuesText(r) : r.message, 'err');
-      if (r.status === 409) await refresh();
-      return;
-    }
-    if (r.data.unchanged) {
-      msg(m7, 'Nothing changed.', 'busy');
-      closeTag();
-      return;
-    }
-    tags.set(id, r.data.tag);
-    renderTags();
-    closeTag();
-    const detached = r.data.detached ?? 0;
+    const kept = r.data.products ?? 0;
     msg(
-      m7,
-      `Saved ${r.data.tag.name}.` +
-        (detached > 0 ? ` ${detached} rug${detached === 1 ? '' : 's'} still store "${t.name}".` : ''),
-      detached > 0 ? 'busy' : 'ok',
+      m5,
+      `Deleted ${current.name}.` +
+        (kept > 0 ? ` ${kept} product${kept === 1 ? '' : 's'} still carry the name.` : ''),
+      'ok',
     );
-  };
-
-  const deleteTag = async (): Promise<void> => {
-    const id = editingTag;
-    const t = id ? tags.get(id) : undefined;
-    if (!id || !t) return;
-    if (!confirmImpl(`Delete the tag "${t.name}"? This removes the row from the sheet for good.`)) return;
-    deleteTagBtn.disabled = true;
-    msg(m7, `Deleting ${t.name}…`, 'busy');
-    const r = await post<{ id: string; audit?: { row: number } }>(
-      `/api/admin/tags/${encodeURIComponent(id)}/delete`,
-      { version: t.version },
-      api,
-    );
-    deleteTagBtn.disabled = false;
-    if (!r.ok) {
-      msg(m7, r.status === 400 ? issuesText(r) : r.message, 'err');
-      if (r.status === 409 && r.body?.error === 'version mismatch') await refresh();
-      return;
-    }
-    tags.delete(id);
-    tagCounts.delete(id);
-    renderTags();
-    closeTag();
-    msg(m7, `Deleted ${t.name}.`, 'ok');
-  };
-
-  const addTag = async (): Promise<void> => {
-    const name = ntName.value.trim();
-    if (!name) {
-      msg(m8, 'Give the tag a name.', 'err');
-      return;
-    }
-    addTagBtn.disabled = true;
-    msg(m8, 'Adding…', 'busy');
-    const body: Record<string, unknown> = { name };
-    const r = await post<{ tag: TagLike; audit: { row: number } }>('/api/admin/tags', body, api);
-    addTagBtn.disabled = false;
-    if (!r.ok) {
-      msg(m8, r.status === 400 ? issuesText(r) : r.message, 'err');
-      return;
-    }
-    tags.set(r.data.tag.id, r.data.tag);
-    tagCounts.set(r.data.tag.id, 0);
-    renderTags();
-    ntName.value = '';
-    msg(m8, `Added ${r.data.tag.name}.`, 'ok');
   };
 
   list.addEventListener('click', (e) => {
@@ -478,8 +271,7 @@ export function initCollections(doc: Document = document, opts: CollectionsOptio
     if (!b || !tr?.dataset.id) return;
     const id = tr.dataset.id;
     const act = b.dataset.act;
-    if (act === 'up' || act === 'down') void move(id, act);
-    else if (act === 'save') void saveCollection(id);
+    if (act === 'save') void saveCollection(id);
     else if (act === 'delete') void deleteCollection(id);
     else if (act === 'edit' || act === 'cancel') {
       const panel = tr.querySelector<HTMLElement>('.crow__edit');
@@ -509,32 +301,9 @@ export function initCollections(doc: Document = document, opts: CollectionsOptio
       void addCollection();
     }
   });
-  tagList.addEventListener('click', (e) => {
-    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-id]');
-    if (b?.dataset.id) openTag(b.dataset.id);
-  });
-  saveTagBtn.addEventListener('click', () => void saveTag());
-  cancelTagBtn.addEventListener('click', closeTag);
-  deleteTagBtn.addEventListener('click', () => void deleteTag());
-  tName.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      void saveTag();
-    }
-  });
-  addTagBtn.addEventListener('click', () => void addTag());
-  ntName.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      void addTag();
-    }
-  });
   doc.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      doc.querySelectorAll<HTMLElement>('.msg.on').forEach(hide);
-      if (!tagEdit.hidden) closeTag();
-    }
+    if (e.key === 'Escape') doc.querySelectorAll<HTMLElement>('.msg.on').forEach(hide);
   });
 
-  return { move, saveCollection, deleteCollection, deleteTag, addCollection, openTag, saveTag, addTag, refresh };
+  return { saveCollection, deleteCollection, addCollection, refresh };
 }

@@ -1,12 +1,11 @@
 // @vitest-environment happy-dom
 // The collections, clients, audit and dashboard page scripts (docs/ADMIN_SPEC.md §8.3) on the
-// markup their pages render: reorder posts the whole order, inline save carries the version and
-// refreshes on 409, tag edit / add, client link generation + copy + revoke, the saves report, audit
-// filter + load more, relative times.
+// markup their pages render: inline save carries the version and refreshes on 409, add appends,
+// client link generation + copy + revoke, the saves report, audit filter + load more, relative times.
 import { beforeEach, describe, expect, it } from 'vitest';
 import { auditRow, initAudit, pretty } from '../../../src/scripts/admin/audit.ts';
 import { clientRow, initClients, renderReport } from '../../../src/scripts/admin/clients.ts';
-import { collectionRow, initCollections, tagChip } from '../../../src/scripts/admin/collections.ts';
+import { collectionRow, initCollections } from '../../../src/scripts/admin/collections.ts';
 import { initDashboard, relativeTime } from '../../../src/scripts/admin/dashboard.ts';
 import { jsonForScript } from '../../../src/lib/view.ts';
 
@@ -63,62 +62,13 @@ describe('collections.ts', () => {
       rugs: 2,
     },
   ];
-  const tags = [
-    { id: 'kilim', slug: 'kilim', name: 'Kilim', color: '#bb3e03', row: 2, version: 'c'.repeat(16), rugs: 1 },
-  ];
+  // Collections only (owner, 2026-09-18): the tag half of this page, and the ▲/▼ reorder pair, are
+  // gone — tags are assigned on the product form and nowhere else.
   const markup = (): string => `
     <div id="m5" class="msg"></div>
     <ul id="collectionList">${collections.map((c, i) => collectionRow(c, i).outerHTML).join('')}</ul>
     <input id="c_name" /><input id="c_description" /><button id="btnAddCollection"></button><div id="m6" class="msg"></div>
-    <div id="tagList" class="chips">${tags.map((t) => tagChip(t).outerHTML).join('')}</div>
-    <div id="tagEdit" hidden><input id="t_name" />
-      <button id="btnSaveTag"></button><button id="btnCancelTag"></button><button id="btnDeleteTag"></button><p id="tagEditHint"></p></div>
-    <div id="m7" class="msg"></div>
-    <input id="nt_name" /><button id="btnAddTag"></button><div id="m8" class="msg"></div>
-    ${data({ collections, tags })}`;
-
-  it('▲/▼ reorders the rows and posts the whole order; failure refreshes from the API', async () => {
-    document.body.innerHTML = markup();
-    const calls: Array<{ url: string; method: string; body: Record<string, unknown> }> = [];
-    let fail = false;
-    const page = initCollections(document, {
-      fetchImpl: fakeFetch((url) => {
-        if (url === '/api/admin/collections/reorder')
-          return fail
-            ? { status: 400, body: { ok: false, error: 'unknown id', message: 'nope' } }
-            : {
-                status: 200,
-                body: {
-                  ok: true,
-                  collections: [
-                    { ...collections[1], sortOrder: 1, version: 'x'.repeat(16) },
-                    { ...collections[0], sortOrder: 2, version: 'y'.repeat(16) },
-                  ],
-                  audit: { row: 2 },
-                },
-              };
-        if (url === '/api/admin/collections') return { status: 200, body: { ok: true, collections } };
-        if (url === '/api/admin/tags') return { status: 200, body: { ok: true, tags } };
-        return { status: 500, body: {} };
-      }, calls),
-    });
-    const ids = (): string[] =>
-      [...document.querySelectorAll<HTMLElement>('#collectionList [data-id]')].map((r) => r.dataset.id!);
-    expect(ids()).toEqual(['tulu', 'kilims']);
-    await page.move('kilims', 'up');
-    expect(calls[0]).toMatchObject({
-      url: '/api/admin/collections/reorder',
-      body: { order: ['kilims', 'tulu'] },
-    });
-    expect(ids()).toEqual(['kilims', 'tulu']);
-    expect(document.querySelector<HTMLElement>('[data-id="kilims"]')?.dataset.version).toBe('x'.repeat(16));
-    expect(cls('m5')).toBe('msg on ok');
-    fail = true;
-    await page.move('kilims', 'down');
-    expect(cls('m5')).toBe('msg on err');
-    expect(ids()).toEqual(['tulu', 'kilims']); // refreshed from the API answer
-    expect(document.body.innerHTML).not.toMatch(/\son[a-z]+=/i);
-  });
+    ${data({ collections })}`;
 
   it('inline save carries the version and reports detached rugs; 409 refreshes; add appends', async () => {
     document.body.innerHTML = markup();
@@ -156,7 +106,6 @@ describe('collections.ts', () => {
             },
           };
         if (url === '/api/admin/collections') return { status: 200, body: { ok: true, collections } };
-        if (url === '/api/admin/tags') return { status: 200, body: { ok: true, tags } };
         return { status: 500, body: {} };
       }, calls),
     });
@@ -177,53 +126,6 @@ describe('collections.ts', () => {
     expect(
       [...document.querySelectorAll<HTMLElement>('#collectionList [data-id]')].map((r) => r.dataset.id),
     ).toContain('modern');
-  });
-
-  it('tag chips open the edit panel; save posts the name with the version; add creates', async () => {
-    document.body.innerHTML = markup();
-    const calls: Array<{ url: string; method: string; body: Record<string, unknown> }> = [];
-    const page = initCollections(document, {
-      fetchImpl: fakeFetch((url, method, body) => {
-        if (url === '/api/admin/tags/kilim')
-          return {
-            status: 200,
-            body: {
-              ok: true,
-              tag: { ...tags[0], name: body.name, color: body.color ?? '', version: 'z'.repeat(16) },
-              audit: { row: 2 },
-              detached: 1,
-            },
-          };
-        if (url === '/api/admin/tags' && method === 'POST')
-          return {
-            status: 201,
-            body: {
-              ok: true,
-              tag: { id: 'red', slug: 'red', name: 'Red', row: 3, version: 'r'.repeat(16) },
-              audit: { row: 2 },
-            },
-          };
-        return { status: 500, body: {} };
-      }, calls),
-    });
-    document.querySelector<HTMLButtonElement>('#tagList button[data-id="kilim"]')!.click();
-    expect((document.getElementById('tagEdit') as HTMLElement).hidden).toBe(false);
-    expect((document.getElementById('t_name') as HTMLInputElement).value).toBe('Kilim');
-    // The colour picker is gone (owner, 2026-09-16): a tag is a name.
-    expect(document.getElementById('t_color')).toBeNull();
-    expect(text('tagEditHint')).toBe('1 rug use "Kilim". Renaming does not rewrite them.');
-    (document.getElementById('t_name') as HTMLInputElement).value = 'Kilim weave';
-    await page.saveTag();
-    expect(calls[0]?.body).toEqual({ name: 'Kilim weave', version: 'c'.repeat(16) });
-    expect((document.getElementById('tagEdit') as HTMLElement).hidden).toBe(true);
-    expect(document.querySelector<HTMLButtonElement>('#tagList button[data-id="kilim"]')?.dataset.name).toBe(
-      'Kilim weave',
-    );
-    expect(text('m7')).toContain('1 rug still store "Kilim"');
-    (document.getElementById('nt_name') as HTMLInputElement).value = 'Red';
-    await page.addTag();
-    expect(calls[1]?.body).toEqual({ name: 'Red' });
-    expect(document.querySelectorAll('#tagList button[data-id]')).toHaveLength(2);
   });
 });
 

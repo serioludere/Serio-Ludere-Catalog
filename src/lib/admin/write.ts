@@ -676,54 +676,6 @@ export async function deleteRow(
   });
 }
 
-/**
- * Collections reorder: rewrites one column (`sort_order`, F) for every listed row in one batch.
- * Each row's column A is checked against the expected id first (no version tokens, §3.4).
- */
-export async function updateColumnCells(
-  client: Client,
-  args: {
-    tab: RowTab;
-    columnIndex: number;
-    updates: Array<{ row: number; expectFirstCell: string; value: CellValue | undefined }>;
-    audit: AuditRow;
-  },
-): Promise<CommitResult> {
-  if (args.columnIndex < 1 || args.columnIndex >= widthOf(args.tab))
-    throw new UnsafeRequestError('column out of range');
-  if (args.updates.some((u) => u.row < 2)) throw new UnsafeRequestError('never write the header row');
-  return withAdminLock(async () => {
-    const ranges = args.updates.map((u) => `${args.tab}!A${u.row}:A${u.row}`);
-    const read = ranges.length ? await client.batchGet(ranges) : [];
-    args.updates.forEach((u, i) => {
-      const found = cellText(read[i]?.values?.[0]?.[0]);
-      if (found !== u.expectFirstCell) {
-        throw new VersionMismatchError(
-          args.tab,
-          u.row,
-          read[i]?.values?.[0] ?? [],
-          `expected "${u.expectFirstCell}", found "${found}"`,
-        );
-      }
-    });
-    const sheetId = await client.sheetIdByTitle(args.tab);
-    const auditSheetId = await client.sheetIdByTitle(TABS.auditLog);
-    try {
-      await client.batchUpdate([
-        ...args.updates.map((u) => buildRowUpdate(sheetId, u.row, args.columnIndex, [u.value])),
-        ...buildAuditInsert(auditSheetId, args.audit),
-      ]);
-    } catch (e) {
-      onSheetIdError(client, e);
-    }
-    return {
-      row: args.updates[0]?.row ?? 0,
-      audit: { row: TOP_ROW, action: args.audit.action },
-      verified: true,
-    };
-  });
-}
-
 /** A stand-alone audit row (login, logout, lockout, scrape, photo import) at AuditLog row 2. */
 export async function appendAudit(
   client: Client,

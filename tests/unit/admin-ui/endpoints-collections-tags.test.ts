@@ -1,7 +1,6 @@
 // /api/admin/collections* and /api/admin/tags* against the in-memory sheet (docs/ADMIN_SPEC.md
 // §3.4): create = bottom insert with id = slug and sort_order max+1 (409 on a duplicate slug),
-// update = version-guarded whole-row write (409 with the fresh cells), reorder = one batchUpdate
-// rewriting column F for every row with the full before/after order in the audit row.
+// update = version-guarded whole-row write (409 with the fresh cells).
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { APIContext } from 'astro';
 import { adminRugRow, apiContext, fakeCache, fakeSheet, type FakeSheet } from './fake-sheets.ts';
@@ -25,7 +24,6 @@ import {
   POST as collectionsPost,
 } from '../../../src/pages/api/admin/collections/index.ts';
 import { POST as collectionPost } from '../../../src/pages/api/admin/collections/[id].ts';
-import { POST as reorderPost } from '../../../src/pages/api/admin/collections/reorder.ts';
 import { GET as tagsGet, POST as tagsPost } from '../../../src/pages/api/admin/tags/index.ts';
 import { POST as tagPost } from '../../../src/pages/api/admin/tags/[id].ts';
 import { POST as collectionDeletePost } from '../../../src/pages/api/admin/collections/[id]/delete.ts';
@@ -173,50 +171,6 @@ describe('collections', () => {
     );
     expect(missing.status).toBe(404);
   });
-  it('reorders every row in one batchUpdate with the whole order in the audit row; refuses unknown / partial lists', async () => {
-    const res = await reorderPost(
-      ctx({
-        path: '/api/admin/collections/reorder',
-        method: 'POST',
-        body: { order: ['modern', 'kilims', 'tulu'] },
-      }),
-    );
-    expect(res.status).toBe(200);
-    const out = await res.json();
-    expect(out.audit).toEqual({ row: 2, action: 'collection.reorder' });
-    expect(out.collections.map((c: { id: string; sortOrder: number }) => [c.id, c.sortOrder])).toEqual([
-      ['kilims', 2],
-      ['tulu', 3],
-      ['modern', 1],
-    ]);
-    expect(sheet.writes).toHaveLength(1);
-    expect(sheet.row('Collections', 4)[6]).toBe(1); // sort_order moved to column G
-    const audit = sheet.auditRows()[0]!;
-    expect(JSON.parse(String(audit[5]))).toEqual({ order: ['tulu', 'kilims', 'modern'] });
-    expect(JSON.parse(String(audit[6]))).toEqual({ order: ['modern', 'kilims', 'tulu'] });
-    const unknown = await reorderPost(
-      ctx({
-        path: '/api/admin/collections/reorder',
-        method: 'POST',
-        body: { order: ['modern', 'kilims', 'ghost'] },
-      }),
-    );
-    expect(unknown.status).toBe(400);
-    expect(await unknown.json()).toMatchObject({ error: 'unknown id', id: 'ghost' });
-    const partial = await reorderPost(
-      ctx({ path: '/api/admin/collections/reorder', method: 'POST', body: { order: ['modern'] } }),
-    );
-    expect(partial.status).toBe(400);
-    const same = await reorderPost(
-      ctx({
-        path: '/api/admin/collections/reorder',
-        method: 'POST',
-        body: { order: ['modern', 'kilims', 'tulu'] },
-      }),
-    );
-    expect(await same.json()).toMatchObject({ ok: true, unchanged: true });
-    expect(sheet.writes).toHaveLength(1);
-  });
 });
 
 describe('tags', () => {
@@ -267,14 +221,18 @@ describe('tags', () => {
 });
 
 /**
- * Deleting a collection or a tag (owner, 2026-09-16). Both refuse while a product still references
- * them, and for the same reason: products store the DISPLAY NAME as text, so removing the definition
- * would not detach anything — it would quietly relabel those rugs on the buyer's side.
+ * Deleting a collection or a tag. A TAG still refuses while a product carries it: products store the
+ * display name as text, so removing the definition would not detach anything.
+ *
+ * A COLLECTION no longer does (owner, 2026-09-18) — the studio retires a grouping without emptying it
+ * first. Nothing is orphaned: the rugs keep the name, `orderedCollectionNames` still gives it a tab,
+ * and what the deleted row took with it is the sort position and the description.
  */
 describe('deleting collections and tags', () => {
-  it('refuses a collection that still has products, naming the count', async () => {
+  it('deletes a collection that still has products, leaving the products alone', async () => {
     const list = await (await collectionsGet(ctx({ path: '/api/admin/collections' }))).json();
     const kilims = list.collections[0];
+    const before = sheet.rows('Products').length;
     const res = await collectionDeletePost(
       ctx({
         path: '/api/admin/collections/kilims/delete',
@@ -283,11 +241,13 @@ describe('deleting collections and tags', () => {
         body: { version: kilims.version },
       }),
     );
-    expect(res.status).toBe(409);
-    const out = await res.json();
-    expect(out).toMatchObject({ error: 'collection in use', inUse: 2 });
-    expect(out.message).toContain('2 products are still in "Kilims"');
-    expect(sheet.writes).toHaveLength(0); // nothing was touched
+    expect(res.status).toBe(200);
+    // The count of what kept the name comes back, and is on the audit row, so it can be looked up.
+    expect(await res.json()).toMatchObject({ ok: true, id: 'kilims', products: 2 });
+    expect(sheet.rows('Products').length).toBe(before);
+    const audit = sheet.auditRows()[0]!;
+    expect(audit[2]).toBe('collection.delete');
+    expect(JSON.parse(String(audit[5]))).toMatchObject({ name: 'Kilims', products: 2 });
   });
 
   it('deletes an empty collection and keeps the audit row', async () => {

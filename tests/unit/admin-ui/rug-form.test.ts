@@ -2,7 +2,7 @@
 // comes from tests/helpers/dom.ts (see the note there about happy-dom vs. .astro resolution).
 // The add / edit form script (docs/ADMIN_SPEC.md §8.3) against the RugFields markup rendered by
 // Astro's container: Fetch → preview → photos strip → Add (photos first, then the row), manual
-// entry on a failed scrape, "use these" tags, Round to 5, swap, Enter / Escape / Ctrl+S,
+// entry on a failed scrape, the SKU as the id, Round to 5, swap, Enter / Escape / Ctrl+S,
 // disabled-while-busy, and the 409 reload in edit mode.
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -10,7 +10,7 @@ import { installDom } from '../../helpers/dom.ts';
 import RugFields from '../../../src/components/admin/RugFields.astro';
 import type { AdminRug } from '../../../src/lib/admin/read.ts';
 import { jsonForScript } from '../../../src/lib/view.ts';
-import { initRugForm, parsePhotoLines, type RugForm } from '../../../src/scripts/admin/rug-form.ts';
+import { idFromSku, initRugForm, parsePhotoLines, type RugForm } from '../../../src/scripts/admin/rug-form.ts';
 
 const PHOTO = '1U8FwNPCdm-n8RUvSNRcJLBA_27u-Pjkb';
 const collections = [
@@ -203,6 +203,25 @@ describe('parsePhotoLines', () => {
   });
 });
 
+describe('idFromSku', () => {
+  it('passes a clean SKU through and reshapes the rest to the id format', () => {
+    // dto.ts ID_RE is /^[A-Za-z0-9_-]{1,64}$/, and suppliers do not respect it.
+    expect(idFromSku('380114')).toBe('380114');
+    expect(idFromSku('  ABC-123_x ')).toBe('ABC-123_x');
+    expect(idFromSku('RUG 12/34.5')).toBe('RUG-12-34-5');
+    // Never a leading or trailing separator, and never longer than the column allows.
+    expect(idFromSku('///abc///')).toBe('abc');
+    expect(idFromSku('x'.repeat(80))).toHaveLength(64);
+  });
+
+  it('gives back nothing when there is nothing usable, so the caller keeps the allocated number', () => {
+    expect(idFromSku(undefined)).toBeUndefined();
+    expect(idFromSku('')).toBeUndefined();
+    expect(idFromSku('   ')).toBeUndefined();
+    expect(idFromSku('///')).toBeUndefined();
+  });
+});
+
 /**
  * The fetch modal (P5-P9) is server-rendered on the real pages but not in the `addHtml` fixture, so
  * rug-form falls back to applying the scrape directly. These tests mount the modal too, which turns
@@ -227,7 +246,7 @@ function stubDialogs(): void {
 describe('add mode', () => {
   let calls: Array<{ url: string; body: Record<string, unknown> }>;
   let form: RugForm;
-  const mount = (handler: Handler, confirmImpl?: (t: string) => boolean): RugForm => {
+  const mount = (handler: Handler): RugForm => {
     document.body.innerHTML =
       stripStyles(addHtml) +
       dataBlock({
@@ -241,7 +260,6 @@ describe('add mode', () => {
     calls = [];
     return initRugForm(document, {
       fetchImpl: fakeFetch(handler, calls),
-      confirmImpl: confirmImpl ?? (() => true),
     });
   };
   beforeEach(() => {
@@ -316,7 +334,11 @@ describe('add mode', () => {
     expect(text('supplierTitle')).toBe('Supplier calls it: Red 5x8 Andelz Area Rug');
     expect(text('ftHint')).toBe(`Supplier measurement: 4'3" x 7'5"`);
     expect(text('priceHint')).toBe('Supplier price $700 → ×1.6 → $1,120 → rounded $1,120');
-    expect(text('tagHint')).toContain('Suggested tags: Red, Geometric');
+    // The supplier's SKU becomes our product id (owner, 2026-09-18), in place of the allocated SL-030.
+    expect(val('f_id')).toBe('380114');
+    // The scrape no longer offers its guessed tags (owner, 2026-09-18) — they are chosen by hand.
+    expect(text('tagHint')).toBe('');
+    expect(document.getElementById('btnUseTags')).toBeNull();
     expect(document.querySelectorAll('#warnings li')).toHaveLength(1);
     expect(document.querySelectorAll('#photoStrip input[data-url]')).toHaveLength(2);
     expect(text('photoCount')).toBe('2 of 2 selected');
@@ -332,32 +354,21 @@ describe('add mode', () => {
     expect(val('f_price')).toBe('1335');
   });
 
-  it('"use these" presses existing tags and creates the missing ones through tag.create after confirmation', async () => {
+  it('the "+ new tag" input creates the tag and presses it — the only way tags are assigned now', async () => {
+    // Owner, 2026-09-18: the scrape's own "use these" suggestion is gone, so this input is the whole
+    // tag story on the form. The chip it creates is pressed, and a scrape leaves it untouched.
     const created = {
       status: 201,
       body: { ok: true, tag: { id: 'geometric', slug: 'geometric', name: 'Geometric' }, audit: { row: 2 } },
     };
     form = mount((u) => (u === '/api/admin/tags' ? created : { status: 500, body: {} }));
     form.applyScrape(scraped);
-    (document.getElementById('btnUseTags') as HTMLButtonElement).click();
-    await vi.waitFor(() => expect(form.chips.values()).toEqual(['Red', 'Geometric']));
-    expect(calls).toEqual([{ url: '/api/admin/tags', body: { name: 'Geometric' } }]);
-    expect(form.chips.has('Geometric')).toBe(true);
-    // declined confirmation: only the existing tag is pressed
-    form = mount(
-      (u) => (u === '/api/admin/tags' ? created : { status: 500, body: {} }),
-      () => false,
-    );
-    form.applyScrape(scraped);
-    (document.getElementById('btnUseTags') as HTMLButtonElement).click();
-    await Promise.resolve();
-    expect(form.chips.values()).toEqual(['Red']);
-    expect(calls).toEqual([]);
-    // "+ new tag" input creates and presses
+    expect(form.chips.values()).toEqual([]);
     const newTag = document.getElementById('newTag') as HTMLInputElement;
     newTag.value = 'Geometric';
     newTag.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-    await vi.waitFor(() => expect(form.chips.values()).toEqual(['Red', 'Geometric']));
+    await vi.waitFor(() => expect(form.chips.values()).toEqual(['Geometric']));
+    expect(calls).toEqual([{ url: '/api/admin/tags', body: { name: 'Geometric' } }]);
     expect(newTag.value).toBe('');
   });
 
@@ -411,7 +422,7 @@ describe('add mode', () => {
           status: 201,
           body: {
             ok: true,
-            rug: { id: 'SL-030', slug: 'khal' },
+            rug: { id: '380114', slug: 'khal' },
             row: 31,
             audit: { row: 2, action: 'rug.create' },
           },
@@ -435,13 +446,14 @@ describe('add mode', () => {
     expect(photos?.body).toMatchObject({
       urls: scraped.photos.map((p) => p.url),
       namePrefix: 'khal-mohammadi',
-      productId: 'SL-030',
+      // The SKU, not SL-030: the scrape set the id (owner, 2026-09-18) and the Drive folder follows it.
+      productId: '380114',
     });
     const create = calls.find((c) => c.url === '/api/admin/rugs');
     // Every photo landed, so the row is written complete rather than pending.
     expect(create?.body).toMatchObject({ commitStatus: 'complete' });
     expect(create?.body).toMatchObject({
-      id: 'SL-030',
+      id: '380114',
       slug: 'khal-mohammadi',
       name: 'Khal Mohammadi',
       collections: ['Kilims'],
@@ -458,14 +470,14 @@ describe('add mode', () => {
     });
     expect(calls.map((c) => c.url)).toEqual(['/api/admin/scrape', '/api/admin/photos', '/api/admin/rugs']);
     expect(cls('m2')).toBe('msg on ok');
-    expect(text('m2')).toContain('Added SL-030. 1 photo saved, 1 failed.');
-    expect(document.querySelector('#m2 a')?.getAttribute('href')).toBe('/admin/rugs/SL-030');
+    expect(text('m2')).toContain('Added 380114. 1 photo saved, 1 failed.');
+    expect(document.querySelector('#m2 a')?.getAttribute('href')).toBe('/admin/rugs/380114');
     // reset: name/url cleared, collection kept, preview closed
     expect(val('yourName')).toBe('');
     expect(val('url')).toBe('');
     expect(pickedCollections()).toEqual(['Kilims']);
     expect(cls('preview')).toBe('preview');
-    expect(val('f_id')).toBe('SL-030');
+    expect(val('f_id')).toBe('SL-030'); // reset: back to the allocated number until the next scrape
   });
 
   it('shows the server validation issues and keeps the form when the create fails', async () => {
@@ -499,7 +511,7 @@ describe('edit mode', () => {
         driveScopeOk: null,
       });
     calls = [];
-    return initRugForm(document, { fetchImpl: fakeFetch(handler, calls), confirmImpl: () => true });
+    return initRugForm(document, { fetchImpl: fakeFetch(handler, calls) });
   };
 
   it('renders the rug (id readonly, hidden version, pressed tag chips, photo thumbnails) and saves with the version', async () => {
@@ -577,7 +589,7 @@ describe('the fetch modal gates the form (P5-P9)', () => {
       });
     stubDialogs();
     calls = [];
-    return initRugForm(document, { fetchImpl: fakeFetch(handler, calls), confirmImpl: () => true });
+    return initRugForm(document, { fetchImpl: fakeFetch(handler, calls) });
   };
 
   const ok = (): { status: number; body: unknown } => ({

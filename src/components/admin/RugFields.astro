@@ -294,16 +294,18 @@ const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().t
     </label>
     {
       !edit && (
-        <>
-          <button class="btn btn--primary" id="btnAdd" type="button">
-            Save product
-          </button>
+        <div class="actions__bar">
           {/* "Cancel", not "Clear" (owner, 2026-09-18): after a scrape this form IS the preview of
-              what was fetched, so the secondary action is backing out of it, not tidying a field. */}
+              what was fetched, so the secondary action is backing out of it, not tidying a field.
+              Pinned to the bottom, Cancel left and Save right (owner, 2026-09-18), so the save is
+              reachable without scrolling past every field. */}
           <button class="btn btn--secondary" id="btnClear" type="button">
             Cancel
           </button>
-        </>
+          <button class="btn btn--primary" id="btnAdd" type="button">
+            Save product
+          </button>
+        </div>
       )
     }
     {

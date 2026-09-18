@@ -426,6 +426,20 @@ input[type='color'] {
   flex-wrap: wrap;
   align-items: center;
 }
+/* Add form's Save product / Cancel: a bar pinned to the bottom of whatever scrolls (the drawer body,
+   or the page on /admin/rugs/new), Cancel at the left end and Save at the right. */
+.actions__bar {
+  position: sticky;
+  bottom: calc(-1 * var(--stack-lg));
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex: 1 0 100%;
+  padding: var(--stack-lg);
+  border-top: var(--rule-width) solid var(--rule);
+  background: var(--surface);
+}
 label.chk {
   display: flex;
   align-items: center;

@@ -287,10 +287,6 @@ export function findCollectionByName(
   return snapshot.collections.find((c) => c.name.trim().toLowerCase() === key);
 }
 
-export function findTagByName(snapshot: Pick<AdminSnapshot, 'tags'>, name: string): AdminTag | undefined {
-  const key = name.trim().toLowerCase();
-  return snapshot.tags.find((t) => t.name.trim().toLowerCase() === key);
-}
 
 export interface AdminCounts {
   /** Products have no status any more (owner, 2026-09-16), so there is one number to report. */

@@ -76,7 +76,7 @@ export const POST = adminPost(RugInput, async ({ context, body }) => {
     slug = uniqueSlug(body.name, allSlugs);
   }
   const collections = resolveCollections(snapshot, body.collections);
-  const tags = resolveTags(snapshot, body.tags);
+  const tags = resolveTags(body.tags);
   const priceUsd = body.roundPrice
     ? roundUpToStep(body.priceUsd, roundStepOf(snapshot.settings))
     : body.priceUsd;

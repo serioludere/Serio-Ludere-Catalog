@@ -125,7 +125,7 @@ describe('POST /api/admin/rugs (rug.create)', () => {
       slug: 'khal-mohammadi',
       name: 'Khal Mohammadi',
       collections: ['Kilims'],
-      tags: ['Kilim', 'Denizli'],
+      tags: ['KILIM', 'Denizli'], // as typed: tags are free strings now,
       photos: [PHOTO],
       priceUsd: 1335,
       featured: true,
@@ -190,7 +190,7 @@ describe('POST /api/admin/rugs (rug.create)', () => {
     const third = await createPost(ctx({ path: '/api/admin/rugs', method: 'POST', body: baseInput }));
     expect((await third.json()).rug).toMatchObject({ id: 'SL-031', slug: 'khal-mohammadi-2' });
   });
-  it('refuses an unknown collection or tag with 422 and writes nothing', async () => {
+  it('refuses an unknown collection with 422 and writes nothing; any tag is accepted as typed', async () => {
     const c = await createPost(
       ctx({ path: '/api/admin/rugs', method: 'POST', body: { ...baseInput, collections: ['Nope'] } }),
     );
@@ -199,10 +199,8 @@ describe('POST /api/admin/rugs (rug.create)', () => {
     const t = await createPost(
       ctx({ path: '/api/admin/rugs', method: 'POST', body: { ...baseInput, tags: ['Kilim', 'Ghost'] } }),
     );
-    expect(t.status).toBe(422);
-    expect(await t.json()).toMatchObject({ error: 'unknown tag', tag: 'Ghost' });
-    expect(sheet.writes).toHaveLength(0);
-    expect(cache.busts).toBe(0);
+    expect(t.status).toBe(201);
+    expect((await t.json()).rug.tags).toEqual(['Kilim', 'Ghost']);
   });
   it('validates the body (400 with issues), the size (413) and the content type (415)', async () => {
     const bad = await createPost(

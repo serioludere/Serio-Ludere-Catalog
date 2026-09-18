@@ -6,7 +6,6 @@ import {
   fetchAdminSnapshot,
   findCollectionByName,
   findRugById,
-  findTagByName,
   parseAdminSnapshot,
   rowVersion,
   rugVersion,
@@ -119,7 +118,6 @@ describe('parseAdminSnapshot', () => {
     });
     expect(findRugById(snap, 'sl-022')?.name).toBe('Yellow');
     expect(findCollectionByName(snap, 'KILIMS')?.slug).toBe('kilims');
-    expect(findTagByName(snap, 'kilim')?.id).toBe('kilim');
     expect(findRugById(snap, 'nope')).toBeUndefined();
   });
   it('reports the header state and throws on a broken one', () => {

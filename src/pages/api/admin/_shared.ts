@@ -13,7 +13,6 @@ import {
   adminRugFromCells,
   fetchAdminSnapshot,
   findCollectionByName,
-  findTagByName,
   rowVersion,
   type AdminClient,
   type AdminCollection,
@@ -84,20 +83,29 @@ export function resolveCollections(
   return out;
 }
 
-/** Canonical Tags.name for every requested tag (case-insensitive, de-duplicated), else 422. */
-export function resolveTags(snapshot: Pick<AdminSnapshot, 'tags'>, tags: readonly string[]): string[] {
+/**
+ * The product's tags, as typed (owner, 2026-09-18): trimmed, blanks dropped, de-duplicated
+ * case-insensitively, order and casing preserved.
+ *
+ * It used to refuse anything that was not already a row in the Tags tab — "Tag X is not in the Tags
+ * tab — add it first" — because a tag was a reference to that registry. The registry is gone: a tag
+ * is a plain string on the product, typed on the product form, so there is nothing left to resolve
+ * it against and nothing to refuse. Shape is still enforced, by the DTO: trimmed, 1-40 characters,
+ * no `|` (the cell's own separator), at most 20.
+ *
+ * Case-insensitive de-duplication is the one judgement left: "Kilim" and "kilim" on the same product
+ * are one tag, and the first spelling wins, because two of the same word is never what was meant.
+ */
+export function resolveTags(tags: readonly string[]): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
-  for (const t of tags) {
-    const hit = findTagByName(snapshot, t);
-    if (!hit)
-      throw new AdminError(422, 'unknown tag', `Tag "${t}" is not in the Tags tab — add it first.`, {
-        tag: t,
-      });
-    const key = hit.name.toLowerCase();
+  for (const raw of tags) {
+    const tag = raw.trim();
+    if (!tag) continue;
+    const key = tag.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
-    out.push(hit.name);
+    out.push(tag);
   }
   return out;
 }

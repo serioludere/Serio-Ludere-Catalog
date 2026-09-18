@@ -41,6 +41,12 @@ interface ReactionsResponse {
 }
 
 const SAVED_KEY = 'sl-saved';
+/**
+ * Each buyer's reactions live under their own key (owner, 2026-09-18). All customer links share one
+ * origin and so one localStorage; a single key meant a like made through customer A's link painted as
+ * liked on customer B's. The public catalogue keeps the original key.
+ */
+export const savedKey = (customer?: string): string => (customer ? `${SAVED_KEY}:${customer}` : SAVED_KEY);
 const REQUEST_TIMEOUT_MS = 10_000;
 /** The brief's 2–3 s window; the midpoint, so a burst of taps coalesces without feeling stale. */
 export const BUFFER_MS = 2500;
@@ -49,9 +55,9 @@ export const MAX_BATCH = 25;
 /** Retry backoff for a transient failure: 2s, 4s, 8s, 16s, then hold at 30s. */
 export const RETRY_MS = [2_000, 4_000, 8_000, 16_000, 30_000];
 
-export function readSaved(storage: Storage = localStorage): Record<string, State> {
+export function readSaved(storage: Storage = localStorage, customer?: string): Record<string, State> {
   try {
-    const raw = JSON.parse(storage.getItem(SAVED_KEY) || '{}') as Record<string, unknown>;
+    const raw = JSON.parse(storage.getItem(savedKey(customer)) || '{}') as Record<string, unknown>;
     const out: Record<string, State> = {};
     for (const [id, v] of Object.entries(raw)) {
       if (v === true || v === 'liked')
@@ -64,9 +70,13 @@ export function readSaved(storage: Storage = localStorage): Record<string, State
   }
 }
 
-export function writeSaved(saved: Record<string, State>, storage: Storage = localStorage): void {
+export function writeSaved(
+  saved: Record<string, State>,
+  storage: Storage = localStorage,
+  customer?: string,
+): void {
   try {
-    storage.setItem(SAVED_KEY, JSON.stringify(saved));
+    storage.setItem(savedKey(customer), JSON.stringify(saved));
   } catch {
     /* private mode */
   }
@@ -229,14 +239,14 @@ export function bindVotes(opts: VoteBindings = {}): () => void {
       ? (url: string, body: BodyInit) => navigator.sendBeacon(url, body)
       : undefined);
 
-  const saved = readSaved(storage);
+  const saved = readSaved(storage, customer);
   for (const [id, state] of Object.entries(saved)) paint(id, state, doc);
 
   // bfcache restore (Back from a detail page where the visitor reacted): repaint from storage.
   const onPageShow = (e: PageTransitionEvent): void => {
     if (!e.persisted) return;
     for (const k of Object.keys(saved)) delete saved[k];
-    Object.assign(saved, readSaved(storage));
+    Object.assign(saved, readSaved(storage, customer));
     const ids = new Set<string>();
     doc.querySelectorAll<HTMLButtonElement>('button[data-vote][data-rug]').forEach((b) => {
       if (b.dataset.rug) ids.add(b.dataset.rug);
@@ -252,7 +262,7 @@ export function bindVotes(opts: VoteBindings = {}): () => void {
   const remember = (rugId: string, state: State): void => {
     if (state === 'none') delete saved[rugId];
     else saved[rugId] = state;
-    writeSaved(saved, storage);
+    writeSaved(saved, storage, customer);
     paint(rugId, state, doc);
     // The filter strip's "Liked" chip counts the same stored state, so it is told rather than polled.
     try {

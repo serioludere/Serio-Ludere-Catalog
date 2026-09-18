@@ -52,6 +52,30 @@ describe('votes.ts', () => {
     expect(readSaved()).toEqual({});
   });
 
+  it("never shows one customer's reactions on another customer's link (same browser)", async () => {
+    const fetchImpl = vi.fn(async () =>
+      okResponse([{ productId: 'SL-1', state: 'liked', likes: 1, dislikes: 0, rating: 1 }]),
+    ) as unknown as typeof fetch;
+    // Customer A likes SL-1.
+    document.documentElement.dataset.customer = 'buyer-a';
+    page(`<button data-vote="like" data-rug="SL-1" aria-pressed="false"></button>`);
+    let t = timers();
+    unbind = bindVotes({ fetchImpl, ...t });
+    document.querySelector<HTMLButtonElement>('button')!.click();
+    t.run();
+    await vi.waitFor(() => expect(readSaved(localStorage, 'buyer-a')).toEqual({ 'SL-1': 'liked' }));
+    unbind();
+    // Customer B opens the same product in the same browser: nothing is liked.
+    document.documentElement.dataset.customer = 'buyer-b';
+    page(`<button data-vote="like" data-rug="SL-1" aria-pressed="false"></button>`);
+    t = timers();
+    unbind = bindVotes({ fetchImpl, ...t });
+    expect(document.querySelector('button')!.getAttribute('aria-pressed')).toBe('false');
+    expect(readSaved(localStorage, 'buyer-b')).toEqual({});
+    expect(readSaved()).toEqual({}); // …and the public catalogue's store is untouched too
+    delete document.documentElement.dataset.customer;
+  });
+
   it('keeps only the newest intent per product and the state the burst started from', () => {
     const buffer = new ReactionBuffer();
     buffer.add({ productId: 'SL-1', reaction: 'like', source: 'card', previous: 'none' });

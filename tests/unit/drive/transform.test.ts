@@ -10,6 +10,7 @@ import {
   rotate90,
   transformsFor,
 } from '../../../src/lib/drive/transform.ts';
+import { FEATURES } from '../../../src/lib/features.ts';
 
 /** A 60×30 landscape PNG — deliberately not square, so a rotation is visible in the dimensions. */
 async function landscapePng(): Promise<Uint8Array> {
@@ -44,6 +45,17 @@ describe('transformsFor', () => {
     expect(transformsFor('ecarpetgallery', 0)).toContain('removeBackground');
   });
 
+  it('drops background removal — and only that — when the feature is switched off', () => {
+    const flags = FEATURES as { backgroundRemoval: boolean };
+    flags.backgroundRemoval = false;
+    try {
+      expect(transformsFor('karavanrug', 0)).toEqual(['rotate90']);
+      expect(transformsFor('ecarpetgallery', 0)).toEqual([]);
+    } finally {
+      flags.backgroundRemoval = true;
+    }
+  });
+
   it('leaves owned stock and unknown suppliers completely alone', () => {
     expect(transformsFor('', 0)).toEqual([]);
     expect(transformsFor('somewhere-else', 0)).toEqual([]);
@@ -60,11 +72,49 @@ describe('rotate90', () => {
   });
 });
 
+/**
+ * A "studio shot": an 80×60 white sweep with a red 40×30 rug in the middle, and a white motif in the
+ * middle of the rug — white that does NOT touch the edge and so must survive the fill.
+ */
+async function rugOnWhite(): Promise<Uint8Array> {
+  const { default: sharp } = await import('sharp');
+  const w = 80;
+  const h = 60;
+  const px = Buffer.alloc(w * h * 3, 250); // slightly off-white, like a real sweep
+  for (let y = 15; y < 45; y++)
+    for (let x = 20; x < 60; x++) {
+      const inMotif = x >= 38 && x < 42 && y >= 28 && y < 32;
+      const i = (y * w + x) * 3;
+      px[i] = inMotif ? 255 : 180;
+      px[i + 1] = inMotif ? 255 : 30;
+      px[i + 2] = inMotif ? 255 : 40;
+    }
+  return new Uint8Array(
+    await sharp(px, { raw: { width: w, height: h, channels: 3 } })
+      .png()
+      .toBuffer(),
+  );
+}
+
+async function alphaAt(bytes: Uint8Array, x: number, y: number): Promise<number> {
+  const { default: sharp } = await import('sharp');
+  const { data, info } = await sharp(bytes).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  return data[(y * info.width + x) * 4 + 3]!;
+}
+
 describe('removeBackground', () => {
-  it('is a no-op today, and says so by returning the very same bytes', async () => {
-    // The owner chose to skip it (2026-09-13). Returning the input unchanged — rather than throwing
-    // — is what keeps the pipeline a no-op instead of a broken step.
-    const bytes = new Uint8Array([1, 2, 3]);
+  it('makes a plain white studio backdrop transparent and keeps the rug, white motifs included', async () => {
+    const out = await removeBackground(await rugOnWhite());
+    expect(await alphaAt(out, 2, 2)).toBe(0); // corner: backdrop
+    expect(await alphaAt(out, 10, 30)).toBe(0); // left of the rug: backdrop
+    expect(await alphaAt(out, 25, 20)).toBe(255); // the rug
+    expect(await alphaAt(out, 40, 30)).toBe(255); // white motif INSIDE the rug stays
+    expect(await sizeOf(out)).toMatchObject({ width: 80, height: 60 });
+  });
+
+  it('leaves a photo without a plain light backdrop alone — the very same bytes', async () => {
+    // Solid red edge to edge: no studio white on the border, so there is nothing it should touch.
+    const bytes = await landscapePng();
     expect(await removeBackground(bytes)).toBe(bytes);
   });
 });
@@ -81,7 +131,7 @@ describe('applyTransforms', () => {
     expect(await sizeOf(out.bytes)).toMatchObject({ width: 30, height: 60 });
   });
 
-  it('does not claim removeBackground ran while it is a no-op', async () => {
+  it('does not claim removeBackground ran on a photo it left alone', async () => {
     const bytes = await landscapePng();
     const out = await applyTransforms(
       { bytes, contentType: 'image/png' },
@@ -90,6 +140,34 @@ describe('applyTransforms', () => {
     // transformsFor asks for it; applyTransforms must not report work that did not happen.
     expect(transformsFor('karavanrug', 0)).toContain('removeBackground');
     expect(out.applied).not.toContain('removeBackground');
+    expect(out.contentType).toBe('image/png');
+  });
+
+  it('cuts out a studio-shot cover — rotated first for Karavan — and stores it as WebP', async () => {
+    const kv = await applyTransforms(
+      { bytes: await rugOnWhite(), contentType: 'image/jpeg' },
+      { supplier: 'karavanrug', index: 0 },
+    );
+    expect(kv.applied).toEqual(['rotate90', 'removeBackground']);
+    expect(kv.contentType).toBe('image/webp');
+    expect(await sizeOf(kv.bytes)).toMatchObject({ width: 60, height: 80 });
+    expect(await alphaAt(kv.bytes, 1, 1)).toBe(0);
+
+    const ecg = await applyTransforms(
+      { bytes: await rugOnWhite(), contentType: 'image/jpeg' },
+      { supplier: 'ecarpetgallery', index: 0 },
+    );
+    expect(ecg.applied).toEqual(['removeBackground']);
+    expect(ecg.contentType).toBe('image/webp');
+  });
+
+  it('never cuts out anything but the cover', async () => {
+    const bytes = await rugOnWhite();
+    const out = await applyTransforms(
+      { bytes, contentType: 'image/png' },
+      { supplier: 'ecarpetgallery', index: 1 },
+    );
+    expect(out.bytes).toBe(bytes);
   });
 
   it('passes a non-primary photo straight through, untouched and un-re-encoded', async () => {

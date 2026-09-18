@@ -258,8 +258,8 @@ export function createUploader(
       http.logger.warn(`photo import: download failed (${code})`, { detail });
       return { error: code, detail };
     }
-    const mime = mimeOf(downloaded.contentType);
-    if (!isImageType(mime)) return { error: 'not_image', detail: mime || 'missing content-type' };
+    const sourceMime = mimeOf(downloaded.contentType);
+    if (!isImageType(sourceMime)) return { error: 'not_image', detail: sourceMime || 'missing content-type' };
 
     // Per-supplier fixes on the way in (owner, 2026-09-13). Never fatal: a photo that could not be
     // rotated is still a photo the studio wants, so a failure here logs and stores the original.
@@ -271,6 +271,9 @@ export function createUploader(
       http.logger.warn('photo import: transform skipped, storing the original', { detail: fixed.skipped });
     }
     downloaded = { bytes: fixed.bytes, contentType: fixed.contentType };
+    // Read AFTER the fixes: a cover with its backdrop removed is WebP now, and its file name and
+    // Drive type have to say so.
+    const mime = mimeOf(downloaded.contentType);
 
     const size = downloaded.bytes.byteLength;
     if (size === 0) return { error: 'download_failed', detail: 'empty body' };

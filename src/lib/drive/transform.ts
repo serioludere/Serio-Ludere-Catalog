@@ -12,6 +12,8 @@
 // for portrait plates and applies to the whole rug. That flag answers "how should this rug be shown
 // in its plate"; this module answers "did the supplier hand us the file the wrong way up".
 
+import { FEATURES } from '../features.ts';
+
 /** What can be done to a supplier photo before it is stored. */
 export type ImageTransform = 'rotate90' | 'removeBackground';
 
@@ -38,10 +40,10 @@ export function transformsFor(supplier: string, index: number): ImageTransform[]
   if (index !== 0) return [];
   const out: ImageTransform[] = [];
   if (supplier === 'karavanrug') out.push('rotate90');
-  // Background removal is requested for BOTH suppliers' first image, but is not implemented: see
-  // removeBackground() below. Listing it here keeps the policy honest and in one place — when the
-  // owner picks an approach, only that function changes.
-  if (supplier === 'karavanrug' || supplier === 'ecarpetgallery') out.push('removeBackground');
+  // Both suppliers' cover photos (owner, 2026-09-18). Switchable in src/lib/features.ts; off, the
+  // cover is stored exactly as the supplier sent it (rotation aside).
+  if (FEATURES.backgroundRemoval && (supplier === 'karavanrug' || supplier === 'ecarpetgallery'))
+    out.push('removeBackground');
   return out;
 }
 
@@ -63,20 +65,145 @@ export async function rotate90(bytes: Uint8Array): Promise<Uint8Array> {
   return new Uint8Array(out);
 }
 
+/* ---------- background removal (owner, 2026-09-18) ---------- */
+
 /**
- * Background removal — NOT IMPLEMENTED, by the owner's decision of 2026-09-13.
+ * A pixel within this distance of the backdrop colour (largest per-channel difference, 0-255) is
+ * backdrop. Loose enough for JPEG noise on a white sweep; tight enough that cream wool is not.
+ */
+export const BG_TOLERANCE = 26;
+/** Between the tolerance and this, an outline pixel is part-transparent: a soft edge, not a jagged one. */
+const BG_SOFT = 60;
+/** Share of the photo's border that must be plain near-white before anything is removed at all. */
+const BORDER_WHITE_SHARE = 0.6;
+/** A border pixel this bright on every channel counts as studio white. */
+const WHITE_FLOOR = 225;
+
+/**
+ * The backdrop colour, when the photo has a plain light studio backdrop: the average of the
+ * near-white pixels on its border, if they are most of the border. Anything else — a room shot, a
+ * photo cropped tight to the rug, a dark sweep — returns undefined and the photo is left alone.
+ */
+export function backdropOf(
+  px: Uint8Array | Uint8ClampedArray,
+  w: number,
+  h: number,
+): [number, number, number] | undefined {
+  let n = 0;
+  let white = 0;
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  const visit = (x: number, y: number): void => {
+    const i = (y * w + x) * 4;
+    n++;
+    if (Math.min(px[i]!, px[i + 1]!, px[i + 2]!) >= WHITE_FLOOR) {
+      white++;
+      r += px[i]!;
+      g += px[i + 1]!;
+      b += px[i + 2]!;
+    }
+  };
+  for (let x = 0; x < w; x++) {
+    visit(x, 0);
+    if (h > 1) visit(x, h - 1);
+  }
+  for (let y = 1; y < h - 1; y++) {
+    visit(0, y);
+    if (w > 1) visit(w - 1, y);
+  }
+  if (n === 0 || white / n < BORDER_WHITE_SHARE) return undefined;
+  return [r / white, g / white, b / white];
+}
+
+/**
+ * Makes the backdrop transparent, in place, on RGBA pixels. Returns how many pixels were cleared.
  *
- * sharp cannot do this: separating a rug from its backdrop needs a segmentation model, not an image
- * filter. The two real options were a hosted API (remove.bg / Photoroom — around $0.20 an image, and
- * every supplier photo leaves the studio's control) or a local ONNX model (rembg / BiRefNet — a
- * ~180MB download and materially more CPU per import). The owner chose neither for now.
+ * A flood fill from the border, not a colour key: only backdrop CONNECTED to the edge of the photo
+ * goes, so white motifs inside the rug — which never touch the edge — stay. Pixels just past the
+ * tolerance on the rug's outline get partial alpha, so the edge is soft rather than stair-stepped.
+ */
+export function clearBackdrop(
+  px: Uint8Array | Uint8ClampedArray,
+  w: number,
+  h: number,
+  bg: readonly [number, number, number],
+): number {
+  const total = w * h;
+  const dist = (p: number): number => {
+    const i = p * 4;
+    return Math.max(Math.abs(px[i]! - bg[0]), Math.abs(px[i + 1]! - bg[1]), Math.abs(px[i + 2]! - bg[2]));
+  };
+  const cleared = new Uint8Array(total);
+  const queue = new Int32Array(total);
+  let head = 0;
+  let tail = 0;
+  const take = (p: number): void => {
+    if (!cleared[p] && dist(p) <= BG_TOLERANCE) {
+      cleared[p] = 1;
+      queue[tail++] = p;
+    }
+  };
+  for (let x = 0; x < w; x++) {
+    take(x);
+    take((h - 1) * w + x);
+  }
+  for (let y = 0; y < h; y++) {
+    take(y * w);
+    take(y * w + w - 1);
+  }
+  while (head < tail) {
+    const p = queue[head++]!;
+    const x = p % w;
+    if (x > 0) take(p - 1);
+    if (x < w - 1) take(p + 1);
+    if (p >= w) take(p - w);
+    if (p < total - w) take(p + w);
+  }
+  for (let p = 0; p < total; p++) {
+    if (cleared[p]) {
+      px[p * 4 + 3] = 0;
+      continue;
+    }
+    const x = p % w;
+    const outline =
+      (x > 0 && cleared[p - 1]) ||
+      (x < w - 1 && cleared[p + 1]) ||
+      (p >= w && cleared[p - w]) ||
+      (p < total - w && cleared[p + w]);
+    if (!outline) continue;
+    const d = dist(p);
+    if (d < BG_SOFT) {
+      const a = Math.round(((d - BG_TOLERANCE) / (BG_SOFT - BG_TOLERANCE)) * 255);
+      px[p * 4 + 3] = Math.min(px[p * 4 + 3]!, Math.max(0, a));
+    }
+  }
+  return tail;
+}
+
+/**
+ * Background removal for a rug shot on a plain light studio backdrop — which is how both suppliers
+ * photograph their covers. Free, local and instant: sharp plus a flood fill, no model, no service.
  *
- * This is the seam where it plugs in: return the new bytes and every caller already handles it. It
- * returns the input unchanged rather than throwing, so the transform pipeline stays a no-op until
- * there is something real to do.
+ * It removes a plain backdrop, not any background. A photo without one (see backdropOf) comes back
+ * unchanged, and so does one where the fill would clear almost nothing or almost everything — both
+ * mean the photo is not what this was built for. "Unchanged" is the same bytes object, which is how
+ * applyTransforms knows nothing happened. The output is WebP with transparency.
  */
 export async function removeBackground(bytes: Uint8Array): Promise<Uint8Array> {
-  return bytes;
+  const { default: sharp } = await import('sharp');
+  const { data, info } = await sharp(bytes).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { width: w, height: h } = info;
+  const bg = backdropOf(data, w, h);
+  if (!bg) return bytes;
+  const share = clearBackdrop(data, w, h, bg) / (w * h);
+  if (share < 0.01 || share > 0.97) return bytes;
+  // WebP, not PNG: it keeps the transparency at a fraction of the size — a 2048px Karavan cover is
+  // ~6 MB as PNG, over the 5 MB upload cap. Alpha is stored losslessly so the soft edge survives.
+  const out = await sharp(data, { raw: { width: w, height: h, channels: 4 } })
+    .webp({ quality: 90, alphaQuality: 100 })
+    .toBuffer();
+  return new Uint8Array(out);
 }
 
 export interface TransformInput {
@@ -112,6 +239,7 @@ export async function applyTransforms(
   }
 
   let bytes = input.bytes;
+  let contentType = input.contentType;
   const applied: ImageTransform[] = [];
   try {
     for (const t of wanted) {
@@ -120,9 +248,11 @@ export async function applyTransforms(
         applied.push(t);
       } else if (t === 'removeBackground') {
         const next = await removeBackground(bytes);
-        // Only claim it ran if it actually changed something — today it never does.
+        // Only claim it ran if it actually changed something: a photo without a plain backdrop
+        // comes back as the same bytes, still in its original format.
         if (next !== bytes) {
           bytes = next;
+          contentType = 'image/webp';
           applied.push(t);
         }
       }
@@ -131,5 +261,5 @@ export async function applyTransforms(
     const detail = e instanceof Error ? e.message : String(e);
     return { ...input, applied: [], skipped: detail };
   }
-  return { bytes, contentType: input.contentType, applied };
+  return { bytes, contentType, applied };
 }

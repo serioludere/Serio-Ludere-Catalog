@@ -14,7 +14,7 @@ import {
   type ApiFail,
   type ApiOptions,
 } from './api.ts';
-import { initChips, type ChipGroup } from './chips.ts';
+import { initTagTokens, type TagTokens } from './tag-tokens.ts';
 import { byId, clear, el, maybe, money, readJson, setDisabled } from './dom.ts';
 import { hide, hideVisible, msg } from './msg.ts';
 import { FetchModalView, fetchModalParts, type FetchedResult } from './fetch-modal.ts';
@@ -141,7 +141,8 @@ export interface RugForm {
   busy(): boolean;
   /** The last scrape result applied to the form (undefined after manual entry / reset). */
   scraped(): Partial<ScrapedLike> | undefined;
-  chips: ChipGroup;
+  /** The product's tags. Still named `chips`, so callers and tests read unchanged. */
+  chips: TagTokens;
 }
 
 /** Drive ids from the photos textarea: bare ids or any Drive/lh3 link, one per line, de-duplicated. */
@@ -213,7 +214,12 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
   // The form owns the control, so the form binds it: every page that renders RugFields gets the
   // summary line, Esc-to-close and close-on-outside-click without having to remember to ask.
   bindMultiSelects(doc);
-  const chips = initChips(byId('tagChips', doc), { multi: true });
+  const chips = initTagTokens(byId('tagChips', doc), {
+    // Removing a tag with the × is an edit like any other, so the unsaved-work guard has to see it.
+    onChange: () => {
+      dirty = true;
+    },
+  });
   const newTag = input('newTag');
   const btnNewTag = byId<HTMLButtonElement>('btnNewTag', doc);
   const url = maybe<HTMLInputElement>('url', doc);
@@ -288,10 +294,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
 
   const hasTag = (name: string): string | undefined => {
     const key = name.trim().toLowerCase();
-    return chips
-      .buttons()
-      .map((b) => b.dataset.value ?? '')
-      .find((v) => v.toLowerCase() === key);
+    return chips.values().find((v) => v.toLowerCase() === key);
   };
 
   const selectedPhotoUrls = (): string[] =>
@@ -355,7 +358,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
         .map((n) => data.collections.find((c) => c.name.toLowerCase() === n.trim().toLowerCase())?.name)
         .filter((n): n is string => n !== undefined),
     );
-    chips.set(rug.tags.map((t) => hasTag(t) ?? t));
+    chips.set(rug.tags);
     f.width.value = rug.widthCm === undefined ? '' : String(rug.widthCm);
     f.length.value = rug.lengthCm === undefined ? '' : String(rug.lengthCm);
     f.material.value = rug.material;
@@ -456,21 +459,13 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     preview.classList.add('on');
   };
 
-  const createTag = async (name: string, press: boolean): Promise<boolean> => {
-    const r = await post<{ tag: { name: string } }>('/api/admin/tags', { name }, api);
-    if (!r.ok) {
-      if (r.status === 409) {
-        const existing = hasTag(name);
-        if (existing && press) chips.set([...new Set([...chips.values(), existing])]);
-        return Boolean(existing);
-      }
-      msg(m2, `Tag "${name}": ${r.status === 400 ? issuesText(r) : r.message}`, 'err');
-      return false;
-    }
-    const tagName = r.data.tag.name;
-    if (!hasTag(tagName)) chips.add(tagName, tagName, press);
-    else if (press) chips.set([...new Set([...chips.values(), tagName])]);
-    return true;
+  /**
+   * Adding a tag is local now (owner, 2026-09-18). There is no Tags tab to register it in: the tag
+   * lives in this product's own cell and is written when the product is saved, like any other field.
+   */
+  const addTag = (name: string): boolean => {
+    if (hasTag(name)) return true; // already on the product — nothing to do, and not an error
+    return chips.add(name);
   };
 
   const showFetchError = (fail: ApiFail): void => {
@@ -885,20 +880,17 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     const n = roundUpToStep(parsePrice(f.price.value), data.roundStep);
     if (n !== undefined) f.price.value = String(n);
   });
-  btnNewTag.addEventListener('click', () => void addNewTag());
+  btnNewTag.addEventListener('click', () => addNewTag());
   newTag.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      void addNewTag();
+      addNewTag();
     }
   });
-  const addNewTag = async (): Promise<void> => {
+  const addNewTag = (): void => {
     const name = newTag.value.trim();
     if (!name) return;
-    btnNewTag.disabled = true;
-    const ok = await createTag(name, true);
-    btnNewTag.disabled = false;
-    if (ok) newTag.value = '';
+    if (addTag(name)) newTag.value = '';
   };
   btnAdd?.addEventListener('click', () => void add());
   btnClear?.addEventListener('click', () => {

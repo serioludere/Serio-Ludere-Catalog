@@ -48,12 +48,8 @@ const day = (iso: string | undefined): string => {
 /** The read-only footer under the edit form, one string so it never wraps mid-phrase. */
 const metaLine = rug ? `${likes} ${likes === 1 ? 'like' : 'likes'} · added ${day(rug.scrapedAt)}` : '';
 const v = (s: string | number | undefined): string => (s === undefined ? '' : String(s));
-const pressed = new Set(rug?.tags.map((t) => t.toLowerCase()) ?? []);
-const tagChips = tags.map((t) => ({
-  value: t.name,
-  label: t.name,
-  pressed: pressed.has(t.name.toLowerCase()),
-}));
+// The product's OWN tags (owner, 2026-09-18) — there is no registry to offer any more.
+const ownTags = rug?.tags.filter((t) => t.trim()) ?? [];
 // Membership, not the primary: the form must tick every collection the rug is filed under.
 const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().toLowerCase()));
 ---
@@ -107,10 +103,23 @@ const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().t
     </div>
   </div>
 
+  {/* Owner, 2026-09-18: tags are plain strings on THIS product, not a registry to pick from. What is
+      listed is what the product has; each carries an × that removes it, and the input adds one. */}
   <div class="f">
     <span class="f__legend">Tags</span>
     <div class="tagrow">
-      <Chips id="tagChips" label="Tags" chips={tagChips} multi />
+      <div class="tagtokens" id="tagChips" role="list" aria-label="Tags on this product">
+        {
+          ownTags.map((t) => (
+            <span class="tagtoken" data-tag={t} role="listitem">
+              <span class="tagtoken__label">{t}</span>
+              <button type="button" class="tagtoken__x" data-remove={t} aria-label={`Remove ${t}`}>
+                ×
+              </button>
+            </span>
+          ))
+        }
+      </div>
       <div class="newtag">
         <label class="sr-only" for="newTag">New tag name</label>
         <input id="newTag" placeholder="New tag" autocomplete="off" />

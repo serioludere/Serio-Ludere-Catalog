@@ -23,6 +23,7 @@
     "admin:password": "node scripts/admin-password.ts",
     "sheet:init": "node --env-file=.env scripts/init-sheet.ts",
     "sheet:roundtrip": "node --env-file=.env scripts/roundtrip.ts",
+    "tags:clear": "node --env-file=.env scripts/clear-tags.ts",
     "check:photos": "node --env-file=.env scripts/check-photos.ts",
     "shots": "node scripts/screenshots.ts",
     "qa": "node scripts/qa.ts",

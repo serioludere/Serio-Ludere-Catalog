@@ -1,4 +1,4 @@
-// /api/admin/collections* and /api/admin/tags* against the in-memory sheet (docs/ADMIN_SPEC.md
+// /api/admin/collections* against the in-memory sheet (docs/ADMIN_SPEC.md
 // §3.4): create = bottom insert with id = slug and sort_order max+1 (409 on a duplicate slug),
 // update = version-guarded whole-row write (409 with the fresh cells).
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -24,10 +24,7 @@ import {
   POST as collectionsPost,
 } from '../../../src/pages/api/admin/collections/index.ts';
 import { POST as collectionPost } from '../../../src/pages/api/admin/collections/[id].ts';
-import { GET as tagsGet, POST as tagsPost } from '../../../src/pages/api/admin/tags/index.ts';
-import { POST as tagPost } from '../../../src/pages/api/admin/tags/[id].ts';
 import { POST as collectionDeletePost } from '../../../src/pages/api/admin/collections/[id]/delete.ts';
-import { POST as tagDeletePost } from '../../../src/pages/api/admin/tags/[id]/delete.ts';
 
 const session = newSession('owner', Date.now());
 const ctx = (init: Parameters<typeof apiContext>[0]): APIContext =>
@@ -173,62 +170,12 @@ describe('collections', () => {
   });
 });
 
-describe('tags', () => {
-  it('lists, creates with id = slug (409 on a duplicate), updates with the version', async () => {
-    const list = await (await tagsGet(ctx({ path: '/api/admin/tags' }))).json();
-    expect(list.tags.map((t: { id: string; row: number }) => [t.id, t.row])).toEqual([
-      ['kilim', 2],
-      ['denizli', 3],
-    ]);
-    const res = await tagsPost(
-      ctx({ path: '/api/admin/tags', method: 'POST', body: { name: 'Plant Dyes', color: '#2f6b3a' } }),
-    );
-    expect(res.status).toBe(201);
-    const out = await res.json();
-    expect(out.tag).toMatchObject({ id: 'plant-dyes', slug: 'plant-dyes', name: 'Plant Dyes', row: 4 });
-    expect(out.audit).toEqual({ row: 2, action: 'tag.create' });
-    // The colour column stays in the sheet, written blank (owner, 2026-09-16).
-    expect(sheet.row('Tags', 4)).toEqual(['plant-dyes', 'plant-dyes', 'Plant Dyes', '']);
-    const dup = await tagsPost(ctx({ path: '/api/admin/tags', method: 'POST', body: { name: 'kilim' } }));
-    expect(dup.status).toBe(409);
-    const pipe = await tagsPost(ctx({ path: '/api/admin/tags', method: 'POST', body: { name: 'a|b' } }));
-    expect(pipe.status).toBe(400);
-
-    const upd = await tagPost(
-      ctx({
-        path: '/api/admin/tags/kilim',
-        method: 'POST',
-        params: { id: 'kilim' },
-        body: { name: 'Kilim weave', version: list.tags[0].version },
-      }),
-    );
-    expect(upd.status).toBe(200);
-    const u = await upd.json();
-    expect(u.tag).toMatchObject({ id: 'kilim', slug: 'kilim', name: 'Kilim weave', row: 2 });
-    expect(u.detached).toBe(2); // both fixture rugs carry the default tag "Kilim"
-    expect(sheet.row('Tags', 2)).toEqual(['kilim', 'kilim', 'Kilim weave', '']);
-    const stale = await tagPost(
-      ctx({
-        path: '/api/admin/tags/kilim',
-        method: 'POST',
-        params: { id: 'kilim' },
-        body: { name: 'x', version: list.tags[0].version },
-      }),
-    );
-    expect(stale.status).toBe(409);
-    expect(cache.busts).toBe(2);
-  });
-});
-
 /**
- * Deleting a collection or a tag. A TAG still refuses while a product carries it: products store the
- * display name as text, so removing the definition would not detach anything.
- *
- * A COLLECTION deletes and CASCADES (owner, 2026-09-18): the definition goes and the name is removed
+ * Deleting a collection. It deletes and CASCADES (owner, 2026-09-18): the definition goes and the name is removed
  * from every product that carried it. The products themselves are never deleted — only the binding —
  * because the studio's complaint was seeing a deleted collection still attached in the edit form.
  */
-describe('deleting collections and tags', () => {
+describe('deleting collections', () => {
   it('deletes a collection and detaches it from its products, without deleting them', async () => {
     const list = await (await collectionsGet(ctx({ path: '/api/admin/collections' }))).json();
     const kilims = list.collections[0];
@@ -298,37 +245,6 @@ describe('deleting collections and tags', () => {
     expect(cache.busts).toBe(1);
   });
 
-  it('refuses a tag that products carry, and deletes an unused one', async () => {
-    const list = await (await tagsGet(ctx({ path: '/api/admin/tags' }))).json();
-    const kilim = list.tags.find((t: { id: string }) => t.id === 'kilim');
-    const used = await tagDeletePost(
-      ctx({
-        path: '/api/admin/tags/kilim/delete',
-        method: 'POST',
-        params: { id: 'kilim' },
-        body: { version: kilim.version },
-      }),
-    );
-    expect(used.status).toBe(409);
-    expect(await used.json()).toMatchObject({ error: 'tag in use', inUse: 2 });
-
-    // A tag nothing carries goes without argument — created here so the fixture's own two stay used.
-    const made = await (
-      await tagsPost(ctx({ path: '/api/admin/tags', method: 'POST', body: { name: 'Nomad Stripe' } }))
-    ).json();
-    const res = await tagDeletePost(
-      ctx({
-        path: '/api/admin/tags/nomad-stripe/delete',
-        method: 'POST',
-        params: { id: 'nomad-stripe' },
-        body: { version: made.tag.version },
-      }),
-    );
-    expect(res.status).toBe(200);
-    const after = await (await tagsGet(ctx({ path: '/api/admin/tags' }))).json();
-    expect(after.tags.map((t: { id: string }) => t.id)).toEqual(['kilim', 'denizli']);
-    expect(sheet.auditRows()[0]![2]).toBe('tag.delete');
-  });
 
   it('refuses a stale version rather than deleting whatever is there now', async () => {
     const res = await collectionDeletePost(

@@ -354,22 +354,35 @@ describe('add mode', () => {
     expect(val('f_price')).toBe('1335');
   });
 
-  it('the "+ new tag" input creates the tag and presses it — the only way tags are assigned now', async () => {
-    // Owner, 2026-09-18: the scrape's own "use these" suggestion is gone, so this input is the whole
-    // tag story on the form. The chip it creates is pressed, and a scrape leaves it untouched.
-    const created = {
-      status: 201,
-      body: { ok: true, tag: { id: 'geometric', slug: 'geometric', name: 'Geometric' }, audit: { row: 2 } },
-    };
-    form = mount((u) => (u === '/api/admin/tags' ? created : { status: 500, body: {} }));
+  it('adds tags locally — no registry call — and the × takes one off again', () => {
+    // Owner, 2026-09-18: a tag is a plain string on THIS product. There is no Tags tab to register it
+    // in, so adding one writes nothing; it is saved with the product like any other field. The
+    // scrape's "use these" suggestion is gone too, so this input is the whole tag story on the form.
+    form = mount(() => ({ status: 500, body: {} }));
     form.applyScrape(scraped);
     expect(form.chips.values()).toEqual([]);
+
     const newTag = document.getElementById('newTag') as HTMLInputElement;
-    newTag.value = 'Geometric';
-    newTag.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-    await vi.waitFor(() => expect(form.chips.values()).toEqual(['Geometric']));
-    expect(calls).toEqual([{ url: '/api/admin/tags', body: { name: 'Geometric' } }]);
+    const addTag = (name: string): void => {
+      newTag.value = name;
+      newTag.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    };
+    addTag('Geometric');
+    addTag('Red');
+    expect(form.chips.values()).toEqual(['Geometric', 'Red']);
     expect(newTag.value).toBe('');
+    expect(calls).toEqual([]); // nothing was written anywhere
+
+    // The same tag twice is not two tags, whatever the casing.
+    addTag('geometric');
+    expect(form.chips.values()).toEqual(['Geometric', 'Red']);
+
+    // The × removes it, and what the form would save follows.
+    const x = document.querySelector<HTMLButtonElement>('button[data-remove="Geometric"]')!;
+    expect(x.getAttribute('aria-label')).toBe('Remove Geometric');
+    x.click();
+    expect(form.chips.values()).toEqual(['Red']);
+    expect(form.collect().tags).toEqual(['Red']);
   });
 
   it('a failed scrape offers "Enter manually", which pre-fills supplier / ref / link and opens the preview', async () => {

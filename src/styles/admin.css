@@ -249,11 +249,22 @@ label.chk {
   color: var(--info);
   border-color: var(--info);
 }
+/* TWO per row (owner, 2026-09-18), not `auto-fit`.
+   The product form used to reflow to three and four columns on a wide screen, which made the field
+   order impossible to follow — the eye had to track across a different number of columns at every
+   width, and the pairs that belong together (width/length, material/method) landed on different
+   rows. Two fixed columns keep those pairs side by side and the reading order down the page. One
+   column below 640, where two would leave each field too narrow to read its own value. */
 .fields {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-field);
   margin-top: var(--space-form);
+}
+@media (max-width: 640px) {
+  .fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 /* The legacy twin of `.field__label` in controls.css. Matched to it rather than kept as a third
    label style: same face, size, weight and colour, so a form that mixes the Figma `Input` component
@@ -316,6 +327,58 @@ label.chk {
   display: flex;
   flex-wrap: wrap;
   gap: var(--control-gap);
+}
+
+/* Tag tokens (owner, 2026-09-18). A tag is a plain string on the product: there is no pressed state
+   to show, only the tag and the × that removes it. */
+.tagtokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--control-gap);
+}
+.tagtoken {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--stack-xs);
+  padding: 2px var(--stack-sm);
+  border: var(--rule-width) solid var(--border-control);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+  color: var(--ink);
+}
+/* The × is revealed on hover, but it is ALWAYS in the DOM and always focusable: a control that only
+   exists on hover cannot be reached by keyboard or touch. Hidden here means transparent, not
+   `display:none`, so the token never changes width as the pointer crosses it. */
+.tagtoken__x {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--ink-muted);
+  font-size: var(--text-base);
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--motion-transition) var(--motion-ease);
+}
+.tagtoken:hover .tagtoken__x,
+.tagtoken__x:focus-visible {
+  opacity: 1;
+}
+.tagtoken__x:hover {
+  color: var(--danger);
+}
+/* Touch has no hover: there the × is simply always visible, or it could never be pressed at all. */
+@media (hover: none) {
+  .tagtoken__x {
+    opacity: 1;
+  }
 }
 .newtag {
   display: flex;

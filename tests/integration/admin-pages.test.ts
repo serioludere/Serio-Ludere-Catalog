@@ -168,10 +168,11 @@ describe('/admin/rugs', () => {
     const { status, html } = await render(RugsPage, '/admin/rugs');
     expect(status).toBe(200);
     expect(html).toContain('aria-current="page"');
-    // Owner, 2026-09-16: collections are tabs again, and this time several can be pressed at once —
-    // so the group carries data-multi and "All" opens pressed as the reset.
+    // One collection at a time (owner, 2026-09-16), with "All" pressed as the reset. This used to
+    // assert data-multi="true" and passed on the tag chips in the add drawer rather than on this
+    // group, which has always rendered single-select; the tag chips are gone, so it is pinned here.
     expect(html).toContain('id="collectionChips"');
-    expect(html).toContain('data-multi="true"');
+    expect(html).toMatch(/id="collectionChips"[^>]*data-multi="false"/);
     expect(html).toMatch(/data-value="\*" aria-pressed="true"/);
     expect(html).toMatch(/data-value="kilims"[^>]*>\s*Kilims\s*1/);
     expect(html).toMatch(/data-value="tulu"[^>]*>\s*Tulu\s*1/);
@@ -208,7 +209,11 @@ describe('/admin/rugs/new', () => {
     expect(html).toMatch(
       /<input class="check__box" type="checkbox" id="f_collection__Kilims"[^>]*value="Kilims">/,
     );
-    expect(html).toMatch(/data-value="Kilim" aria-pressed="false"/);
+    // Tags are the product's own strings now (owner, 2026-09-18): a new product has none, so the
+    // list renders empty rather than offering every tag in a registry to press.
+    expect(html).toContain('id="tagChips"');
+    expect(html).not.toContain('data-tag=');
+    expect(html).toContain('id="newTag"');
     expect(html).toContain('id="url"');
     expect(html).toContain('id="btnFetch"');
     expect(html).toMatch(/id="f_id" value="SL-024"/); // max(SL-021..SL-023) + 1
@@ -234,8 +239,10 @@ describe('/admin/rugs/[id]', () => {
     expect(html).toMatch(/id="f_id" value="SL-021" readonly/);
     expect(html).toMatch(/id="f_version" value="[a-f0-9]{16}"/);
     expect(html).toMatch(/id="f_collection__Kilims"[^>]*value="Kilims" checked>/);
-    expect(html).toMatch(/data-value="Kilim" aria-pressed="true"/);
-    expect(html).toMatch(/data-value="Denizli" aria-pressed="true"/); // the fixture rug carries both tags
+    // The fixture rug carries both tags; each renders as a token with an × that removes it.
+    expect(html).toMatch(/data-tag="Kilim"/);
+    expect(html).toMatch(/data-tag="Denizli"/);
+    expect(html).toMatch(/data-remove="Kilim"[^>]*aria-label="Remove Kilim"/);
     expect(html).toContain('api/image/1U8FwNPCdm-n8RUvSNRcJLBA_27u-Pjkb?w=800');
     expect(html).toContain('id="btnSave"');
     expect(html).not.toContain('id="btnArchive"');

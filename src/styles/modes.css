@@ -62,6 +62,7 @@
   /* ---- colour · static ---- */
   --color-static-black: #000000;
   --color-static-white: #ffffff; /* scheme-1.circle_button_background — true white, not neutral-0 */
+  --color-static-ivory: #fffff5; /* owner, 2026-09-18: the page ground in admin and catalogue */
   --color-static-overlay: rgb(0 0 0 / 0.4); /* css-variables.liquid --page-overlay */
 
   /* ---- colour · feedback ----
@@ -192,14 +193,15 @@
 :root,
 [data-mode='preview'] {
   /* ---- background ----
-     Owner, 2026-09-17: pure white everywhere. The three realms used to sit on three different
+     Owner, 2026-09-18: one ivory (#fffff5) everywhere, replacing the pure white of 2026-09-17. The
+     black login themes (admin-dark, preview-dark) keep their own grounds. The three realms used to sit on three different
      off-whites — the storefront's ivory, a warmer card paper, and the admin's grey — and the studio
      wanted one surface. `--subtle` is now the ONLY non-white ground: it is what still separates a
      photo well, a table row hover and a skeleton from the page behind them. */
-  --canvas: var(--color-static-white); /* the page ground */
-  --surface: var(--color-static-white); /* cards, panels */
-  --surface-raised: var(--color-static-white); /* modals, popovers */
-  --bg-inset: var(--color-static-white); /* the ground behind rug imagery */
+  --canvas: var(--color-static-ivory); /* the page ground */
+  --surface: var(--color-static-ivory); /* cards, panels */
+  --surface-raised: var(--color-static-ivory); /* modals, popovers */
+  --bg-inset: var(--color-static-ivory); /* the ground behind rug imagery */
   --bg-overlay: var(--color-static-overlay); /* modal scrim */
   --subtle: var(--color-neutral-200); /* ghost/secondary hover wash, table row hover, photo wells */
 

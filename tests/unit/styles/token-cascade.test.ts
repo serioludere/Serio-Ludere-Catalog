@@ -36,16 +36,16 @@ const MODES_CSS = fs.readFileSync('src/styles/modes.css', 'utf8');
 const EXPECTED: Record<string, [preview: string, admin: string, dark: string]> = {
   /* background — owner, 2026-09-17: every light-mode ground is pure white. The handoff drew three
      off-whites (ivory page, warmer card paper, grey admin canvas) and the studio wanted one surface,
-     so preview and admin now agree on #ffffff and `--subtle` is the only light-mode grey left: it is
+     so preview and admin now agree on one ground (#fffff5 since 2026-09-18) and `--subtle` is the only light-mode grey left: it is
      what still separates a photo well, a row hover and a skeleton from the page. Dark mode's canvas
      and surface are OFF the handoff on purpose (owner, 2026-09-17): the admin and customer login
      screens that use this mode asked for literal black, not the handoff's softened neutral-900/800 —
      see src/styles/modes.css. --surface-raised/--bg-inset/--subtle keep the handoff value, since
      neither login screen has a modal or an inset well. */
-  '--canvas': ['#ffffff', '#ffffff', '#000000'],
-  '--surface': ['#ffffff', '#ffffff', '#000000'],
-  '--surface-raised': ['#ffffff', '#ffffff', '#403f3c'],
-  '--bg-inset': ['#ffffff', '#ffffff', '#000000'],
+  '--canvas': ['#fffff5', '#fffff5', '#000000'],
+  '--surface': ['#fffff5', '#fffff5', '#000000'],
+  '--surface-raised': ['#fffff5', '#fffff5', '#403f3c'],
+  '--bg-inset': ['#fffff5', '#fffff5', '#000000'],
   '--subtle': ['#efefef', '#efefef', '#403f3c'],
   // text
   '--ink': ['#000000', '#000000', '#fefcf0'],

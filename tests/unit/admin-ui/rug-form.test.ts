@@ -570,6 +570,80 @@ describe('edit mode', () => {
     expect(val('f_version')).toBe('d'.repeat(16));
   });
 
+  /**
+   * The hard delete (owner, 2026-09-18). Until now the endpoint existed and nothing in the admin
+   * called it, so there was no way to remove a product at all.
+   */
+  describe('delete', () => {
+    const mountWithConfirm = (handler: Handler, confirmImpl: (t: string) => boolean): RugForm => {
+      document.body.innerHTML =
+        stripStyles(editHtml) +
+        dataBlock({
+          mode: 'edit',
+          rug,
+          collections,
+          tags: tags.map((t) => ({ ...t, color: '' })),
+          roundStep: 5,
+          driveScopeOk: null,
+        });
+      calls = [];
+      return initRugForm(document, {
+        fetchImpl: fakeFetch(handler, calls),
+        confirmImpl,
+        location: { pathname: '/admin/rugs/SL-021', assign: (u: string) => went.push(u) },
+      });
+    };
+    let went: string[];
+    beforeEach(() => {
+      went = [];
+    });
+
+    it('asks first, naming the product and its photos, and writes nothing when declined', async () => {
+      let asked = '';
+      mountWithConfirm(
+        () => ({ status: 200, body: { ok: true } }),
+        (t) => {
+          asked = t;
+          return false;
+        },
+      );
+      (document.getElementById('btnDelete') as HTMLButtonElement).click();
+      await Promise.resolve();
+      expect(asked).toContain('Winks');
+      expect(asked).toContain('1 photo');
+      expect(asked).toContain('cannot be undone');
+      expect(calls).toEqual([]);
+      expect(went).toEqual([]);
+    });
+
+    it('posts the version, then leaves the page — the row it was editing is gone', async () => {
+      mountWithConfirm(
+        (url) =>
+          url === '/api/admin/rugs/SL-021/delete'
+            ? { status: 200, body: { ok: true, id: 'SL-021', photosDeleted: 2, audit: { row: 2 } } }
+            : { status: 500, body: {} },
+        () => true,
+      );
+      (document.getElementById('btnDelete') as HTMLButtonElement).click();
+      await vi.waitFor(() => expect(went).toEqual(['/admin/rugs']));
+      expect(calls).toEqual([
+        { url: '/api/admin/rugs/SL-021/delete', body: { version: 'b'.repeat(16) } },
+      ]);
+    });
+
+    it('stays put and says so when Drive kept a photo, rather than leaving silent orphans', async () => {
+      mountWithConfirm(
+        () => ({
+          status: 200,
+          body: { ok: true, id: 'SL-021', photosDeleted: 1, photosFailed: [{ fileId: 'x' }] },
+        }),
+        () => true,
+      );
+      (document.getElementById('btnDelete') as HTMLButtonElement).click();
+      await vi.waitFor(() => expect(text('m2')).toContain('could not be removed from Drive'));
+      expect(went).toEqual([]);
+    });
+  });
 });
 
 describe('the fetch modal gates the form (P5-P9)', () => {

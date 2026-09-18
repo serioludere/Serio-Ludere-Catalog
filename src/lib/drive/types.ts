@@ -47,6 +47,11 @@ export type UploadResult =
   /** `not_visible` (with `id`) is no longer produced — the lh3 wait is gone — but old audit rows carry it. */
   | { error: UploadErrorCode; detail?: string; id?: string };
 
+/** The outcome of a permanent files.delete (owner, 2026-09-18). Never an exception. */
+export type DeleteResult =
+  | { ok: true; alreadyGone?: boolean }
+  | { error: 'bad_id' | 'delete_failed'; detail?: string };
+
 /** Why a media read produced no bytes (brief §12); mapped to a status code by drive/proxy.ts. */
 export type MediaErrorCode = 'bad_id' | 'not_found' | 'not_an_image' | 'drive_error';
 
@@ -114,6 +119,11 @@ export interface DriveClient {
   listFolder(folderId: string): Promise<Map<string, string>>;
   /** Streams one file's bytes for the `/api/image/[fileId]` proxy (brief §12). Never throws. */
   getMedia(fileId: string): Promise<MediaResult>;
+  /**
+   * PERMANENTLY removes a file or folder (owner, 2026-09-18: the product hard delete). Deleting a
+   * folder takes its contents with it. Never throws; an already-missing file counts as done.
+   */
+  deleteFile(fileId: string): Promise<DeleteResult>;
   /** Whether the current token can write to Drive (tokeninfo scopes + a one-call API probe), cached. */
   scopeStatus(): Promise<ScopeStatus>;
 }

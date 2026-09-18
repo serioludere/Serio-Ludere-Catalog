@@ -676,6 +676,61 @@ export async function deleteRow(
   });
 }
 
+/**
+ * Rewrites ONE cell on many Products rows in a single batch, with the audit row (owner, 2026-09-18).
+ *
+ * This is the cascade behind deleting a collection and clearing the tag registry: both have to reach
+ * into every product that named the thing being removed and rewrite that product's own cell, because
+ * a product stores those names as text rather than as a reference.
+ *
+ * Each row's column A is re-read and checked against the id it was read under before anything is
+ * written — the same guard `updateColumnCells` used to carry for the reorder. No version token: the
+ * caller is editing one known cell on rows it just listed, not replacing a whole row, and demanding a
+ * row hash here would make deleting a collection fail whenever any unrelated field had moved.
+ */
+export async function updateProductCell(
+  client: Client,
+  args: {
+    columnIndex: number;
+    updates: Array<{ row: number; expectFirstCell: string; value: CellValue | undefined }>;
+    audit: AuditRow;
+  },
+): Promise<CommitResult> {
+  if (args.columnIndex < 1 || args.columnIndex >= PRODUCT_WIDTH)
+    throw new UnsafeRequestError('column out of range');
+  if (args.updates.some((u) => u.row < 2)) throw new UnsafeRequestError('never write the header row');
+  return withAdminLock(async () => {
+    const ranges = args.updates.map((u) => `${TABS.products}!A${u.row}:A${u.row}`);
+    const read = ranges.length ? await client.batchGet(ranges) : [];
+    args.updates.forEach((u, i) => {
+      const found = cellText(read[i]?.values?.[0]?.[0]);
+      if (found !== u.expectFirstCell) {
+        throw new VersionMismatchError(
+          TABS.products,
+          u.row,
+          read[i]?.values?.[0] ?? [],
+          `expected "${u.expectFirstCell}", found "${found}"`,
+        );
+      }
+    });
+    const sheetId = await client.sheetIdByTitle(TABS.products);
+    const auditSheetId = await client.sheetIdByTitle(TABS.auditLog);
+    try {
+      await client.batchUpdate([
+        ...args.updates.map((u) => buildRowUpdate(sheetId, u.row, args.columnIndex, [u.value])),
+        ...buildAuditInsert(auditSheetId, args.audit),
+      ]);
+    } catch (e) {
+      onSheetIdError(client, e);
+    }
+    return {
+      row: args.updates[0]?.row ?? 0,
+      audit: { row: TOP_ROW, action: args.audit.action },
+      verified: true,
+    };
+  });
+}
+
 /** A stand-alone audit row (login, logout, lockout, scrape, photo import) at AuditLog row 2. */
 export async function appendAudit(
   client: Client,

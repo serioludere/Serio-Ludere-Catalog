@@ -121,9 +121,10 @@ export interface RugBody {
   driveFolderUrl?: string;
 }
 
-// Nothing on this form confirms any more: the one prompt was the scrape's "use these" tag creation
-// (owner, 2026-09-18), so RugFormOptions is ApiOptions verbatim.
-export type RugFormOptions = ApiOptions;
+export interface RugFormOptions extends ApiOptions {
+  /** Replaces window.confirm for the hard delete (tests). */
+  confirmImpl?: (text: string) => boolean;
+}
 
 export interface RugForm {
   mode: 'add' | 'edit';
@@ -185,6 +186,8 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
   const data = readJson<FormData>('admin-data', doc);
   const mode = data.mode;
   const edit = mode === 'edit';
+  const confirmImpl =
+    opts.confirmImpl ?? ((text: string) => (typeof confirm === 'function' ? confirm(text) : true));
   const api: ApiOptions = {
     fetchImpl: opts.fetchImpl,
     location: opts.location,
@@ -253,6 +256,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
   const roundOnSave = input('roundOnSave');
   const btnAdd = maybe<HTMLButtonElement>('btnAdd', doc);
   const btnClear = maybe<HTMLButtonElement>('btnClear', doc);
+  const btnDelete = maybe<HTMLButtonElement>('btnDelete', doc);
   const btnSave = maybe<HTMLButtonElement>('btnSave', doc);
   const m2 = byId('m2', doc);
 
@@ -754,6 +758,56 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     msg(m2, r.status === 400 ? issuesText(r) : r.message, 'err');
   };
 
+  /**
+   * Hard delete (owner, 2026-09-18): the row, its collection and tag bindings, and its Drive photos,
+   * permanently. Confirms with the product named, because nothing here is recoverable.
+   *
+   * On success it leaves the page — the row this form is editing no longer exists, so staying on it
+   * would leave a form bound to nothing, and every field still filled in as if it did.
+   */
+  const remove = async (): Promise<void> => {
+    if (!btnDelete || inflight) return;
+    hide(m2);
+    const name = f.name.value.trim() || rugId;
+    const photos = parsePhotoLines(f.photos.value).ids.length;
+    if (
+      !confirmImpl(
+        `Delete "${name}" for good?\n\n` +
+          `The row leaves the sheet` +
+          (photos ? ` and its ${photos} photo${photos === 1 ? '' : 's'} are deleted from Drive` : '') +
+          `. This cannot be undone.`,
+      )
+    )
+      return;
+    setBusy(true);
+    msg(m2, `Deleting ${name}…`, 'busy');
+    const r = await post<{
+      id: string;
+      photosDeleted?: number;
+      photosFailed?: Array<{ fileId: string }>;
+      audit?: { row: number };
+    }>(`/api/admin/rugs/${encodeURIComponent(rugId)}/delete`, { version: f.version.value }, api);
+    setBusy(false);
+    if (!r.ok) {
+      // A stale version means the row moved or someone else edited it; the message says which.
+      msg(m2, r.status === 400 ? issuesText(r) : r.message, 'err');
+      return;
+    }
+    const left = r.data.photosFailed?.length ?? 0;
+    // Left behind in Drive: say so before leaving, or nobody ever learns there are orphans.
+    if (left > 0) {
+      msg(
+        m2,
+        `Deleted ${name}. ${left} photo${left === 1 ? '' : 's'} could not be removed from Drive — delete ${left === 1 ? 'it' : 'them'} by hand.`,
+        'busy',
+      );
+      return;
+    }
+    dirty = false; // …or the unsaved-work guard blocks the navigation we are about to do.
+    msg(m2, `Deleted ${name}.`, 'ok');
+    (opts.location ?? globalThis.location).assign('/admin/rugs');
+  };
+
   const reset = (keepCollection = false): void => {
     dirty = false;
     manual = false;
@@ -852,6 +906,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     hide(m2);
   });
   btnSave?.addEventListener('click', () => void save());
+  btnDelete?.addEventListener('click', () => void remove());
   doc.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       hideVisible(doc);

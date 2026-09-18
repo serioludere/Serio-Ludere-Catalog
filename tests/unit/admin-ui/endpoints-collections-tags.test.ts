@@ -224,12 +224,12 @@ describe('tags', () => {
  * Deleting a collection or a tag. A TAG still refuses while a product carries it: products store the
  * display name as text, so removing the definition would not detach anything.
  *
- * A COLLECTION no longer does (owner, 2026-09-18) — the studio retires a grouping without emptying it
- * first. Nothing is orphaned: the rugs keep the name, `orderedCollectionNames` still gives it a tab,
- * and what the deleted row took with it is the sort position and the description.
+ * A COLLECTION deletes and CASCADES (owner, 2026-09-18): the definition goes and the name is removed
+ * from every product that carried it. The products themselves are never deleted — only the binding —
+ * because the studio's complaint was seeing a deleted collection still attached in the edit form.
  */
 describe('deleting collections and tags', () => {
-  it('deletes a collection that still has products, leaving the products alone', async () => {
+  it('deletes a collection and detaches it from its products, without deleting them', async () => {
     const list = await (await collectionsGet(ctx({ path: '/api/admin/collections' }))).json();
     const kilims = list.collections[0];
     const before = sheet.rows('Products').length;
@@ -242,12 +242,41 @@ describe('deleting collections and tags', () => {
       }),
     );
     expect(res.status).toBe(200);
-    // The count of what kept the name comes back, and is on the audit row, so it can be looked up.
-    expect(await res.json()).toMatchObject({ ok: true, id: 'kilims', products: 2 });
+    expect(await res.json()).toMatchObject({ ok: true, id: 'kilims', detached: 2 });
+    // The rows are still there — only the collection cell changed.
     expect(sheet.rows('Products').length).toBe(before);
-    const audit = sheet.auditRows()[0]!;
-    expect(audit[2]).toBe('collection.delete');
-    expect(JSON.parse(String(audit[5]))).toMatchObject({ name: 'Kilims', products: 2 });
+    const COLLECTION_COL = 34; // PRODUCT_COLS.collection
+    expect(sheet.row('Products', 2)[COLLECTION_COL]).toBe('');
+    expect(sheet.row('Products', 3)[COLLECTION_COL]).toBe('');
+    // Both the delete and the cascade are on the trail, newest first.
+    const actions = sheet.auditRows().map((r) => r[2]);
+    expect(actions).toContain('collection.delete');
+    expect(actions).toContain('collection.detach');
+  });
+
+  it('leaves a product’s OTHER collections alone when it detaches one', async () => {
+    // The cell is pipe-separated: a rug in two collections keeps the one that is not being deleted.
+    sheet = fakeSheet({
+      rugs: [adminRugRow({ id: 'SL-021', collection: 'Kilims|Tulu' })],
+      collections: [
+        ['kilims', 'Kilims', 'kilims', '', '', '', 1],
+        ['tulu', 'Tulu', 'tulu', '', '', '', 2],
+      ],
+      tags: [],
+    });
+    state.sheet = sheet;
+    const list = await (await collectionsGet(ctx({ path: '/api/admin/collections' }))).json();
+    const kilims = list.collections.find((c: { id: string }) => c.id === 'kilims');
+    const res = await collectionDeletePost(
+      ctx({
+        path: '/api/admin/collections/kilims/delete',
+        method: 'POST',
+        params: { id: 'kilims' },
+        body: { version: kilims.version },
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(sheet.row('Products', 2)[34]).toBe('Tulu');
   });
 
   it('deletes an empty collection and keeps the audit row', async () => {

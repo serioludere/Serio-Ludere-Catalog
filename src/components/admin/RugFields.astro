@@ -289,8 +289,10 @@ const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().t
           <button class="btn btn--primary" id="btnAdd" type="button">
             Save product
           </button>
+          {/* "Cancel", not "Clear" (owner, 2026-09-18): after a scrape this form IS the preview of
+              what was fetched, so the secondary action is backing out of it, not tidying a field. */}
           <button class="btn btn--secondary" id="btnClear" type="button">
-            Clear
+            Cancel
           </button>
         </>
       )
@@ -300,6 +302,13 @@ const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().t
         <>
           <button class="btn btn--primary" id="btnSave" type="button">
             Save
+          </button>
+          {/* Owner, 2026-09-18. The endpoint existed from the start and nothing ever called it, so
+              there was no way to remove a product from the admin at all. It is a HARD delete — the
+              row, and the photos in Drive, permanently — which is why it confirms twice over: the
+              shared dialog below, with the product named in it. */}
+          <button class="btn btn--destructive" id="btnDelete" type="button">
+            Delete product
           </button>
         </>
       )

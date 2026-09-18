@@ -33,7 +33,11 @@ export const driveConsoleLogger: Logger = {
 export type RetryPolicy = 'read' | 'write';
 
 export interface DriveRequest {
-  method: 'GET' | 'POST';
+  /**
+   * DELETE is `files.delete` — PERMANENT, not the bin (owner, 2026-09-18, for the product hard
+   * delete). It answers 204 with no body, which `once()` already reads as an empty object.
+   */
+  method: 'GET' | 'POST' | 'DELETE';
   /** Absolute URL without a query string (`DRIVE_API`/`DRIVE_UPLOAD_API` + path). */
   url: string;
   query?: Array<[string, string]>;

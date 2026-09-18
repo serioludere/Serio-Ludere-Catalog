@@ -15,7 +15,7 @@ import { createDriveHttp } from './client.ts';
 import { createFolderLister, createFolderResolver, createProductFolderResolver } from './folder.ts';
 import { createMediaReader } from './media.ts';
 import { createScopeChecker } from './scope.ts';
-import { createCopier, createUploader, defaultDownload } from './upload.ts';
+import { createCopier, createDeleter, createUploader, defaultDownload } from './upload.ts';
 import type { DriveClient, DriveClientOptions } from './types.ts';
 
 export function createDriveClient(options: DriveClientOptions): DriveClient {
@@ -33,12 +33,22 @@ export function createDriveClient(options: DriveClientOptions): DriveClient {
   const getMedia = createMediaReader({ getAccessToken: options.getAccessToken, http });
   const ensureProductFolders = createProductFolderResolver(http, ensureFolder);
   const copyFile = createCopier(http);
+  const deleteFile = createDeleter(http);
   const listFolder = createFolderLister(http);
-  return { ensureFolder, ensureProductFolders, uploadFromUrl, copyFile, listFolder, scopeStatus, getMedia };
+  return {
+    ensureFolder,
+    ensureProductFolders,
+    uploadFromUrl,
+    copyFile,
+    deleteFile,
+    listFolder,
+    scopeStatus,
+    getMedia,
+  };
 }
 
 export { DriveApiError, describeDriveError } from './client.ts';
-export { DownloadError, buildMultipartBody, defaultDownload, fileNameFor } from './upload.ts';
+export { DownloadError, buildMultipartBody, createDeleter, defaultDownload, fileNameFor } from './upload.ts';
 export {
   DRIVE_MEDIA_ID_RE,
   PROXY_WIDTHS,
@@ -66,6 +76,7 @@ export {
 } from './types.ts';
 export type { ImageProxyDeps } from './proxy.ts';
 export type {
+  DeleteResult,
   DownloadResult,
   Downloader,
   DriveClient,

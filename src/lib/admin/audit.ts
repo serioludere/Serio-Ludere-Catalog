@@ -13,6 +13,8 @@ export const AUDIT_ACTIONS = [
   'collection.create',
   'collection.update',
   'collection.delete',
+  // The cascade that deleting a collection performs on the products that named it (2026-09-18).
+  'collection.detach',
   'collection.reorder',
   'tag.create',
   'tag.update',
@@ -53,6 +55,8 @@ export const MUTATION_ACTIONS: ReadonlySet<AuditAction> = new Set<AuditAction>([
   'collection.create',
   'collection.update',
   'collection.delete',
+  // The cascade that deleting a collection performs on the products that named it (2026-09-18).
+  'collection.detach',
   'collection.reorder',
   'tag.create',
   'tag.update',

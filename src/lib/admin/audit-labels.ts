@@ -11,6 +11,7 @@ export const AUDIT_LABELS: Record<string, string> = {
   'collection.create': 'Collection added',
   'collection.update': 'Collection updated',
   'collection.delete': 'Collection deleted',
+  'collection.detach': 'Collection removed from products',
   'collection.reorder': 'Collections reordered',
   'tag.create': 'Tag added',
   'tag.update': 'Tag updated',

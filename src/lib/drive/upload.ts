@@ -16,6 +16,7 @@ import { applyTransforms } from './transform.ts';
 import {
   DOWNLOAD_HOSTS,
   MAX_UPLOAD_BYTES,
+  type DeleteResult,
   type DownloadResult,
   type Downloader,
   type UploadErrorCode,
@@ -331,6 +332,34 @@ export function createCopier(
       const out = classifyDriveError(e, 'upload_failed');
       http.logger.warn('photo import: copy failed', { error: describeDriveError(e) });
       return out;
+    }
+  };
+}
+
+/**
+ * PERMANENTLY deletes one file or folder — `files.delete`, not the bin (owner, 2026-09-18, for the
+ * product hard delete). Deleting a folder takes everything inside it with it.
+ *
+ * Never throws, and a file that is already gone counts as done: 404 means the end state the caller
+ * asked for is the state Drive is in. Anything else is reported so the caller can say which photos it
+ * could not remove — a rug row must still be deletable when one of its images has vanished by hand.
+ */
+export function createDeleter(http: DriveHttp): (fileId: string) => Promise<DeleteResult> {
+  return async (fileId) => {
+    if (!DRIVE_ID_RE.test(fileId)) return { error: 'bad_id', detail: fileId };
+    try {
+      await http.request<unknown>({
+        method: 'DELETE',
+        url: `${DRIVE_API}/files/${encodeURIComponent(fileId)}`,
+        // A delete is never replayed after a network error: the retry would 404 on a file the first
+        // attempt did remove, and report a failure for work that actually succeeded.
+        policy: 'write',
+      });
+      return { ok: true };
+    } catch (e) {
+      if (e instanceof DriveApiError && e.status === 404) return { ok: true, alreadyGone: true };
+      http.logger.warn('drive delete failed', { fileId, error: describeDriveError(e) });
+      return { error: 'delete_failed', detail: describeDriveError(e).message as string };
     }
   };
 }

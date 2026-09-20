@@ -92,7 +92,7 @@
   font-size: var(--h1);
   font-weight: 700;
   line-height: var(--leading-heading);
-  text-transform: uppercase;
+  text-transform: none;
   letter-spacing: 0;
   text-wrap: balance;
 }
@@ -101,14 +101,14 @@
   font-size: var(--h3);
   font-weight: 700;
   line-height: var(--leading-heading);
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .pv-h4 {
   font-size: var(--h4);
   font-weight: 700;
   line-height: var(--leading-heading);
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 /* The label style: Inter 700 / 12 / uppercase. Used on buttons, spec keys and footer headings. */
@@ -116,7 +116,7 @@
   font-size: var(--text-sm);
   font-weight: 700;
   line-height: var(--leading-body);
-  text-transform: uppercase;
+  text-transform: none;
   letter-spacing: 0;
 }
 
@@ -170,7 +170,8 @@
    literal, not token-derived, on the owner's instruction. */
 [data-mode='preview-dark'] .pv-input {
   background: #202020;
-  color: #ffffff;
+  /* Cream, not pure white (owner, 2026-09-20). */
+  color: var(--ink-cream);
 }
 
 /* The gate's field carries no placeholder since 2026-09-17 — a visible "PASSWORD" label replaced it
@@ -196,8 +197,8 @@
    field's own ground — the same instruction. Only the two colours change, so the inset-outline
    construction (and the forced-colors behaviour it exists for) is untouched. */
 [data-mode='preview-dark'] .pv-input:focus-visible {
-  border-color: #ffffff;
-  outline-color: #ffffff;
+  border-color: var(--ink-cream);
+  outline-color: var(--ink-cream);
 }
 
 /* Button: Inter 700 / 12 / uppercase / square. Hover is the storefront's own primary hover, the
@@ -218,7 +219,7 @@
   font-size: var(--text-sm);
   font-weight: 700;
   line-height: var(--leading-body);
-  text-transform: uppercase;
+  text-transform: none;
   letter-spacing: 0;
   cursor: pointer;
   transition: background-color var(--motion-quick) var(--motion-ease);
@@ -241,11 +242,13 @@
 
 /* 152 tall on the catalog header: 64 above the wordmark, the wordmark's own 24, 64 below, then the
    hairline. The detail header is 148, because its wordmark is H4 (57:229) and its box is 19. */
+/* Owner, 2026-09-20: the band was --section-gap (64) top and bottom around a 140px logo, so a
+   third of the first screen was chrome. One tight row now: the name, set in the brand face. */
 .pv-header {
   display: flex;
   align-items: center;
   gap: var(--stack-md);
-  padding: var(--section-gap) var(--gutter);
+  padding: var(--stack-md) var(--gutter);
   border-bottom: var(--rule-width) solid var(--rule);
 }
 
@@ -285,9 +288,13 @@
   margin-top: var(--section-gap);
 }
 
+/* Owner, 2026-09-20: everything in the footer is centred on the page, and every link is underlined
+   so it reads as a link rather than as a line of text that happens to be a phone number. */
 .pv-footer-row {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
   gap: var(--stack-lg);
 }
 
@@ -303,8 +310,8 @@
 }
 
 .pv-footer-fine {
-  margin-left: auto;
-  text-align: right;
+  align-items: center;
+  text-align: center;
 }
 
 .pv-footer-fine p {
@@ -314,7 +321,7 @@
 
 .pv-footer a {
   color: var(--ink-soft);
-  text-decoration: none;
+  text-decoration: underline;
   text-underline-offset: 3px;
 }
 
@@ -328,7 +335,7 @@
 .pv-footer-brand {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--stack-lg);
 }
 
@@ -336,10 +343,8 @@
    where --ink is true black. Plain descendant selector, not :global(...) — that syntax only means
    anything inside an Astro component's own scoped <style>; this is an ordinary imported stylesheet,
    already global, and :global(...) here would just be invalid CSS the browser drops. */
-.pv-footer-mark .admin-logo {
-  display: block;
-  width: 120px;
-  height: auto;
+.pv-footer-mark {
+  margin: 0;
   color: var(--ink);
 }
 
@@ -348,12 +353,14 @@
 .pv-footer-contacts {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: var(--stack-2xl);
 }
 
 .pv-contact-group {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: var(--stack-xs);
 }
 

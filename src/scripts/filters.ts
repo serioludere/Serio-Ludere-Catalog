@@ -30,6 +30,22 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
   const cards = [...doc.querySelectorAll<HTMLElement>('[data-card]')];
   const live = doc.querySelector<HTMLElement>('[data-grid-live]');
   const intro = doc.querySelector<HTMLElement>('[data-collection-intro]');
+  /* 'read more' (owner, 2026-09-20). The description is clamped to three lines and the control only
+     appears when there is a fourth — a two-line description with a 'read more' under it is noise. */
+  const introMore = doc.querySelector<HTMLButtonElement>('[data-intro-more]');
+  const fitIntro = (): void => {
+    if (!intro || !introMore) return;
+    intro.classList.remove('is-open');
+    introMore.textContent = 'read more';
+    introMore.setAttribute('aria-expanded', 'false');
+    // scrollHeight beats clientHeight only when the clamp is actually hiding a line.
+    introMore.hidden = intro.hidden || intro.scrollHeight <= intro.clientHeight + 1;
+  };
+  introMore?.addEventListener('click', () => {
+    const open = intro?.classList.toggle('is-open') ?? false;
+    introMore.textContent = open ? 'read less' : 'read more';
+    introMore.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
 
   let active = 'all';
 
@@ -76,6 +92,7 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
     if (intro) {
       intro.textContent = description;
       intro.hidden = !description;
+      fitIntro();
     }
     /* Carry the chosen chip onto every card link, so opening a rug and coming back lands on the
        same filtered grid. The detail page reads `?collection=` for its back link and prev/next run. */

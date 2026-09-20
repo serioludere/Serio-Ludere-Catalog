@@ -155,7 +155,8 @@ select:not(.input--select) {
    — both literal, not token-derived, on the owner's instruction. */
 [data-mode='admin-dark'] .input {
   background: #202020;
-  color: #ffffff;
+  /* Cream, not pure white (owner, 2026-09-20): every light text in the panel is #fffff5. */
+  color: var(--ink-cream);
 }
 /* Disabled and readonly repaint the field, so the chevron's ground has to follow or it sits on a
    white patch inside a grey control. */
@@ -277,7 +278,7 @@ label.chk {
   font-size: var(--size-label);
   font-weight: var(--weight-label);
   line-height: var(--leading-body);
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--ink);
   /* 8, not `--tight` — that token is 4px in admin mode and crowds the label into its control. */
   margin-bottom: var(--stack-sm);
@@ -311,7 +312,7 @@ label.chk {
   font-size: var(--size-label);
   font-weight: var(--weight-label);
   line-height: var(--leading-body);
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--ink);
   margin-bottom: var(--stack-sm);
 }
@@ -508,7 +509,7 @@ dialog#confirm .actions {
   font-size: var(--h4);
   font-weight: var(--weight-heading);
   line-height: var(--leading-heading);
-  text-transform: uppercase;
+  text-transform: none;
 }
 #pwDialogForm .hint {
   margin-top: 0;
@@ -535,7 +536,7 @@ th {
   font-size: var(--size-label);
   font-weight: var(--weight-label);
   letter-spacing: 0.02em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--ink-muted);
   text-align: left;
   white-space: nowrap;
@@ -631,7 +632,7 @@ td pre {
   font-weight: var(--weight-heading);
   line-height: var(--leading-heading);
   letter-spacing: 0.04em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--ink);
   margin: 0 0 var(--stack-sm);
 }
@@ -709,7 +710,7 @@ td pre {
   font-family: var(--body);
   font-size: var(--text-xs);
   letter-spacing: 0.06em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--ink-soft);
 }
 .card .nm {
@@ -778,7 +779,7 @@ td pre {
   color: var(--paper);
   font-size: var(--text-xs);
   letter-spacing: 0.04em;
-  text-transform: uppercase;
+  text-transform: none;
   padding: var(--corner-chip-pad);
 }
 
@@ -842,7 +843,7 @@ td pre {
   font-family: var(--body);
   font-size: var(--text-xs);
   letter-spacing: 0.06em;
-  text-transform: uppercase;
+  text-transform: none;
 }
 /* Products have no status since 2026-09-16; what is left wearing `.status` is the customer link's
    own active/revoked state and the "photos pending" mark on a half-imported row. */
@@ -883,7 +884,7 @@ td pre {
   font-weight: var(--weight-label);
   line-height: var(--leading-body);
   letter-spacing: 0.02em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--ink-muted);
 }
 .stat .v {

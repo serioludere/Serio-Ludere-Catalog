@@ -36,11 +36,13 @@ function mobileBlock(): string {
 }
 
 describe('the catalog header (53:35)', () => {
-  it('leads with the logo mark (owner, 2026-09-17) and never names the buyer', async () => {
+  it('leads with the name set as text (owner, 2026-09-20) and never names the buyer', async () => {
     const html = await catalog();
-    expect(html).toMatch(/class="[^"]*pv-wordmark[^"]*pv-logo-mark/);
-    expect(html).toContain('aria-label="Serio Ludere"');
-    expect(html).not.toContain('>Serio Ludere<');
+    // The logo mark is gone from this corner, and the deep band with it: the name is plain text in
+    // the brand face, so the top of the page costs one row rather than a third of the first screen.
+    expect(html).toMatch(/class="[^"]*pv-wordmark[^"]*pv-h4[^"]*"[^>]*>Serio Ludere</);
+    expect(html).not.toContain('pv-logo-mark');
+    expect(html).not.toContain('admin-logo');
     // Figma 53:37 puts the buyer's name on the right of this header. The owner removed it on
     // 2026-09-14 along with the gate greeting; the right-hand slot is now simply empty here.
     expect(html).not.toContain('Hala');

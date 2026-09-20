@@ -210,6 +210,9 @@
   --ink-soft: var(--color-neutral-700); /* supporting copy, spec labels, table meta */
   --ink-muted: var(--color-neutral-550); /* placeholders, timestamps, quiet chrome */
   --text-on-action: var(--color-neutral-0); /* text on action/primary */
+  /* The cream (#fffff5) that stands in for white wherever light text sits on a dark ground or on a
+     photograph (owner, 2026-09-20: "all white text shall be cream"). Mode-invariant on purpose. */
+  --ink-cream: var(--color-neutral-0);
   --text-on-brand: var(--color-neutral-0); /* text on the brand red, exactly as scheme-4 sets it */
 
   /* ---- action ---- */

@@ -109,6 +109,9 @@ const showGate = !error && Boolean(customer) && !signedIn;
                 2026-09-18). filters.ts fills it from the pressed tab; blank under "All", and hidden
                 outright rather than left as an empty line that would still take its gap. */}
             <p class="pv-lede pv-collection-intro" data-collection-intro hidden />
+            <button class="pv-intro-more" type="button" data-intro-more aria-expanded="false" hidden>
+              read more
+            </button>
           </section>
 
           <section class="pv-wrap">
@@ -164,9 +167,11 @@ const showGate = !error && Boolean(customer) && !signedIn;
      every few pixels of viewport; a buyer judging rugs wants the same plate size across the row. */
   .pv-grid {
     display: grid;
+    /* Owner, 2026-09-20: wider apart across a row — which makes each rug a little smaller — and
+       closer together down the page, so a row of rugs reads as a row rather than as four islands. */
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    column-gap: var(--stack-xl);
-    row-gap: var(--section-gap);
+    column-gap: var(--stack-2xl);
+    row-gap: var(--stack-xl);
     align-items: start;
     /* The grid band's own bottom padding. --space-section is 112 at >=1024 and 64 at <=767, which is
        what Figma 58:250 draws below the last mobile row. Together with .pv-footer's margin-top of
@@ -192,6 +197,40 @@ const showGate = !error && Boolean(customer) && !signedIn;
     }
   }
 
+  /* The collection description (owner, 2026-09-20). It was --text-lg, a step ABOVE the tab titles
+     it sits under; it is body size now, runs the full width of the grid, and is clamped to three
+     lines with a 'read more' under it. */
+  .pv-collection-intro {
+    max-width: none;
+    font-size: var(--text-base);
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    overflow: hidden;
+  }
+  .pv-collection-intro.is-open {
+    display: block;
+    overflow: visible;
+    -webkit-line-clamp: none;
+    line-clamp: none;
+  }
+  .pv-intro-more {
+    align-self: flex-start;
+    padding: 0;
+    border: 0;
+    background: none;
+    font-family: var(--body);
+    font-size: var(--text-sm);
+    color: var(--ink-soft);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+  }
+  .pv-intro-more:hover {
+    color: var(--brand);
+  }
+
   .pv-state {
     flex: 1 0 auto;
     display: flex;
@@ -207,7 +246,7 @@ const showGate = !error && Boolean(customer) && !signedIn;
     /* One column, not two: a buyer judging a rug needs the image large. */
     .pv-grid {
       grid-template-columns: 1fr;
-      row-gap: var(--section-gap);
+      row-gap: var(--stack-xl);
     }
     /* The collection tabs and the unit/currency controls share this row (owner, 2026-09-17). Neither
        can shrink below its content — a tab label and "ft"/a currency code all refuse to break — so

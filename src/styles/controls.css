@@ -34,7 +34,7 @@
   font-weight: var(--weight-label);
   line-height: var(--leading-body);
   letter-spacing: 0;
-  text-transform: uppercase;
+  text-transform: none;
   text-decoration: none;
   cursor: pointer;
   /* Prestige's own hover wipe is gated behind (pointer: fine) and reduced-motion; motion/quick is
@@ -186,7 +186,7 @@
   font-size: var(--size-label);
   font-weight: var(--weight-label);
   line-height: var(--leading-body);
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--ink);
 }
 

@@ -7,14 +7,14 @@
 // Owner, 2026-09-17, replacing the original flat link list (which read as one run-on line — no
 // icon, no grouping, and it was the same "cluttered" complaint the CollectionFilters restyle was
 // answering):
-//   - the wordmark text is now the same black logo mark the header and both logins use;
+//   - the wordmark text is now the same black logo mark the header and both logins use (replaced
+//     by plain text again on 2026-09-20, with the whole footer centred and its links underlined);
 //   - the "Contact" label is gone — the icons now say what the group is;
 //   - the channels are three icon-led groups (site + email, both WhatsApp lines, Instagram),
 //     each stacked, 48px apart horizontally (--stack-2xl, mode-invariant);
 //   - "The rugs you like are shared with Serio Ludere." is gone from the fine print too — it
 //     already lived on the gate's own consent note before that was removed, and here it was a
 //     second copy nobody asked for.
-import AdminLogo from '../admin/AdminLogo.astro';
 import {
   STUDIO_EMAIL,
   STUDIO_INSTAGRAM,
@@ -31,9 +31,8 @@ import {
 <footer class="pv-footer">
   <div class="pv-footer-row">
     <div class="pv-footer-brand">
-      <div class="pv-footer-mark">
-        <AdminLogo />
-      </div>
+      {/* Owner, 2026-09-20: the logo mark is gone here too — the name, set in the brand face. */}
+      <p class="pv-footer-mark pv-h4">Serio Ludere</p>
       <div class="pv-footer-contacts">
         <div class="pv-contact-group">
           <a class="pv-contact" href={STUDIO_SITE} target="_blank" rel="noopener">

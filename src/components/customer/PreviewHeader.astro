@@ -17,8 +17,9 @@
 // same logo mark the two login screens use, in black — this page is always [data-mode='preview'],
 // where --ink is true black, so the mark needs no override the way the dark logins' does. The
 // detail header's trailing wordmark is unchanged; the owner asked for the catalog corner only.
-import AdminLogo from '../admin/AdminLogo.astro';
-
+// Owner, 2026-09-20: the logo mark is gone from the catalog corner and the header's deep band with
+// it. The name is set in the brand face as plain text, on one tight row — the top of the page was
+// taking space the rugs should have.
 interface Props {
   /** Where the wordmark links. Inside a realm this is the buyer's own catalog, never `/`. */
   home: string;
@@ -56,8 +57,8 @@ const { home, back } = Astro.props;
       </>
     ) : (
       <>
-        <a class="pv-wordmark pv-logo-mark" href={home}>
-          <AdminLogo />
+        <a class="pv-wordmark pv-h4" href={home}>
+          Serio Ludere
         </a>
         <span class="pv-spacer" aria-hidden="true" />
       </>
@@ -66,13 +67,6 @@ const { home, back } = Astro.props;
 </header>
 
 <style>
-  .pv-logo-mark :global(.admin-logo) {
-    display: block;
-    width: 140px;
-    height: auto;
-    color: var(--ink);
-  }
-
   .pv-back {
     font-size: var(--text-sm);
     color: var(--ink-soft);

@@ -51,9 +51,7 @@ function seed(): FakeSheet {
       ['denizli', 'denizli', 'Denizli', '#bb3e03'],
       ['plant-dyes', 'plant-dyes', 'Plant Dyes', ''],
     ],
-    settings: [
-      ['price_round_step', '5', '', ''],
-    ],
+    settings: [['price_round_step', '5', '', '']],
   });
   return sheet;
 }

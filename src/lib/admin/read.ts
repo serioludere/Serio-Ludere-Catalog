@@ -4,7 +4,7 @@
 // sheet row number and a version token. Never cached beyond the request.
 import { createHash } from 'node:crypto';
 import type { CellValue, SheetsClient, ValueRange } from '../sheets/client.ts';
-import { HEADERS, PRODUCT_COLS, PRODUCT_WIDTH, TABS } from '../sheets/contract.ts';
+import { HEADERS, PRODUCT_COLS, PRODUCT_LAST_COL, PRODUCT_WIDTH, TABS } from '../sheets/contract.ts';
 import { assertHeaders, parseCollections, parseProducts, parseTags } from '../sheets/parse.ts';
 import type { Collection, DroppedRow, Rug, Tag } from '../sheets/types.ts';
 import type { Logger } from '../sheets/errors.ts';
@@ -14,7 +14,7 @@ import { parseSettings, type AdminSettings } from './settings.ts';
 
 export const AUDIT_DASHBOARD_ROWS = 100;
 export const ADMIN_READ_RANGES = [
-  `${TABS.products}!A1:AP`,
+  `${TABS.products}!A1:${PRODUCT_LAST_COL}`,
   `${TABS.collections}!A1:G`,
   `${TABS.tags}!A1:D`,
   `${TABS.settings}!A1:D`,
@@ -179,7 +179,7 @@ function adminRugFrom(rug: Rug, cells: CellValue[], row: number): AdminRug {
   };
 }
 
-/** One freshly read `Products!A{row}:AP{row}` row → AdminRug (undefined when the row fails validation). */
+/** One freshly read `Products!A{row}:${PRODUCT_LAST_COL}{row}` row → AdminRug (undefined when the row fails validation). */
 export function adminRugFromCells(cells: CellValue[], row: number): AdminRug | undefined {
   const header = [...HEADERS.Products];
   const parsed = parseProducts([header, cells]);
@@ -286,7 +286,6 @@ export function findCollectionByName(
   const key = name.trim().toLowerCase();
   return snapshot.collections.find((c) => c.name.trim().toLowerCase() === key);
 }
-
 
 export interface AdminCounts {
   /** Products have no status any more (owner, 2026-09-16), so there is one number to report. */

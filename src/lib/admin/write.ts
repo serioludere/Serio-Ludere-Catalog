@@ -13,6 +13,7 @@ import type { CellValue, SheetsClient } from '../sheets/client.ts';
 import {
   HEADERS,
   PRODUCT_COLS,
+  PRODUCT_LAST_COL,
   PRODUCT_STATUS_CELL,
   PRODUCT_WIDTH,
   TABS,
@@ -78,6 +79,14 @@ export interface RugFields {
   collections: string[];
   tags: string[];
   photos: string[];
+  /**
+   * The Drive id of the texture photograph (owner, 2026-09-20), or `''` for none.
+   *
+   * Not derived from `photos[n]`: the studio picks it, and a re-ordered photo list must not silently
+   * move it. A full-width write means an omitted value CLEARS the cell, so every caller that rebuilds
+   * a row has to carry it (see fieldsOfRug in src/pages/api/admin/_shared.ts).
+   */
+  textureId?: string;
   widthCm?: number;
   lengthCm?: number;
   material: string;
@@ -115,7 +124,7 @@ export interface RugFields {
 export type Cells = Array<CellValue | undefined>;
 
 /**
- * Every Products cell A..AP in column order (brief §9). `featured` and `rotate` have no column in
+ * Every Products cell A..AQ in column order (brief §9). `featured` and `rotate` have no column in
  * the Shopify set, so they ride on Tags as the flags `featured` / `rotate` / `rotate-force`.
  */
 export function productFieldsToCells(f: RugFields, id: string): Cells {
@@ -169,6 +178,7 @@ export function productFieldsToCells(f: RugFields, id: string): Cells {
   cells[PRODUCT_COLS.scrapedAt] = f.scrapedAt ?? '';
   cells[PRODUCT_COLS.commitStatus] = f.commitStatus ?? '';
   cells[PRODUCT_COLS.internalNotes] = f.notes;
+  cells[PRODUCT_COLS.textureImage] = f.textureId ?? '';
   return cells;
 }
 
@@ -262,10 +272,11 @@ export function assertDeleteRequestsSafe(
       throw new UnsafeRequestError(`delete must span exactly row ${row}`);
     }
   }
-  if (deletes !== 1) throw new UnsafeRequestError(`a delete batch carries one deleteDimension, got ${deletes}`);
+  if (deletes !== 1)
+    throw new UnsafeRequestError(`a delete batch carries one deleteDimension, got ${deletes}`);
 }
 
-/** Update: B{row}:AP{row} (everything except the Product ID) + the audit row, in one batch. */
+/** Update: B{row}:AQ{row} (everything except the Product ID) + the audit row, in one batch. */
 export function buildRugUpdateRequests(
   ids: { rugs: number; auditLog: number },
   row: number,
@@ -282,7 +293,7 @@ export function buildRugUpdateRequests(
   return requests;
 }
 
-/** Insert: optional appendDimension first, then A{row}:AP{row} + the audit row. */
+/** Insert: optional appendDimension first, then A{row}:AQ{row} + the audit row. */
 export function buildRugInsertRequests(
   ids: { rugs: number; auditLog: number },
   targetRow: number,
@@ -380,7 +391,7 @@ async function rugsRowCount(client: Client): Promise<number> {
 
 /** Rugs A..Z of one row as read (missing trailing cells → absent). */
 async function readRugRow(client: Client, row: number): Promise<CellValue[]> {
-  const [vr] = await client.batchGet([`${TABS.products}!A${row}:AP${row}`]);
+  const [vr] = await client.batchGet([`${TABS.products}!A${row}:${PRODUCT_LAST_COL}${row}`]);
   return vr?.values?.[0] ?? [];
 }
 

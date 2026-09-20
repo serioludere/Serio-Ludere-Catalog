@@ -51,7 +51,6 @@ const footerLabels = (): string[] =>
   [...document.querySelectorAll('[data-fetch-footer] button')].map((b) => b.textContent!.trim());
 const isOpen = (): boolean => document.getElementById('fetch-result')!.hasAttribute('open');
 
-
 describe('P5 · fetching', () => {
   it('names the product and the host, and lists the three stages in order', () => {
     view.fetching('SL-0413', 'supplier.example');

@@ -30,6 +30,8 @@ interface RugForRename {
   collections: string[];
   tags: string[];
   photos: string[];
+  /** Carried through a rename like every other cell: the write replaces the whole row. */
+  textureId: string;
   widthCm?: number;
   lengthCm?: number;
   material: string;
@@ -63,6 +65,7 @@ function renameBody(rug: RugForRename, name: string): Record<string, unknown> {
     collections: rug.collections,
     tags: rug.tags,
     photos: rug.photos,
+    textureId: rug.textureId,
     widthCm: rug.widthCm,
     lengthCm: rug.lengthCm,
     material: rug.material,

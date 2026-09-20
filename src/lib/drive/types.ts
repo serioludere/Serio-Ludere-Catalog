@@ -49,8 +49,7 @@ export type UploadResult =
 
 /** The outcome of a permanent files.delete (owner, 2026-09-18). Never an exception. */
 export type DeleteResult =
-  | { ok: true; alreadyGone?: boolean }
-  | { error: 'bad_id' | 'delete_failed'; detail?: string };
+  { ok: true; alreadyGone?: boolean } | { error: 'bad_id' | 'delete_failed'; detail?: string };
 
 /** Why a media read produced no bytes (brief §12); mapped to a status code by drive/proxy.ts. */
 export type MediaErrorCode = 'bad_id' | 'not_found' | 'not_an_image' | 'drive_error';

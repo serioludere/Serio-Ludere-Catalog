@@ -19,8 +19,10 @@ interface Props {
 const { collections } = Astro.props;
 ---
 
-{/* Each tab carries its own description; filters.ts moves the pressed one into the intro line the
-    page renders under this strip (owner, 2026-09-18). "All" has none — it is not a collection. */}
+{
+  /* Each tab carries its own description; filters.ts moves the pressed one into the intro line the
+    page renders under this strip (owner, 2026-09-18). "All" has none — it is not a collection. */
+}
 <nav class="pv-filters" aria-label="Filter by collection">
   <button type="button" class="pv-chip is-on" data-filter="all" aria-pressed="true">All</button>
   {

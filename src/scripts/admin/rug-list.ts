@@ -153,9 +153,7 @@ export function initRugList(doc: Document = document): RugList {
     if (!count) return;
     const onPage = pager?.visibleIds().length ?? shown;
     count.textContent =
-      onPage < shown
-        ? `${onPage} of ${shown} rugs shown`
-        : `${shown} ${shown === 1 ? 'rug' : 'rugs'} shown`;
+      onPage < shown ? `${onPage} of ${shown} rugs shown` : `${shown} ${shown === 1 ? 'rug' : 'rugs'} shown`;
   };
 
   const apply = (): void => {

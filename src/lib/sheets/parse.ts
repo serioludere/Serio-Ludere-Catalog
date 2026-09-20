@@ -4,7 +4,14 @@
 
 import * as z from 'zod';
 import type { CellValue, ValueRange } from './client.ts';
-import { HEADERS, PRODUCT_COLS, REFERENCE_COLLECTION_ORDER, TABS, type TabName } from './contract.ts';
+import {
+  HEADERS,
+  PRODUCT_COLS,
+  PRODUCT_OPTIONAL_TRAILING,
+  REFERENCE_COLLECTION_ORDER,
+  TABS,
+  type TabName,
+} from './contract.ts';
 import { SheetContractError } from './errors.ts';
 import type {
   Catalogue,
@@ -116,6 +123,7 @@ const ProductRow = z.object({
   scraped_at: trimmed,
   commit_status: z.preprocess((v) => asTrimmed(v)?.toLowerCase() ?? '', z.enum(['pending', 'complete', ''])),
   internal_notes: trimmed,
+  texture_image: trimmed,
 });
 
 const CollectionRow = z.object({
@@ -169,10 +177,16 @@ export function assertHeaders(tab: TabName, headerRow: CellValue[] | undefined):
       .trim()
       .toLowerCase(),
   );
+  // Columns added to a contract that is already live may be missing from a sheet nobody has re-run
+  // `sheet:init` on; the cells behind them simply read as empty (contract.ts PRODUCT_OPTIONAL_TRAILING).
+  // Only the tail is forgiving, and only where the cell is BLANK: a wrong label is still a mismatch.
+  const optional = tab === TABS.products ? PRODUCT_OPTIONAL_TRAILING : 0;
   const mismatches: string[] = [];
   expected.forEach((name, i) => {
-    if (actual[i] !== name)
-      mismatches.push(`column ${columnLetter(i)} should be "${name}" but is "${actual[i] ?? ''}"`);
+    if (actual[i] === name) return;
+    const blankTail = i >= expected.length - optional && (actual[i] ?? '') === '';
+    if (blankTail) return;
+    mismatches.push(`column ${columnLetter(i)} should be "${name}" but is "${actual[i] ?? ''}"`);
   });
   if (mismatches.length) throw new SheetContractError(tab, mismatches);
 }
@@ -261,6 +275,7 @@ function productRaw(cells: CellValue[]): Raw {
     scraped_at: at(PRODUCT_COLS.scrapedAt),
     commit_status: at(PRODUCT_COLS.commitStatus),
     internal_notes: at(PRODUCT_COLS.internalNotes),
+    texture_image: at(PRODUCT_COLS.textureImage),
   };
 }
 
@@ -320,6 +335,15 @@ export function parseProducts(values: CellValue[][] | undefined): Parsed<Product
       else if (!/^https:\/\//i.test(p.image_src))
         warn.push(`image src: "${p.image_src.slice(0, 40)}" is not a Drive id/URL or https URL`);
     }
+    /* The texture photograph (owner, 2026-09-20). Normally one of the product's own photos, so a bad
+       or emptied cell is not worth dropping a row over: it is reported as a warning and the popup
+       falls back to the markers it used to show. */
+    let textureId = '';
+    if (p.texture_image) {
+      const fid = extractDriveId(p.texture_image);
+      if (fid) textureId = fid;
+      else warn.push(`texture image: "${p.texture_image.slice(0, 40)}" is not a Drive id/URL`);
+    }
     let slug: string;
     if (p.handle !== undefined && !SLUG_RE.test(p.handle)) {
       warn.push(`handle: "${p.handle.slice(0, 40)}" is not a valid handle and was replaced`);
@@ -350,6 +374,7 @@ export function parseProducts(values: CellValue[][] | undefined): Parsed<Product
       photos,
       imageSrc: p.image_src ?? '',
       imageAltText: p.image_alt_text ?? '',
+      textureId,
       widthCm,
       lengthCm,
       sizeLabel: p.size_label ?? sizeLabelOf(widthCm, lengthCm),

@@ -19,7 +19,7 @@
 // The owner was told this and chose it.
 import { SheetsClient } from '../src/lib/sheets/client.ts';
 import { authFromEnv, sheetIdFromEnv } from '../src/lib/sheets/config.ts';
-import { PRODUCT_COLS, TABS } from '../src/lib/sheets/contract.ts';
+import { PRODUCT_COLS, PRODUCT_LAST_COL, TABS } from '../src/lib/sheets/contract.ts';
 import { consoleLogger } from '../src/lib/sheets/errors.ts';
 import { flag } from './lib/env.ts';
 
@@ -31,7 +31,10 @@ async function main(): Promise<void> {
     logger: consoleLogger,
   });
 
-  const [products, tags] = await client.batchGet([`${TABS.products}!A2:AP`, `${TABS.tags}!A2:D`]);
+  const [products, tags] = await client.batchGet([
+    `${TABS.products}!A2:${PRODUCT_LAST_COL}`,
+    `${TABS.tags}!A2:D`,
+  ]);
   const productRows = products?.values ?? [];
   const tagRows = (tags?.values ?? []).filter((r) => r.some((c) => String(c ?? '').trim()));
 

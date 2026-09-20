@@ -91,7 +91,12 @@ export const POST = adminPost(
       note: `${ids.length}/${body.urls.length} imported`,
     });
     const ms = Date.now() - started;
-    consoleLogger.info('photo import timing', { urls: body.urls.length, imported: ids.length, transferMs, ms });
+    consoleLogger.info('photo import timing', {
+      urls: body.urls.length,
+      imported: ids.length,
+      transferMs,
+      ms,
+    });
     if (ids.length === 0) {
       return noStore({ ok: false, error: 'upload_failed', photos, imported: 0, audit, ms }, 502);
     }

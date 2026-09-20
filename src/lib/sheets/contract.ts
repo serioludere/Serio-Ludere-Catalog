@@ -66,9 +66,19 @@ export const PRODUCT_HEADER_LABELS = [
   'Scraped At',
   'Commit Status',
   'Internal Notes',
+  /**
+   * The texture photograph (owner, 2026-09-20): one of the product's own photos, the close-up of the
+   * weave, shown in the buyer's product popup. A Drive file id, exactly like `Image Src`.
+   *
+   * Appended AFTER `Internal Notes` rather than filed next to `Image Src`, because `assertHeaders`
+   * compares positionally: inserting it mid-row would shift every column behind it and invalidate
+   * every existing sheet. Trailing, it is also the one column an existing sheet may simply not have
+   * yet — see PRODUCT_OPTIONAL_TRAILING.
+   */
+  'Texture Image',
 ] as const;
 
-/** Zero-based column index of every Products field (A..AP). */
+/** Zero-based column index of every Products field (A..AQ). */
 export const PRODUCT_COLS = {
   productId: 0,
   handle: 1,
@@ -112,10 +122,27 @@ export const PRODUCT_COLS = {
   scrapedAt: 39,
   commitStatus: 40,
   internalNotes: 41,
+  textureImage: 42,
 } as const;
 
-/** Number of columns a Products row occupies (A..AP). */
+/** Number of columns a Products row occupies (A..AQ). */
 export const PRODUCT_WIDTH = PRODUCT_HEADER_LABELS.length;
+
+/** The last Products column letter, so a range is never spelled out by hand and left behind. */
+export const PRODUCT_LAST_COL = 'AQ';
+
+/**
+ * How many of the Products headers a sheet is allowed to be missing off the END of row 1.
+ *
+ * `Texture Image` was added on 2026-09-20 to a contract that had been live for weeks. A header check
+ * that demanded it outright would have taken every deployed catalogue down with a contract error —
+ * a 503 on the buyer's page — until someone ran `npm run sheet:init`. So the newest trailing
+ * column(s) may be ABSENT (a blank cell is absent too); anything present must still be the right
+ * label in the right place, and the cells behind a missing header read as empty.
+ *
+ * `sheet:init` writes the header and widens the grid, after which this tolerance does nothing.
+ */
+export const PRODUCT_OPTIONAL_TRAILING = 1;
 
 /**
  * What column X carries now that products have no status (owner, 2026-09-16). The column stays in
@@ -164,7 +191,7 @@ export const REACTIONS_WINDOW_ROWS = 5000;
 
 /** One batchGet per refresh; order matters (parsed positionally by parseSnapshot). */
 export const READ_RANGES = [
-  `${TABS.products}!A1:AP`,
+  `${TABS.products}!A1:${PRODUCT_LAST_COL}`,
   `${TABS.collections}!A1:G`,
   `${TABS.tags}!A1:D`,
   `${TABS.rates}!A1:D`,

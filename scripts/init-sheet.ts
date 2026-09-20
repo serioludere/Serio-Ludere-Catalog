@@ -14,15 +14,7 @@ import { SheetsClient } from '../src/lib/sheets/client.ts';
 import { authFromEnv } from '../src/lib/sheets/config.ts';
 import { consoleLogger } from '../src/lib/sheets/errors.ts';
 import { flag, upsertEnv } from './lib/env.ts';
-import {
-  ALL_TABS,
-  assertPeriodDecimalLocale,
-  provisionSheet,
-} from '../src/lib/sheets/provision.ts';
-
-
-
-
+import { ALL_TABS, assertPeriodDecimalLocale, provisionSheet } from '../src/lib/sheets/provision.ts';
 
 let createdId: string | undefined; // set when this run created the spreadsheet; written to .env at the end
 

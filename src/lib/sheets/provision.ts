@@ -22,6 +22,7 @@ import {
   HEADERS,
   PRODUCT_COLS,
   PRODUCT_HEADER_LABELS,
+  PRODUCT_LAST_COL,
   PRODUCT_WIDTH,
   RATES_SEED,
   SETTINGS_SEED,
@@ -107,7 +108,27 @@ export async function provisionSheet(
   const adminTabsCreated = missing.filter((t) => ADMIN_TABS.includes(t));
   const adminTabsFound = ADMIN_TABS.filter((t) => existing.has(t));
 
-  // 2. Headers (only written where the header row is empty; mismatches abort unless --force-headers)
+  /* 2. Products needs PRODUCT_WIDTH columns and a new tab defaults to 26 (brief §9).
+
+     Widened BEFORE row 1 is written, not after: the header now runs to AQ (the texture column, added
+     2026-09-20), and writing past the grid's last column is a 400 from Sheets, not a silent no-op. */
+  const grid = await client.getSpreadsheet('sheets.properties');
+  const productsSheet = (grid.sheets ?? []).find((sh) => sh.properties.title === TABS.products);
+  const columnCount = productsSheet?.properties.gridProperties?.columnCount ?? 26;
+  if (columnCount < PRODUCT_WIDTH) {
+    await client.batchUpdate([
+      {
+        appendDimension: {
+          sheetId: productsSheet!.properties.sheetId,
+          dimension: 'COLUMNS',
+          length: PRODUCT_WIDTH - columnCount,
+        },
+      },
+    ]);
+    log(`Widened ${TABS.products} to ${PRODUCT_WIDTH} columns`);
+  }
+
+  // 3. Headers (only written where the header row is empty; mismatches abort unless --force-headers)
   const headerRanges = ALL_TABS.map((t) => `${t}!A1:${columnLetter(HEADERS[t].length - 1)}1`);
   const headerRows = await client.batchGet(headerRanges);
   const normalise = (row: CellValue[] | undefined): string[] =>
@@ -116,7 +137,7 @@ export async function provisionSheet(
         .trim()
         .toLowerCase(),
     );
-  // 2a. One legacy layout can be repaired with its data intact: Collections gained `created_at`
+  // 3a. One legacy layout can be repaired with its data intact: Collections gained `created_at`
   // and swapped name/slug. Moving and inserting columns carries every row along, so this is safe
   // where a header rewrite would not be. Everything else still aborts below and asks a human.
   const collectionsIndex = ALL_TABS.indexOf(TABS.collections);
@@ -136,6 +157,19 @@ export async function provisionSheet(
     const empty = actual.every((c) => c === '');
     const matches = expected.every((h, j) => actual[j] === h);
     if (matches) continue;
+    /* A header row that is RIGHT as far as it goes and simply stops short is a sheet from before a
+       column was appended to the contract — `Texture Image` on 2026-09-20. Writing the labels row is
+       then a repair, not an overwrite: every cell that already had a label keeps the same one. This
+       is the counterpart of PRODUCT_OPTIONAL_TRAILING, which is what keeps such a sheet SERVING in
+       the meantime; without it, adding a column would mean "run sheet:init --force-headers", and
+       --force-headers is the flag that clobbers a genuinely wrong row. */
+    const shortButRight =
+      actual.length < expected.length && expected.slice(0, actual.length).every((h, j) => actual[j] === h);
+    if (shortButRight) {
+      await client.valuesUpdate(headerRanges[i]!, [(LABELLED_HEADERS[tab] ?? expected).slice()], 'RAW');
+      log(`Added ${expected.length - actual.length} trailing header(s) to ${tab}`);
+      continue;
+    }
     if (!empty && !opts.forceHeaders) {
       throw new Error(
         `Tab "${tab}" has a header row that does not match the contract (got: ${actual.join(' | ')}). ` +
@@ -146,23 +180,6 @@ export async function provisionSheet(
     await client.valuesUpdate(headerRanges[i]!, [labels.slice()], 'RAW');
     log(`Wrote headers for ${tab}`);
   }
-  // 3. Products needs 42 columns; a new tab defaults to 26 (brief §9)
-  const grid = await client.getSpreadsheet('sheets.properties');
-  const productsSheet = (grid.sheets ?? []).find((sh) => sh.properties.title === TABS.products);
-  const columnCount = productsSheet?.properties.gridProperties?.columnCount ?? 26;
-  if (columnCount < PRODUCT_WIDTH) {
-    await client.batchUpdate([
-      {
-        appendDimension: {
-          sheetId: productsSheet!.properties.sheetId,
-          dimension: 'COLUMNS',
-          length: PRODUCT_WIDTH - columnCount,
-        },
-      },
-    ]);
-    log(`Widened ${TABS.products} to ${PRODUCT_WIDTH} columns`);
-  }
-
   // 4. Formats, freezes and protections
   const sheetId = async (t: TabName): Promise<number> => client.sheetIdByTitle(t);
   const requests: unknown[] = [];
@@ -271,7 +288,7 @@ export async function provisionSheet(
     const legacy = JSON.parse(readFileSync(SEED_FILE, 'utf8')) as { rugs?: LegacyRug[] };
     const seed = buildSeed(legacy.rugs ?? [], now);
     const n = seed.products.length;
-    await client.valuesUpdate(`${TABS.products}!A2:AP${n + 1}`, seed.products, 'RAW');
+    await client.valuesUpdate(`${TABS.products}!A2:${PRODUCT_LAST_COL}${n + 1}`, seed.products, 'RAW');
     await client.valuesUpdate(
       `${TABS.collections}!A2:G${seed.collections.length + 1}`,
       seed.collections,
@@ -302,12 +319,16 @@ export async function provisionSheet(
   const seededTags = seedMode !== 'none' && !rugsData?.values?.length;
   const tagRows = seededTags ? [] : (tagsData?.values ?? []);
   const haveTags = new Set(
-    tagRows.map((row) => String(row?.[2] ?? '').trim().toLowerCase()).filter(Boolean),
+    tagRows
+      .map((row) =>
+        String(row?.[2] ?? '')
+          .trim()
+          .toLowerCase(),
+      )
+      .filter(Boolean),
   );
   // buildSeed already wrote them in the seeded case; only the --seed=none path needs this.
-  const missingBadges = seededTags
-    ? []
-    : BADGE_TAG_NAMES.filter((n) => !haveTags.has(n.toLowerCase()));
+  const missingBadges = seededTags ? [] : BADGE_TAG_NAMES.filter((n) => !haveTags.has(n.toLowerCase()));
   if (missingBadges.length) {
     const firstFree = tagRows.length + 2;
     await client.valuesUpdate(
@@ -319,7 +340,7 @@ export async function provisionSheet(
   }
 
   // 7. Verify the header row reads back exactly as the contract expects
-  const [check] = await client.batchGet([`${TABS.products}!A1:AP1`]);
+  const [check] = await client.batchGet([`${TABS.products}!A1:${PRODUCT_LAST_COL}1`]);
   const header = (check?.values?.[0] ?? []).map((c) =>
     String(c ?? '')
       .trim()

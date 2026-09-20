@@ -139,7 +139,10 @@ describe('commitPhotos', () => {
     );
     expect(peak).toBe(UPLOAD_CONCURRENCY);
     expect(out.ids).toEqual(urls.map((u) => `file-${u.slice(1)}`));
-    expect(out.photos.map((p) => p.name)).toEqual(['01-primary', ...urls.slice(1).map((_, i) => `winks-${String(i + 2).padStart(2, '0')}`)]);
+    expect(out.photos.map((p) => p.name)).toEqual([
+      '01-primary',
+      ...urls.slice(1).map((_, i) => `winks-${String(i + 2).padStart(2, '0')}`),
+    ]);
     expect(out.complete).toBe(true);
     expect(drive.copyFile).toHaveBeenCalledTimes(1);
   });

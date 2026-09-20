@@ -182,6 +182,16 @@ describe('cell encoding and rug cells', () => {
     expect(String(forced[PRODUCT_COLS.tags]).split(', ')).toContain('rotate-force');
   });
 
+  it('writes the texture photograph, and blanks the cell when none is chosen', () => {
+    // Owner, 2026-09-20. The write is full-width, so a RugFields without the field must CLEAR the
+    // column rather than leave whatever the row had — otherwise "no texture photo" could not be
+    // saved at all, and the popup would go on showing a photo the studio had un-ticked.
+    const id = '1U8FwNPCdm-n8RUvSNRcJLBA_27u-Pjkb';
+    expect(productFieldsToCells({ ...fields, textureId: id }, 'SL-030')[PRODUCT_COLS.textureImage]).toBe(id);
+    expect(productFieldsToCells({ ...fields, textureId: '' }, 'SL-030')[PRODUCT_COLS.textureImage]).toBe('');
+    expect(productFieldsToCells(fields, 'SL-030')[PRODUCT_COLS.textureImage]).toBe('');
+  });
+
   it('buildInsertRows generalises the vote insert to any tab and row', () => {
     const reqs = buildInsertRows(55, 1, [['a', 1, true, '']]) as Req[];
     expect(reqs[0]!.insertDimension).toEqual({
@@ -264,18 +274,18 @@ describe('updateRug', () => {
   const cells = { all: productFieldsToCells(fields, 'SL-021') };
 
   it('re-reads the row, checks id + version, sends ONE batchUpdate with the audit row, then verifies', async () => {
-    const f = fake({ rows: { 'Products!A31:AP31': current } });
+    const f = fake({ rows: { 'Products!A31:AQ31': current } });
     const result = await updateRug(f.client, { row: 31, id: 'SL-021', version, cells, audit });
     expect(result).toEqual({ row: 31, audit: { row: 2, action: 'rug.update' }, verified: true });
     expect(f.writes).toHaveLength(1);
     const reqs = f.writes[0]!;
     expect(reqs.some((r) => (r as Req).updateCells?.start.sheetId === IDS.AuditLog)).toBe(true);
-    expect(f.reads).toEqual([['Products!A31:AP31'], ['Products!A31:AP31']]); // check + verify
+    expect(f.reads).toEqual([['Products!A31:AQ31'], ['Products!A31:AQ31']]); // check + verify
   });
   it('answers 409 with the fresh row and sends NO batchUpdate on a version mismatch or a moved id', async () => {
     const changed = [...current];
     changed[2] = 'Renamed by hand';
-    const f = fake({ rows: { 'Products!A31:AP31': changed } });
+    const f = fake({ rows: { 'Products!A31:AQ31': changed } });
     const err = await updateRug(f.client, { row: 31, id: 'SL-021', version, cells, audit }).catch(
       (e: unknown) => e,
     );
@@ -283,24 +293,24 @@ describe('updateRug', () => {
     expect((err as VersionMismatchError).status).toBe(409);
     expect((err as VersionMismatchError).fresh).toEqual(changed);
     expect(f.writes).toHaveLength(0);
-    const moved = fake({ rows: { 'Products!A31:AP31': rugRow({ id: 'SL-099' }) } });
+    const moved = fake({ rows: { 'Products!A31:AQ31': rugRow({ id: 'SL-099' }) } });
     await expect(updateRug(moved.client, { row: 31, id: 'SL-021', version, cells, audit })).rejects.toThrow(
       /expected id/,
     );
     expect(moved.writes).toHaveLength(0);
     // Counts live in the Reactions log now, so every cell of the row is owned by the admin: an
     // unchanged row still commits.
-    const ok = fake({ rows: { 'Products!A31:AP31': [...current] } });
+    const ok = fake({ rows: { 'Products!A31:AQ31': [...current] } });
     await expect(
       updateRug(ok.client, { row: 31, id: 'SL-021', version, cells, audit }),
     ).resolves.toMatchObject({ row: 31 });
   });
   it('logs a verify-read mismatch and appends a verify-failed audit row (the write has already committed)', async () => {
-    const store: Record<string, CellValue[]> = { 'Products!A31:AP31': current };
+    const store: Record<string, CellValue[]> = { 'Products!A31:AQ31': current };
     const f = fake({
       rows: store,
       afterWrite: () => {
-        store['Products!A31:AP31'] = rugRow({ id: 'SOMEONE-ELSE' });
+        store['Products!A31:AQ31'] = rugRow({ id: 'SOMEONE-ELSE' });
       },
     });
     const errors: string[] = [];
@@ -316,7 +326,7 @@ describe('updateRug', () => {
     expect(values[9]?.userEnteredValue?.stringValue).toMatch(/^verify-failed/);
   });
   it('the mutex serialises two writers (the second sees the first commit)', async () => {
-    const store: Record<string, CellValue[]> = { 'Products!A31:AP31': current };
+    const store: Record<string, CellValue[]> = { 'Products!A31:AQ31': current };
     const order: string[] = [];
     const f = fake({
       rows: store,
@@ -325,7 +335,7 @@ describe('updateRug', () => {
         const name = (
           (reqs[0] as Req).updateCells!.rows[0]!.values[1] as { userEnteredValue: { stringValue: string } }
         ).userEnteredValue.stringValue;
-        store['Products!A31:AP31'] = [...rugRow({ id: 'SL-021', name }), '', '', '', ''];
+        store['Products!A31:AQ31'] = [...rugRow({ id: 'SL-021', name }), '', '', '', ''];
       },
     });
     const first = updateRug(f.client, {
@@ -364,7 +374,7 @@ describe('insertRug', () => {
     const f = fake({
       colA: { Products: 29 },
       rows: {
-        'Products!A31:AP31': ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+        'Products!A31:AQ31': ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
       },
       afterWrite: () => {
         f.client.batchGet.mockImplementationOnce(async (r) => [
@@ -376,7 +386,7 @@ describe('insertRug', () => {
     expect(result).toEqual({ row: 31, audit: { row: 2, action: 'rug.create' }, verified: true });
     expect(f.writes[0]!.some((r) => (r as Req).appendDimension)).toBe(false);
 
-    const busy = fake({ colA: { Products: 29 }, rows: { 'Products!A31:AP31': ['', '', 'stray name'] } });
+    const busy = fake({ colA: { Products: 29 }, rows: { 'Products!A31:AQ31': ['', '', 'stray name'] } });
     await expect(insertRug(busy.client, { cells, audit: created })).rejects.toBeInstanceOf(RowConflictError);
     expect(busy.writes).toHaveLength(0);
     // Q:S spill values ("") on the target row are ignored: first read = blank check (spills), second = verify

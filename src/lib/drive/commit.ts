@@ -132,7 +132,8 @@ export async function commitPhotos(input: CommitPhotosInput, deps: CommitDeps): 
     // not a failed import: the photo itself is safely stored.
     if (i === 0) {
       primaryCopy = deps.drive.copyFile(result.id, `01-primary`, folders.productId).then((copy) => {
-        if ('error' in copy) deps.logger?.warn('photo commit: primary not duplicated', { detail: copy.detail });
+        if ('error' in copy)
+          deps.logger?.warn('photo commit: primary not duplicated', { detail: copy.detail });
       });
     }
   };

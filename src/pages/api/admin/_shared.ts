@@ -2,7 +2,7 @@
 // files whose name starts with an underscore. Astro-bound (runtime singletons); the logic it leans
 // on lives in src/lib/admin/*.
 import type { CellValue, SheetsClient } from '../../../lib/sheets/client.ts';
-import { HEADERS, PRODUCT_WIDTH, TABS } from '../../../lib/sheets/contract.ts';
+import { HEADERS, PRODUCT_LAST_COL, PRODUCT_WIDTH, TABS } from '../../../lib/sheets/contract.ts';
 import { consoleLogger } from '../../../lib/sheets/errors.ts';
 import { parseCollections, parseTags } from '../../../lib/sheets/parse.ts';
 import type { Rotate } from '../../../lib/sheets/types.ts';
@@ -135,6 +135,7 @@ export function rugFieldsFrom(
     collections: resolved.collections,
     tags: resolved.tags,
     photos: body.photos,
+    textureId: body.textureId,
     widthCm: body.widthCm,
     lengthCm: body.lengthCm,
     material: body.material,
@@ -164,6 +165,7 @@ export function fieldsOfRug(rug: AdminRug): RugFields {
     collections: [...rug.collections],
     tags: [...rug.tags],
     photos: [...rug.photos],
+    textureId: rug.textureId,
     widthCm: rug.widthCm,
     lengthCm: rug.lengthCm,
     material: rug.material,
@@ -222,7 +224,7 @@ export async function freshRug(
   row: number,
   id: string,
 ): Promise<AdminRug> {
-  const [vr] = await client.batchGet([`${TABS.products}!A${row}:AP${row}`]);
+  const [vr] = await client.batchGet([`${TABS.products}!A${row}:${PRODUCT_LAST_COL}${row}`]);
   const cells = (vr?.values?.[0] ?? []).slice(0, PRODUCT_WIDTH);
   const rug = adminRugFromCells(cells, row);
   if (!rug || rug.id !== id) {

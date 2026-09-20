@@ -57,6 +57,7 @@ const PRODUCT_BASE = {
   scrapedAt: '',
   commitStatus: '' as const,
   internalNotes: '',
+  textureId: '',
 };
 const rug: AdminRug = {
   ...PRODUCT_BASE,
@@ -371,18 +372,18 @@ describe('add mode', () => {
     const marker = (name: string): HTMLButtonElement =>
       document.querySelector<HTMLButtonElement>(`button.tagpreset[data-preset="${name}"]`)!;
     // Typed by hand, so the marker for it shows as pressed — case-insensitively.
-    expect(marker('signed').getAttribute('aria-pressed')).toBe('true');
-    expect(marker('antique').getAttribute('aria-pressed')).toBe('false');
+    expect(marker('Signed').getAttribute('aria-pressed')).toBe('true');
+    expect(marker('Antique').getAttribute('aria-pressed')).toBe('false');
 
     // Pressing adds the tag; pressing again takes it off.
-    marker('antique').click();
-    expect(form.chips.values()).toEqual(['Wool', 'Vintage', 'Signed', 'antique']);
-    marker('antique').click();
+    marker('Antique').click();
+    expect(form.chips.values()).toEqual(['Wool', 'Vintage', 'Signed', 'Antique']);
+    marker('Antique').click();
     expect(form.chips.values()).toEqual(['Wool', 'Vintage', 'Signed']);
 
     // …and removing the token with its × un-presses the marker, rather than leaving it lit.
     document.querySelector<HTMLButtonElement>('#tagChips [data-tag="Signed"] button[data-remove]')!.click();
-    expect(marker('signed').getAttribute('aria-pressed')).toBe('false');
+    expect(marker('Signed').getAttribute('aria-pressed')).toBe('false');
     expect(form.collect().tags).toEqual(['Wool', 'Vintage']);
   });
 
@@ -602,6 +603,59 @@ describe('edit mode', () => {
     expect(text('m2')).toContain('Saved name');
   });
 
+  it('ticks the method the row carries, keeps an unlisted one, and saves what is ticked', async () => {
+    // Owner, 2026-09-20: four techniques as checkboxes over the one `Method` cell. The fixture rug
+    // says "Hand-woven", which is the same technique as "Handwoven" — so THAT box comes up ticked
+    // and the other three do not. A spelling the studio used for months must not read as "none".
+    const form = mount(() => ({ status: 200, body: { ok: true, rug, changed: ['method'] } }));
+    const boxes = (): HTMLInputElement[] => [
+      ...document.querySelectorAll<HTMLInputElement>('#f_method input[data-method]'),
+    ];
+    expect(boxes().map((b) => b.value)).toEqual(['Flatweave', 'Hand-loomed', 'Hand-knotted', 'Handwoven']);
+    expect(
+      boxes()
+        .filter((b) => b.checked)
+        .map((b) => b.value),
+    ).toEqual(['Handwoven']);
+
+    // A second technique is a tick, not a re-type, and both land in the one cell.
+    boxes()[0]!.checked = true;
+    expect(form.collect().method).toBe('Flatweave, Handwoven');
+
+    // Something the four do not cover survives as its own ticked option rather than being dropped.
+    form.applyScrape({ method: 'Handmade pile rug' });
+    expect(
+      boxes()
+        .filter((b) => b.checked)
+        .map((b) => b.value),
+    ).toEqual(['Handmade pile rug']);
+    expect(form.collect().method).toBe('Handmade pile rug');
+  });
+
+  it('saves the texture photograph the studio ticks, and "none" when it is un-ticked', async () => {
+    // Owner, 2026-09-20: one photo on the rug is the close-up the buyer's popup shows. The edit form
+    // renders a radio per photo plus "No texture photo", and the save carries whichever is checked —
+    // '' included, which is how a texture is taken back off a rug.
+    const form = mount(() => ({
+      status: 200,
+      body: { ok: true, rug: { ...rug, textureId: PHOTO, version: 'c'.repeat(16) }, changed: ['textureId'] },
+    }));
+    const radios = [...document.querySelectorAll<HTMLInputElement>('input[data-texture]')];
+    // One per photo, plus the "none" option, which starts checked on a rug that has no texture.
+    expect(radios.map((r) => r.value)).toEqual([PHOTO, '']);
+    expect(radios[1]!.checked).toBe(true);
+    expect(form.collect().textureId).toBe('');
+
+    radios[0]!.checked = true;
+    radios[1]!.checked = false;
+    expect(form.collect().textureId).toBe(PHOTO);
+    await form.save();
+    expect(calls[0]?.body).toMatchObject({ textureId: PHOTO });
+    // fill() re-reads the server's answer, so the saved photo comes back ticked.
+    expect(radios[0]!.checked).toBe(true);
+    expect(radios[1]!.checked).toBe(false);
+  });
+
   it('409 reloads the fresh row and tells the owner to re-apply the edit', async () => {
     const fresh = { ...rug, name: 'Changed elsewhere', priceUsd: 999, version: 'd'.repeat(16) };
     const form = mount(() => ({
@@ -735,7 +789,13 @@ describe('the fetch modal gates the form (P5-P9)', () => {
 
     expect(document.getElementById('fetch-result')?.hasAttribute('open')).toBe(false);
     expect(val('f_material')).toBe('Wool');
-    expect(val('f_method')).toBe('Hand-knotted');
+    // Method is a checkbox group since 2026-09-20 (owner): the scrape TICKS the technique it found.
+    expect(form.collect().method).toBe('Hand-knotted');
+    expect(
+      [...document.querySelectorAll<HTMLInputElement>('#f_method input[data-method]')]
+        .filter((b) => b.checked)
+        .map((b) => b.value),
+    ).toEqual(['Hand-knotted']);
     // …and the SKU is the id, so what is about to be saved is filed under the supplier's number.
     expect(val('f_id')).toBe('380114');
     expect(text('m1')).toContain('Found it');

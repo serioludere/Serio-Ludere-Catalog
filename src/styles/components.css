@@ -916,6 +916,44 @@
   gap: var(--stack-sm);
 }
 
+/* ═══ Wide modal — the Add product form (owner, 2026-09-20) ════════════════════════════════════
+   The 520px modal is sized for a sentence and two buttons; the product form is a two-column field
+   grid, a photo strip and a description the studio actually writes. So one modifier, not a second
+   component: the same dialog, given the width the form was drawn at (the 480px drawer it replaced
+   had every field in one column) and a body that scrolls INSIDE the dialog so the header and the
+   footer's Fetch stay put however long the form runs. */
+.modal--wide {
+  display: flex;
+  flex-direction: column;
+  width: min(960px, calc(100vw - var(--gutter) * 2));
+  max-height: min(880px, calc(100dvh - var(--gutter) * 2));
+  background: var(--surface);
+}
+/* `display: flex` above out-ranks the UA's `display: none` on a closed dialog, exactly as it does
+   for .drawer — without this the closed form is laid out and every field stays in the tab order. */
+.modal--wide:not([open]) {
+  display: none;
+}
+.modal--wide .modal__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  gap: var(--stack-lg);
+}
+/* `.addform` paints --surface plus a 1px rule, which is right on a page and wrong inside a dialog
+   that is already --surface: it draws a same-coloured card on a card with doubled padding. */
+.modal--wide .addform,
+.drawer .addform {
+  padding: 0;
+  background: none;
+  border: 0;
+}
+/* The gap that pushes Cancel left and the primary action right, in either dialog. */
+.overlay__spacer,
+.drawer__spacer {
+  flex: 1 1 auto;
+}
+
 /* ═══ Drawer ═══════════════════════════════════════════════════════════════════════════════════
    73:237. Slides in from the right OVER the list, which stays mounted behind it, so cancelling
    costs nothing and you keep your place in the scroll. 480px at 1440; a bottom sheet at 390.
@@ -1016,16 +1054,8 @@
 .drawer__footer:empty {
   display: none;
 }
-/* `.addform` paints --surface plus a 1px rule, which is correct on a page and wrong inside a drawer
-   that is already --surface: it produced a same-coloured card on a card with doubled padding. */
-.drawer .addform {
-  padding: 0;
-  background: none;
-  border: 0;
-}
-.drawer__spacer {
-  flex: 1 1 auto;
-}
+/* `.drawer .addform` and `.drawer__spacer` live with the wide modal's rules above: the Add product
+   form moved into a centred modal on 2026-09-20 and both dialogs need the same two fixes. */
 
 /* At 390 the drawer becomes a bottom sheet: same transform from the bottom edge, slightly longer
    because the travel is longer and a thumb is following it (handoff 161:559). The grabber is a

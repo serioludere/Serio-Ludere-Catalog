@@ -1,0 +1,1 @@
+import{t as e}from"./votes.BIXxA29v.js";e();

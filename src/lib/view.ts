@@ -45,6 +45,12 @@ export interface CardView {
   photoIds?: string[];
   /** =w800 of the second photo, for a hover quick view. */
   altPhotoUrl?: string;
+  /**
+   * =w800 of the texture photograph the studio chose (owner, 2026-09-20), shown in the product popup
+   * in place of the marker chips. Absent when the row names none, and the popup then shows the
+   * markers, as it did before.
+   */
+  textureUrl?: string;
 }
 
 export interface NavTab {
@@ -120,9 +126,11 @@ export function tagSlug(name: string, tags: Tag[]): string {
  * a buyer scanning a grid wants to see without opening anything. Badging every tag would turn the
  * corner into a second filter strip and bury exactly the signal this is for.
  */
-/* Lower case since 2026-09-20 (owner: no shouting capitals anywhere). Matching stays
-   case-insensitive, so rows already carrying "Signed" still earn the badge. */
-export const BADGE_TAG_NAMES: readonly string[] = ['signed', 'antique'];
+/* Lower-cased on 2026-09-20 and capitalised again the same day (owner): these two are proper labels
+   on a rug — Signed, Antique — not running prose. This ONE list spells them for the card badge, the
+   popup, the admin cards and the marker buttons on both product forms, so the four cannot disagree.
+   Matching stays case-insensitive, so a row already carrying "signed" still earns the badge. */
+export const BADGE_TAG_NAMES: readonly string[] = ['Signed', 'Antique'];
 
 /**
  * The badges a rug's tags earn, in BADGE_TAG_NAMES order rather than the sheet's.
@@ -169,6 +177,7 @@ export function cardView(rug: Rug, catalogue: Catalogue): CardView {
     featured: rug.featured,
     photoIds: rug.photos,
     altPhotoUrl: rug.photos[1] ? driveImageUrl(rug.photos[1], 800) : undefined,
+    textureUrl: rug.textureId ? driveImageUrl(rug.textureId, 800) : undefined,
   };
 }
 

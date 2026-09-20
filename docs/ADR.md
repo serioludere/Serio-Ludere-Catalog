@@ -941,7 +941,7 @@ failing silently. `CLIENT_CODE_RE` must stay a subset of `SLUG_RE`; widening it 
 
 **`hidden` did not hide, so the default admin Products view listed every rug twice.**
 `[hidden] { display: none }` lives in the user-agent origin, so `.grid { display: grid }` beat it and
-`view-switch.ts`'s `grid.hidden = true` had no effect. The unit test read the `.hidden` *property*,
+`view-switch.ts`'s `grid.hidden = true` had no effect. The unit test read the `.hidden` _property_,
 which was correctly `true` the entire time — the test and the screen disagreed and only the screen
 was right. Fixed with a `[hidden]` reset in the admin origin, and guarded by a live computed-style
 check in `verify-geometry.ts` rather than another declaration test, because only a real cascade can
@@ -1072,6 +1072,7 @@ every admin screen against its Figma frame, and the finding was that **elements 
 never built**, plus two features that shipped dead.
 
 **Two features nobody had ever seen.**
+
 - **The Add-product drawer.** Figma specifies Add product as a slide-over (P3 80:1480, P4 80:1578),
   `Drawer.astro` is fully built, and `/admin/rugs` renders it wired to the real form. But the button
   carried both `href="/admin/rugs/new"` and `data-open="add-rug"`, and `overlay.ts` never called
@@ -1082,6 +1083,7 @@ never built**, plus two features that shipped dead.
   of why the panel read as unfinished.
 
 **The shared layer.** These are all one-line faults that every screen inherited:
+
 - `td { vertical-align: top }` against a `.toggle` carrying `min-height: 44px` — so every Customers
   row opened to ~60px with the text pinned at the top and the switch 22px below it. One declaration,
   and the loudest single reason the tables looked broken.
@@ -1140,7 +1142,7 @@ with `.drawer__footer:empty { display: none }` so no future footer-less drawer s
 again. `RugFields` gained a `fetchButton` prop rather than a duplicate id: the drawer suppresses the
 inline control, and `/admin/rugs/new` — the no-JS fallback, which has no footer — keeps it.
 Two spacing faults went with it: the drawer's insets used `--space-inline`, which is 8 in admin
-against the drawn 16, and `.addform` painted a surface-plus-rule card *inside* a drawer that is
+against the drawn 16, and `.addform` painted a surface-plus-rule card _inside_ a drawer that is
 already `--surface`, producing a same-coloured box on a box with doubled padding.
 
 **The drawer's primary field was invisible.** `#f_id` sat inside `#preview`, which is `display: none`
@@ -1167,10 +1169,11 @@ insert the literal character where the server had rendered an icon.
 visible owner. It is a heading now. That one rule lifts every section in the panel.
 
 **The colour picker** was pinned to 38px in the Collections page's own `<style is:global>`, against
-the 41.8px controls beside it. Deleting that override *is* the fix — the generic `input` rule already
+the 41.8px controls beside it. Deleting that override _is_ the fix — the generic `input` rule already
 supplies the shared padding and line-height, so it now matches its neighbours by inheritance.
 
 **Two things deliberately NOT built, both because the control would have had nothing behind it.**
+
 - **Delete a collection.** The review called its absence a straight gap. There is no DELETE endpoint
   (`collections/[id].ts` is `methodNotAllowed('POST')`), and the real question is not the button: it
   is what happens to rugs filed under a collection that is removed. That is a data decision for the
@@ -1311,6 +1314,7 @@ reason: it is a value the server learns after it started. **Env still wins.** A 
 site onto a different one.
 
 **The endpoint refuses in three cases, each deliberate.**
+
 - A sheet already exists → 409. Creating a second would orphan the first WITH THE STUDIO'S DATA IN IT,
   and they would have no way to tell which of two identical spreadsheets the site reads.
 - No Google connection → 409. The sheet is created in the studio's own Drive; a service account has

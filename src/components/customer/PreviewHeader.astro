@@ -20,6 +20,10 @@
 // Owner, 2026-09-20: the logo mark is gone from the catalog corner and the header's deep band with
 // it. The name is set in the brand face as plain text, on one tight row — the top of the page was
 // taking space the rugs should have.
+//
+// Set in capitals (owner, 2026-09-20), in BOTH slots and in the footer's mark. Typed that way rather
+// than text-transform'd: the mark is a name, so what the markup says and what a screen reader reads
+// should be the same string, and nothing else on the buyer's side shouts by accident from a cascade.
 interface Props {
   /** Where the wordmark links. Inside a realm this is the buyer's own catalog, never `/`. */
   home: string;
@@ -52,13 +56,13 @@ const { home, back } = Astro.props;
         {/* H4, not H3 (57:229): the detail wordmark sits one step below the catalog's 53:36, which
             is what makes this header 148 tall against the catalog's 152. */}
         <a class="pv-wordmark pv-wordmark-trailing pv-h4" href={home}>
-          Serio Ludere
+          SERIO LUDERE
         </a>
       </>
     ) : (
       <>
         <a class="pv-wordmark pv-h4" href={home}>
-          Serio Ludere
+          SERIO LUDERE
         </a>
         <span class="pv-spacer" aria-hidden="true" />
       </>

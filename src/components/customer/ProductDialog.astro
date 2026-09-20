@@ -72,14 +72,31 @@ const specRowsOf = (card: CardView): Array<{ key: string; value: string }> => [
             {priceText}
           </p>
           {
-            /* The markers (owner, 2026-09-20): the same two the card corner shows, spelled out here
-               where there is room for the word rather than a corner chip. */
-            badgesFor(card.tags.map((t) => t.name)).length > 0 && (
-              <ul class="pv-modal__markers">
-                {badgesFor(card.tags.map((t) => t.name)).map((b) => (
-                  <li class="pv-modal__marker">{b}</li>
-                ))}
-              </ul>
+            /* The texture photograph (owner, 2026-09-20), in the slot the marker chips held.
+               A rug is a material before it is a pattern, and the hero shows the whole piece from
+               across a room; this is the one place the buyer can see the weave up close without
+               opening the gallery. The studio chooses which photo it is, on the product form.
+
+               A rug with no texture chosen keeps the markers rather than leaving a hole — they are
+               the same two the card corner shows, spelled out here where there is room for the word. */
+            card.textureUrl ? (
+              <figure class="pv-modal__texture">
+                <img
+                  src={card.textureUrl}
+                  alt={`${card.name}, the weave up close`}
+                  loading="lazy"
+                  decoding="async"
+                />
+                <figcaption class="pv-modal__texture-label">texture</figcaption>
+              </figure>
+            ) : (
+              badgesFor(card.tags.map((t) => t.name)).length > 0 && (
+                <ul class="pv-modal__markers">
+                  {badgesFor(card.tags.map((t) => t.name)).map((b) => (
+                    <li class="pv-modal__marker">{b}</li>
+                  ))}
+                </ul>
+              )
             )
           }
           {card.description && <p class="pv-modal__desc">{card.description}</p>}
@@ -216,6 +233,27 @@ const specRowsOf = (card: CardView): Array<{ key: string; value: string }> => [
     margin: 0;
     padding: 0;
     list-style: none;
+  }
+  /* The texture plate: a small framed square, wide enough to read the knots and small enough that it
+     never competes with the hero on the left. `cover`, not `contain` — a crop of a close-up is still
+     a close-up, where letterboxing it would waste the little room this has. */
+  .pv-modal__texture {
+    display: flex;
+    align-items: center;
+    gap: var(--stack-md);
+    margin: 0;
+  }
+  .pv-modal__texture img {
+    flex: none;
+    width: 96px;
+    height: 96px;
+    object-fit: cover;
+    border: var(--rule-width) solid var(--rule);
+  }
+  .pv-modal__texture-label {
+    font-family: var(--body);
+    font-size: var(--text-xs);
+    color: var(--ink-muted);
   }
   .pv-modal__marker {
     padding: var(--corner-chip-pad, 2px 6px);

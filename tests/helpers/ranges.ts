@@ -47,6 +47,8 @@ export function rugRow(overrides: Record<string, CellValue> = {}): CellValue[] {
     supplier: '',
     supplier_ref: '',
     notes: '',
+    /** The texture photograph: a Drive id or share link, '' for none (owner, 2026-09-20). */
+    texture: '',
   };
   Object.assign(base, overrides);
 
@@ -96,6 +98,7 @@ export function rugRow(overrides: Record<string, CellValue> = {}): CellValue[] {
   row[PRODUCT_COLS.sourceSite] = base.supplier ?? '';
   row[PRODUCT_COLS.scrapedAt] = base.created_at ?? '';
   row[PRODUCT_COLS.internalNotes] = base.notes ?? '';
+  row[PRODUCT_COLS.textureImage] = base.texture ?? '';
 
   const likes = typeof base.likes === 'number' ? base.likes : 0;
   const dislikes = typeof base.dislikes === 'number' ? base.dislikes : 0;

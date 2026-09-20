@@ -11,7 +11,7 @@ import Button from '../../../components/ui/Button.astro';
 import EmptyState from '../../../components/ui/EmptyState.astro';
 import RugTable from '../../../components/admin/RugTable.astro';
 import FilterBar from '../../../components/ui/FilterBar.astro';
-import Drawer from '../../../components/ui/Drawer.astro';
+import Modal from '../../../components/ui/Modal.astro';
 import RugFields from '../../../components/admin/RugFields.astro';
 import FetchModal from '../../../components/ui/FetchModal.astro';
 import PageNav from '../../../components/ui/PageNav.astro';
@@ -26,7 +26,7 @@ import { getClient } from '../../../lib/runtime.ts';
 import { consoleLogger, serializeError } from '../../../lib/sheets/errors.ts';
 import { orderedCollectionNames } from '../../../lib/sheets/parse.ts';
 import { collectionSlug, collectionSlugs } from '../../../lib/text.ts';
-/* The Add-product drawer shows supplier preview images, so this page needs the same img-src the
+/* The Add-product modal shows supplier preview images, so this page needs the same img-src the
    standalone add page declares (ADMIN_SPEC §5.3). */
 Astro.csp?.insertDirective(
   "img-src 'self' https://lh3.googleusercontent.com https://cdn.shopify.com https://images.ecarpetwholesale.com data:",
@@ -82,10 +82,14 @@ const pendingCount = rugs.filter((r) => r.commitStatus === 'pending').length;
 /* The one number on this screen that needs acting on: rows whose Drive folder exists but whose
    sheet row was never written (Figma P1 header, "412 products · 3 failed to save"). */
 
-/* Adding a product is an action on this list, not a destination (Figma revision 161:195). The drawer
-   keeps the list mounted behind it, so cancelling costs nothing and you keep your place in the
-   scroll — which is the whole reason it is not a route. /admin/rugs/new stays as a working page, so
-   a direct link, a bookmark and a no-JS browser all still reach the same form. */
+/* Adding a product is an action on this list, not a destination (Figma revision 161:195). It keeps
+   the list mounted behind it, so cancelling costs nothing and you keep your place in the scroll —
+   which is the whole reason it is not a route. /admin/rugs/new stays as a working page, so a direct
+   link, a bookmark and a no-JS browser all still reach the same form.
+
+   A centred modal since 2026-09-20 (owner), not the 480px slide-over it was: the form is two columns
+   of fields, a photo strip and a description worth writing, and in a drawer every one of those was a
+   single cramped column you scrolled. Same <dialog>, same opener, same footer — only wider. */
 await driveScope();
 const driveScopeOk = adminRuntime.driveScopeOk ?? null;
 const tags = snapshot?.tags ?? [];
@@ -189,7 +193,7 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
       card share, so switching view keeps you on the same 20 products. */
   }
   <PageNav id="rugPager" label="Products" />
-  <Drawer id="add-rug" title="Add product">
+  <Modal id="add-rug" title="Add product" class="modal--wide">
     <RugFields
       mode="add"
       collections={collections}
@@ -200,15 +204,15 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
       fetchButton={false}
     />
     {
-      /* P3 (80:1480) puts the drawer's actions in the footer bar. Without this slot the footer was an
-        empty 17px strip under a full-width rule, and the only Fetch control was a small dark button
-        floating inline mid-body — so the drawer looked like it ended in a rendering fault and its
+      /* P3 (80:1480) puts the add form's actions in the footer bar. Without this slot the footer was
+        an empty 17px strip under a full-width rule, and the only Fetch control was a small dark button
+        floating inline mid-body — so the dialog looked like it ended in a rendering fault and its
         primary action looked incidental. */
     }
     <Button slot="footer" style="ghost" data-close="add-rug">Cancel</Button>
-    <span slot="footer" class="drawer__spacer"></span>
+    <span slot="footer" class="overlay__spacer"></span>
     <Button slot="footer" style="primary" id="btnFetch">Fetch</Button>
-  </Drawer>
+  </Modal>
   <script is:inline type="application/json" id="admin-data" set:html={jsonForScript(addData)} />
 
   <script>

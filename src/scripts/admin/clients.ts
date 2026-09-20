@@ -199,7 +199,6 @@ export function whenText(iso: string, locale?: string): string {
   return d.toLocaleString(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
-
 /** `confirmImpl` replaces window.confirm so the delete path is testable. */
 export interface ClientsOptions extends ApiOptions {
   confirmImpl?: (text: string) => boolean;

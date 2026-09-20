@@ -5,6 +5,7 @@
 // Enter in the link field fetches, Enter in "your name" moves to the link, Escape hides the
 // banner, Ctrl/⌘+S saves. Buttons are disabled while a request is in flight.
 import { extractDriveId } from '../../lib/images.ts';
+import { joinMethods, splitMethods } from '../../lib/method.ts';
 import { slugify } from '../../lib/text.ts';
 import {
   PHOTOS_TIMEOUT_MS,
@@ -31,6 +32,8 @@ export interface RugLike {
   collections: string[];
   tags: string[];
   photos: string[];
+  /** The Drive id of the texture photograph, or '' (owner, 2026-09-20). */
+  textureId: string;
   widthCm?: number;
   lengthCm?: number;
   material: string;
@@ -100,6 +103,8 @@ export interface RugBody {
   collections: string[];
   tags: string[];
   photos: string[];
+  /** The texture photograph the studio ticked, as a Drive id; '' is "none". */
+  textureId: string;
   widthCm?: number;
   lengthCm?: number;
   material: string;
@@ -252,7 +257,6 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     width: input('f_width'),
     length: input('f_length'),
     material: input('f_material'),
-    method: input('f_method'),
     age: input('f_age'),
     origin: input('f_origin'),
     price: input('f_price'),
@@ -272,6 +276,32 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
   const priceHint = byId('priceHint', doc);
   const tagHint = byId('tagHint', doc);
   const warnings = byId('warnings', doc);
+  /* Method is a checkbox group since 2026-09-20 (owner), so it is read and written through these
+     two rather than through a `.value`. A technique the group does not list — scraped, or typed by
+     an earlier version of this form — is added as a ticked option instead of being dropped. */
+  const methodGroup = byId('f_method', doc);
+  const methodBoxes = (): HTMLInputElement[] => [
+    ...methodGroup.querySelectorAll<HTMLInputElement>('input[data-method]'),
+  ];
+  const methodValue = (): string =>
+    joinMethods(
+      methodBoxes()
+        .filter((b) => b.checked)
+        .map((b) => b.value),
+    );
+  const setMethod = (value: string): void => {
+    const wanted = new Set(splitMethods(value));
+    for (const box of methodBoxes()) {
+      box.checked = wanted.has(box.value);
+      wanted.delete(box.value);
+    }
+    for (const extra of wanted) {
+      const box = el('input', { type: 'checkbox', 'data-method': '', value: extra }, [], doc);
+      (box as HTMLInputElement).checked = true;
+      methodGroup.appendChild(el('label', { class: 'chk' }, [box, ` ${extra}`], doc));
+    }
+  };
+
   const photoStrip = byId('photoStrip', doc);
   const photoCount = maybe('photoCount', doc);
   const photoHint = maybe('photoHint', doc);
@@ -282,11 +312,13 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
   const btnDelete = maybe<HTMLButtonElement>('btnDelete', doc);
   const btnSave = maybe<HTMLButtonElement>('btnSave', doc);
   const m2 = byId('m2', doc);
-  // The Add drawer's footer (Cancel + Fetch) only matters before a fetch. Once the form is showing
+  // The Add dialog's footer (Cancel + Fetch) only matters before a fetch. Once the form is showing
   // what was fetched it carries its own Save product / Cancel, so the footer pair would be noise.
-  const drawerFooter = btnFetch?.closest<HTMLElement>('.drawer__footer') ?? null;
+  // Either dialog's footer: the Add form was a slide-over until 2026-09-20 and is a centred modal
+  // now, and /admin/rugs/new (the no-JS page) has no footer at all — hence the null.
+  const dialogFooter = btnFetch?.closest<HTMLElement>('.modal__footer, .drawer__footer') ?? null;
   const showFooter = (on: boolean): void => {
-    if (drawerFooter) drawerFooter.hidden = !on;
+    if (dialogFooter) dialogFooter.hidden = !on;
   };
 
   const actionButtons = [btnFetch, btnAdd, btnSave, btnNewTag].filter(
@@ -320,6 +352,22 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     return chips.values().find((v) => v.toLowerCase() === key);
   };
 
+  /**
+   * The texture photograph the studio ticked (owner, 2026-09-20).
+   *
+   * On the EDIT form the radio's value is a Drive id and goes straight onto the row. On the ADD form
+   * it is the supplier's own photo URL, because the file does not exist in Drive until the import
+   * runs — add() swaps it for the returned id once it does.
+   */
+  const texturePick = (): string =>
+    doc.querySelector<HTMLInputElement>('input[data-texture]:checked')?.value ?? '';
+
+  /** Drive ids only: a supplier URL means "decide after the import", not "write this into the cell". */
+  const textureId = (): string => {
+    const picked = texturePick();
+    return picked && extractDriveId(picked) === picked ? picked : '';
+  };
+
   const selectedPhotoUrls = (): string[] =>
     [...photoStrip.querySelectorAll<HTMLInputElement>('input[type="checkbox"][data-url]')]
       .filter((c) => c.checked)
@@ -342,11 +390,25 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
       );
       check.checked = true;
       check.addEventListener('change', updatePhotoCount);
+      // The texture radio, beside the keep checkbox: the same control the edit form renders server
+      // side, except that its value is still a supplier URL here — add() trades it for the Drive id.
+      const texture = el(
+        'input',
+        {
+          type: 'radio',
+          name: 'texture',
+          'data-texture': '',
+          value: p.url,
+          'aria-label': `Photo ${i + 1} is the texture photo`,
+        },
+        [],
+        doc,
+      );
       photoStrip.appendChild(
         el(
           'label',
           { class: 'card tile' },
-          [box, el('span', { class: 'mt' }, [check, ` ${i + 1}`], doc)],
+          [box, el('span', { class: 'mt' }, [check, ` ${i + 1}`, texture, ' texture'], doc)],
           doc,
         ),
       );
@@ -386,7 +448,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     f.width.value = rug.widthCm === undefined ? '' : String(rug.widthCm);
     f.length.value = rug.lengthCm === undefined ? '' : String(rug.lengthCm);
     f.material.value = rug.material;
-    f.method.value = rug.method;
+    setMethod(rug.method);
     f.age.value = rug.age;
     f.origin.value = rug.origin;
     f.price.value = rug.priceUsd === undefined ? '' : String(rug.priceUsd);
@@ -397,6 +459,9 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     f.supplierRef.value = rug.supplierRef;
     f.notes.value = rug.notes;
     f.photos.value = rug.photos.join('\n');
+    // The saved texture wins over whatever is ticked: fill() is the server's answer, not the form's.
+    for (const radio of doc.querySelectorAll<HTMLInputElement>('input[data-texture]'))
+      radio.checked = radio.value === (rug.textureId ?? '');
     f.version.value = rug.version;
   };
 
@@ -408,10 +473,11 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
       collections: multiSelectValues(collection),
       tags: chips.values(),
       photos: ids,
+      textureId: textureId(),
       widthCm: intOf(f.width.value),
       lengthCm: intOf(f.length.value),
       material: f.material.value.trim(),
-      method: f.method.value.trim(),
+      method: methodValue(),
       age: f.age.value.trim(),
       origin: f.origin.value.trim(),
       priceUsd: parsePrice(f.price.value),
@@ -447,7 +513,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     f.width.value = d.widthCm === undefined ? '' : String(d.widthCm);
     f.length.value = d.lengthCm === undefined ? '' : String(d.lengthCm);
     f.material.value = d.material ?? '';
-    f.method.value = d.method ?? '';
+    setMethod(d.method ?? '');
     f.age.value = d.age ?? '';
     f.origin.value = d.origin ?? '';
     f.price.value = d.suggestedRetailUsd === undefined ? '' : String(d.suggestedRetailUsd);
@@ -534,7 +600,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
       return;
     }
     // The rug number keys the sheet row and names the Drive folder, so a scrape without one has
-    // nowhere to land. It is the drawer's first field (P3 80:1480) and was previously checked only
+    // nowhere to land. It is the dialog's first field (P3 80:1480) and was previously checked only
     // on save — by which point the fetch had already run and the modal had already been reviewed.
     if (!f.id.value.trim()) {
       msg(m1, 'Give the product a number first.', 'err');
@@ -650,6 +716,8 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     setBusy(true);
     const startedAt = Date.now();
     let imported: string[] = [];
+    /** Supplier photo URL → the Drive id it landed as, so the ticked texture survives the import. */
+    let landedAs = new Map<string, string>();
     let photoNote = '';
     let folderId = '';
     let folderUrl = '';
@@ -691,8 +759,9 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
       }
       const outcome = p.ok
         ? p.data.photos
-        : ((p.body?.photos as Array<{ id?: string; error?: string }> | undefined) ?? []);
+        : ((p.body?.photos as Array<{ url?: string; id?: string; error?: string }> | undefined) ?? []);
       imported = outcome.filter((x) => x.id && !x.error).map((x) => x.id!);
+      landedAs = new Map(outcome.filter((x) => x.id && !x.error).map((x) => [x.url ?? '', x.id!] as const));
       const failed = outcome.filter((x) => x.error).length;
       if (p.ok)
         photoNote = `${imported.length} photo${imported.length === 1 ? '' : 's'} saved${failed ? `, ${failed} failed` : ''}.`;
@@ -701,6 +770,10 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     }
     const body = collect();
     body.photos = [...new Set([...imported, ...body.photos])];
+    /* The texture the studio ticked is one of the supplier's URLs until the import answers with the
+       file it became. A tick whose photo failed to upload — or that was never sent, because "Save
+       photos to Drive" is off — leaves the cell blank rather than pointing at nothing. */
+    if (!body.textureId) body.textureId = landedAs.get(texturePick()) ?? '';
     // `pending` marks a row whose photos did not all land; the catalogue shows it and offers Retry.
     body.commitStatus = urls.length === 0 ? '' : allLanded ? 'complete' : 'pending';
     body.driveFolderId = folderId;
@@ -828,7 +901,6 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
       f.width,
       f.length,
       f.material,
-      f.method,
       f.age,
       f.origin,
       f.price,
@@ -837,6 +909,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     ]) {
       node.value = '';
     }
+    setMethod('');
     f.description.value = '';
     f.notes.value = '';
     f.photos.value = '';

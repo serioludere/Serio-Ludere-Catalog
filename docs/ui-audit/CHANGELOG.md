@@ -347,6 +347,7 @@ catalogue sheet automatically after connecting Google; Antique / Signed badge on
 a password in front of the public catalogue.
 
 ### Dislikes removed
+
 - `VoteButtons.astro` and `customer/Reactions.astro` render one Like control. The reactions API
   refuses `dislike` with 400 (`lib/votes/handler.ts`); rows that already carry it still parse.
 - Public card and detail page show `N likes` from 5 (`lib/likes.ts`, shared with the browser bundle
@@ -355,20 +356,24 @@ a password in front of the public catalogue.
   "Most liked", Likes column only.
 
 ### Like counts in the admin
+
 - `lib/admin/likes.ts` reads the Reactions tab alongside the admin ranges and returns a
   `likesById` map (distinct customers currently liking). Products table has a Likes column
   (`.irow__likes`), the grid card a `♥ n` chip (`.card .lk`), the edit page footer `n likes · added …`.
 
 ### Google: sheet created on connect
+
 - `lib/admin/provision-sheet.ts` holds the create-and-set-up logic; the OAuth callback calls it when
   no sheet exists and redirects with `sheet=created|failed|skipped` (+ plain-language detail).
   `POST /api/admin/google/provision` remains as the retry, with the form copy changed to say so.
 
 ### Antique / Signed on the public card
+
 - `RugCard.astro` renders `badgesFor(tags)` as `<ul class="card-badges">` top-left of the plate
   (pointer-events none), styled in `editorial.css` like the preview badge.
 
 ### Site password (`SITE_PASSWORD_HASH`)
+
 - `lib/site/gate.ts` (pure) + `lib/site/http.ts` (env) + `middleware.ts` `site` step: `/`, `/rugs/*`,
   `/tags/*` redirect to `/enter?next=…`; `/api/catalogue` answers 401. Cookie `__Host-sl_site`
   (30 days, HMAC over expiry, signed with `AUTH_SECRET` or `ADMIN_SESSION_SECRET`).

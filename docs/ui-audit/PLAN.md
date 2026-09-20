@@ -5,20 +5,20 @@
 Phase 1 produced 129 verified findings across six dimensions. 21 further findings were raised and then
 **refuted** on re-check and are recorded at the foot of each dimension file rather than deleted.
 
-| Dimension | File | P0 | P1 | P2 | Kept | Refuted |
-| --- | --- | ---: | ---: | ---: | ---: | ---: |
-| A · Visual primitives | [01-tokens.md](01-tokens.md) | 0 | 0 | 22 | 22 | 1 |
-| B · Layout & responsive | [02-layout.md](02-layout.md) | 1 | 2 | 10 | 13 | 9 |
-| C · Component inventory | [03-components.md](03-components.md) | 0 | 0 | 17 | 17 | 1 |
-| D · Navigation & IA | [04-navigation.md](04-navigation.md) | 1 | 3 | 18 | 22 | 2 |
-| E · Forms | [05-forms.md](05-forms.md) | 2 | 1 | 19 | 22 | 3 |
-| F · A11y & performance | [06-a11y-perf.md](06-a11y-perf.md) | 2 | 2 | 29 | 33 | 5 |
-| **Total** | | **6** | **8** | **115** | **129** | **21** |
+| Dimension               | File                                 |    P0 |    P1 |      P2 |    Kept | Refuted |
+| ----------------------- | ------------------------------------ | ----: | ----: | ------: | ------: | ------: |
+| A · Visual primitives   | [01-tokens.md](01-tokens.md)         |     0 |     0 |      22 |      22 |       1 |
+| B · Layout & responsive | [02-layout.md](02-layout.md)         |     1 |     2 |      10 |      13 |       9 |
+| C · Component inventory | [03-components.md](03-components.md) |     0 |     0 |      17 |      17 |       1 |
+| D · Navigation & IA     | [04-navigation.md](04-navigation.md) |     1 |     3 |      18 |      22 |       2 |
+| E · Forms               | [05-forms.md](05-forms.md)           |     2 |     1 |      19 |      22 |       3 |
+| F · A11y & performance  | [06-a11y-perf.md](06-a11y-perf.md)   |     2 |     2 |      29 |      33 |       5 |
+| **Total**               |                                      | **6** | **8** | **115** | **129** |  **21** |
 
 ### Severity re-grade — disclosed
 
 The verification pass returned **zero P0** across all 129 findings. I re-examined its calibration against
-its own definition (*"P0 = actively broken or inaccessible for real users"*) and **re-graded six finding
+its own definition (_"P0 = actively broken or inaccessible for real users"_) and **re-graded six finding
 IDs from P1 to P0** — B-01, F-28, E-04, F-23, E-03, D-07 — each after reading the code myself. E-03 and
 D-07 are the same defect cross-listed in two dimensions, so those six IDs are **five distinct defects**.
 The other 123 findings keep the verifier's grade.
@@ -42,15 +42,15 @@ Ranked by harm done, not by ease of fix.
 Below that the **document** scrolls sideways, not the table — so the nav rail and page header scroll away
 with it. **1920px at 200% zoom is 960 CSS px and lands squarely in the failing band.** So does a 1280px
 laptop at 125%. The same defect hits `.filterbar` (`src/styles/components.css:605`), whose children are
-also `flex: none` (280px + 180px + two 36px buttons = 580px floor), giving horizontal overflow at *every*
+also `flex: none` (280px + 180px + two 36px buttons = 580px floor), giving horizontal overflow at _every_
 width under ~628px.
 
 → **F-28, B-01.** P0. Reflow is a conformance failure, not a preference.
 
 ### ② Every status message in admin is silent to assistive technology
 
-`msg()` (`src/scripts/admin/msg.ts:7-13`) does three things in the wrong order: it inserts content, *then*
-adds the `on` class, *then* sets `role`. The element is `display: none` until `on` arrives
+`msg()` (`src/scripts/admin/msg.ts:7-13`) does three things in the wrong order: it inserts content, _then_
+adds the `on` class, _then_ sets `role`. The element is `display: none` until `on` arrives
 (`src/styles/admin.css:174-183`) — so at the instant content is inserted the node is **not in the
 accessibility tree at all**, and the role lands after the mutation a live region exists to announce.
 
@@ -69,7 +69,7 @@ An ARIA `table` owns `row` and `rowgroup`. A roleless `div` is not a row, so the
 a table containing one header row and no data — whether it holds 4 products or 400. Table navigation mode
 is dead.
 
-→ **F-23.** P0. WCAG 1.3.1 Info and Relationships (A). The irony: this markup exists *because* someone
+→ **F-23.** P0. WCAG 1.3.1 Info and Relationships (A). The irony: this markup exists _because_ someone
 reached for ARIA. A real `<table>` would have been correct for free.
 
 ### ④ Resetting a client password silently discards it
@@ -90,16 +90,16 @@ error. Enter is the expected key in a one-field dialog.
 is exactly right — and incomplete. Independently computed (method and workings in
 [06-a11y-perf.md](06-a11y-perf.md) Table 3):
 
-| Token | Ground | Ratio | Needs | |
-| --- | --- | ---: | ---: | --- |
-| `--success` #307a07 | surface / raised | 3.18 / 1.96 | 4.5 | documented |
-| `--danger` #cb2b2b | surface / raised | 3.18 / 1.97 | 4.5 | documented |
-| `--ink-muted` #8c8b84 | raised, subtle | 3.08 | 4.5 | **missed** |
-| `--warning` #ed8a00 | raised, subtle | 4.13 | 4.5 | **missed** |
-| `--brand` / `--accent` #b80d09 | all grounds | 2.72 / 2.52 / 1.55 | 4.5 | **missed** |
-| `--text-on-action` #000000 | on `--action-primary-hover` | 3.10 | 4.5 | **missed** |
-| `--text-on-action` #000000 | on `--action-primary-active` | 2.46 | 4.5 | **missed** |
-| `--rule` #403f3c | on raised, subtle | **1.00** | — | **missed** |
+| Token                          | Ground                       |              Ratio | Needs |            |
+| ------------------------------ | ---------------------------- | -----------------: | ----: | ---------- |
+| `--success` #307a07            | surface / raised             |        3.18 / 1.96 |   4.5 | documented |
+| `--danger` #cb2b2b             | surface / raised             |        3.18 / 1.97 |   4.5 | documented |
+| `--ink-muted` #8c8b84          | raised, subtle               |               3.08 |   4.5 | **missed** |
+| `--warning` #ed8a00            | raised, subtle               |               4.13 |   4.5 | **missed** |
+| `--brand` / `--accent` #b80d09 | all grounds                  | 2.72 / 2.52 / 1.55 |   4.5 | **missed** |
+| `--text-on-action` #000000     | on `--action-primary-hover`  |               3.10 |   4.5 | **missed** |
+| `--text-on-action` #000000     | on `--action-primary-active` |               2.46 |   4.5 | **missed** |
+| `--rule` #403f3c               | on raised, subtle            |           **1.00** |     — | **missed** |
 
 `--rule` resolving identical to the surface it divides is the notable one: the hairline is not
 low-contrast, it is **invisible**. See §3 for why the root cause is `--surface-raised`, and for the
@@ -111,12 +111,12 @@ decision I need from you.
 
 ### Runners-up, for the record
 
-| | Finding | Why it nearly made the list |
-| --- | --- | --- |
-| ⑥ | **F-31** — every thumbnail on the customer detail page is fetched at `w=1600` (`src/lib/view.ts:146`) to paint a 96×120 box | ~16× the needed pixels, ×5 thumbs, on a buyer-facing page that is never cached. The worst pure-performance defect found. **Customer realm — findings-only.** |
-| ⑦ | **D-01** — below 767px, `.shell__brand` and `.shell__link--secondary` are hidden (`src/styles/components.css:1337`, `:1359`), removing the only links to `/admin`, `/admin/audit` and `/admin/google` with no replacement | Google is where a broken Drive connection is repaired, and a phone is where you discover it is broken. `AppShell.astro:12` explicitly warns that dropping these "would strand them". |
-| ⑧ | **E-02** — only 2 of ~18 admin submit paths work without JavaScript, and both are login | A project whose stated identity is zero islands and progressive enhancement. The 27-control rug form is a bare `<div>`. |
-| ⑨ | **D-03** — the only sign-out control in admin is a 16×16 icon button (`src/styles/components.css:1257-1260`, default `size=16` at `src/components/ui/Icon.astro:40`) | 13% of the 44×44 minimum, unchanged on mobile. |
+|     | Finding                                                                                                                                                                                                                   | Why it nearly made the list                                                                                                                                                          |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| ⑥   | **F-31** — every thumbnail on the customer detail page is fetched at `w=1600` (`src/lib/view.ts:146`) to paint a 96×120 box                                                                                               | ~16× the needed pixels, ×5 thumbs, on a buyer-facing page that is never cached. The worst pure-performance defect found. **Customer realm — findings-only.**                         |
+| ⑦   | **D-01** — below 767px, `.shell__brand` and `.shell__link--secondary` are hidden (`src/styles/components.css:1337`, `:1359`), removing the only links to `/admin`, `/admin/audit` and `/admin/google` with no replacement | Google is where a broken Drive connection is repaired, and a phone is where you discover it is broken. `AppShell.astro:12` explicitly warns that dropping these "would strand them". |
+| ⑧   | **E-02** — only 2 of ~18 admin submit paths work without JavaScript, and both are login                                                                                                                                   | A project whose stated identity is zero islands and progressive enhancement. The 27-control rug form is a bare `<div>`.                                                              |
+| ⑨   | **D-03** — the only sign-out control in admin is a 16×16 icon button (`src/styles/components.css:1257-1260`, default `size=16` at `src/components/ui/Icon.astro:40`)                                                      | 13% of the 44×44 minimum, unchanged on mobile.                                                                                                                                       |
 
 ---
 
@@ -133,6 +133,7 @@ F-23 (ARIA table) · E-03 + D-07 (dialog Enter, cross-listed).
 8×35px) · E-02 (no-JS) · F-31 (thumbnail weight) · F-16 (two of three public routes have no `<h1>`).
 
 **P2 (115)** — dominated by three themes:
+
 - **~40** hardcoded values that should be tokens (dimension A), concentrated in `admin.css` and scoped blocks.
 - **~35** missing component states — the state matrix in [03-components.md](03-components.md) marks every
   gap; `focus-visible`, `disabled`, `loading` and `empty` are the most frequently absent.
@@ -148,7 +149,7 @@ F-23 (ARIA table) · E-03 + D-07 (dialog Enter, cross-listed).
 ### What already exists, and is good
 
 The semantic tier is **already built and machine-enforced**: `src/styles/modes.css` defines primitives at
-`:root` (`:21`, marked *"Never read these from a component"*) and 63 semantic tokens across three modes,
+`:root` (`:21`, marked _"Never read these from a component"_) and 63 semantic tokens across three modes,
 pinned value-by-value in `tests/unit/styles/token-cascade.test.ts`. Its a11y deviations from the Figma
 handoff are documented with measured ratios.
 
@@ -157,11 +158,11 @@ What follows is only what is genuinely missing.
 
 ### 3.1 Resolve the `tokens.css` / `modes.css` duplication — P1
 
-`src/styles/tokens.css:1` says *"Do not edit values"*, but `modes.css` loads after it in all three layouts
+`src/styles/tokens.css:1` says _"Do not edit values"_, but `modes.css` loads after it in all three layouts
 and shadows most of them. `--mono` is the clearest casualty: `tokens.css:11` names JetBrains Mono,
 `modes.css:93` and `:248` override to IBM Plex Mono, and no layout ever loads JetBrains Mono.
 
-**Proposal:** keep `tokens.css` as the byte-parity record for the public catalogue *only* (it is cited by
+**Proposal:** keep `tokens.css` as the byte-parity record for the public catalogue _only_ (it is cited by
 `catalogue.css`), and annotate every property in it that never wins with a one-line comment naming the
 `modes.css` line that beats it. No value changes. This makes the freeze honest instead of misleading.
 
@@ -190,7 +191,7 @@ values. Proposed:
 
 Per your decision, admin + preview + `components.css` unify on the token steps; `editorial.css` keeps
 480/700/899/900 untouched. Custom properties cannot be used in `@media` conditions, so these are
-documentation constants plus a container scale that *is* usable:
+documentation constants plus a container scale that _is_ usable:
 
 ```
 /* breakpoints (documentation — @media cannot read custom properties) */
@@ -207,22 +208,22 @@ from the light-mode neutral ramp. It is far too light for a dark canvas, and it 
 `--subtle` and `--rule` — which is why the hairline vanishes.
 
 Fixing only the hues does not work, because `.modal`, `.fetch`, `.credential` and `.msel__panel` all fill
-with `--surface-raised` (`src/styles/components.css:823`, `:1042`, `:1440`, `:1816`) and *do* render status
+with `--surface-raised` (`src/styles/components.css:823`, `:1042`, `:1440`, `:1816`) and _do_ render status
 text. I solved for both constraints:
 
-| | Option A — elevation by border | Option B — keep the lighter fill |
-| --- | --- | --- |
-| `--surface-raised` | `#1c1c1c` (= surface) + 1px `--border-strong` edge | `#2a2a2a` |
-| `--success` | `#5b963b` | `#74a659` |
-| `--danger` | `#d96262` | `#dc7171` |
-| `--ink-muted` | `#afaea9` | `#afaea9` |
-| `--rule` | `#3a3936` (separated from surface-raised) | `#3a3936` |
-| Feedback contrast | 4.76–5.15 on every ground | 4.54–5.02 on every ground |
-| Raised panel legibility | carried by a visible 1px edge | **1.19:1** against surface — barely perceptible |
-| Hue fidelity | holds saturation; reads as success/danger | 33% white-mix; `#dc7171` reads pink |
+|                         | Option A — elevation by border                     | Option B — keep the lighter fill                |
+| ----------------------- | -------------------------------------------------- | ----------------------------------------------- |
+| `--surface-raised`      | `#1c1c1c` (= surface) + 1px `--border-strong` edge | `#2a2a2a`                                       |
+| `--success`             | `#5b963b`                                          | `#74a659`                                       |
+| `--danger`              | `#d96262`                                          | `#dc7171`                                       |
+| `--ink-muted`           | `#afaea9`                                          | `#afaea9`                                       |
+| `--rule`                | `#3a3936` (separated from surface-raised)          | `#3a3936`                                       |
+| Feedback contrast       | 4.76–5.15 on every ground                          | 4.54–5.02 on every ground                       |
+| Raised panel legibility | carried by a visible 1px edge                      | **1.19:1** against surface — barely perceptible |
+| Hue fidelity            | holds saturation; reads as success/danger          | 33% white-mix; `#dc7171` reads pink             |
 
 **Recommendation: Option A.** Carrying elevation on a border rather than a lighter fill is standard in dark
-UI, it keeps the feedback hues saturated enough to still *mean* success and danger, and it fixes `--rule`
+UI, it keeps the feedback hues saturated enough to still _mean_ success and danger, and it fixes `--rule`
 as a side effect. Option B forces a choice between pastel feedback colours and an invisible raised panel.
 
 Either way `--text-on-action` must be overridden inside the dark block — it currently inherits `#000000`
@@ -236,16 +237,16 @@ Admin-only for code changes, per your scope decision. Each batch is independentl
 independently revertible. **Blast radius is stated per batch and was verified by grepping for every
 consumer of each selector touched.**
 
-| # | Batch | Addresses | Files | Blast radius | Risk |
-| --- | --- | --- | --- | --- | --- |
-| **1** | **Correctness P0s** — reorder `msg()` so role and visibility precede content; give `RugRow` `role="row"` and its cells `role="cell"`; add a real submit button to the password dialog | E-04, F-23, E-03/D-07 | `src/scripts/admin/msg.ts`, `src/components/admin/RugRow.astro`, `src/pages/admin/clients.astro` | **admin only.** `msg.ts` is imported by 9 admin scripts and nothing else; `RugRow` by `RugTable` only | Low. No visual change. |
-| **2** | **Reflow P0** — `overflow-x: auto` on `.rugtable` with a focusable scroll container; `flex-wrap` + `flex: 1 1 <basis>` on `.filterbar` children below 768 | F-28, B-01 | `src/styles/components.css` | `.rugtable*`/`.irow__*`/`.filterbar*` are rendered **only** by `RugTable`/`FilterBar`, imported only by `src/pages/admin/rugs/index.astro`. Public and customer render zero such nodes — verified by grep | Low-Med. Shared file, admin-only selectors. |
-| **3** | **Token tiers** — annotate shadowed `tokens.css` properties; add component tier, z-index scale, breakpoint constants; cap `.fields` and `.shell__content` | §3.1–3.4, B-10 | `src/styles/tokens.css` (comments only), `src/styles/admin.css` | admin; `tokens.css` edits are comments, zero computed change | Low. `token-cascade.test.ts` must stay green. |
-| **4** | **Dark mode** — apply the chosen option, override `--text-on-action`, add the toggle | §3.5, F-01…F-06 | `src/styles/modes.css`, `AdminLayout.astro`, one small script | admin only (`[data-mode='admin-dark']` block). **Updates `token-cascade.test.ts` EXPECTED — by design** | Med. Needs contrast re-verification of all three modes. |
-| **5** | **Component states** — `focus-visible`, `disabled`, `loading`, `empty` across `src/components/ui/*` per the state matrix | ~35 P2s | `src/components/ui/*`, `src/styles/components.css` | `ui/*` is **admin-only** — confirmed: no public or customer page imports it | Med. Largest batch; split if review is slow. |
-| **6** | **Nav & targets** — restore mobile access to `/admin`, `/admin/audit`, `/admin/google`; bring logout and row actions to 44×44 | D-01, D-03 | `src/styles/components.css`, `AppShell.astro` | admin (`.shell__*` rendered only by `AppShell`, imported only by `AdminLayout`) | Med. No JS drawer — CSS-only or a link to the dashboard. |
-| **7** | **Motion** — collapse ten reduced-motion implementations into one global block | F-table-4, D5 | all six sheets | **all three realms.** Behaviour-preserving, but must be verified against the locked surfaces | Med-High. Touches locked realms — do last, verify with `npm run qa`. |
-| **8** | **Forms** — real `<label>`s, `autocomplete`, `inputmode`, error placement; native `<form action>` where the endpoint already exists | ~19 P2s, E-02 | `src/components/ui/Input.astro`, `RugFields.astro`, admin pages | admin | Med. Full no-JS parity is a larger project — see §5. |
+| #     | Batch                                                                                                                                                                                 | Addresses             | Files                                                                                            | Blast radius                                                                                                                                                                                              | Risk                                                                 |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| **1** | **Correctness P0s** — reorder `msg()` so role and visibility precede content; give `RugRow` `role="row"` and its cells `role="cell"`; add a real submit button to the password dialog | E-04, F-23, E-03/D-07 | `src/scripts/admin/msg.ts`, `src/components/admin/RugRow.astro`, `src/pages/admin/clients.astro` | **admin only.** `msg.ts` is imported by 9 admin scripts and nothing else; `RugRow` by `RugTable` only                                                                                                     | Low. No visual change.                                               |
+| **2** | **Reflow P0** — `overflow-x: auto` on `.rugtable` with a focusable scroll container; `flex-wrap` + `flex: 1 1 <basis>` on `.filterbar` children below 768                             | F-28, B-01            | `src/styles/components.css`                                                                      | `.rugtable*`/`.irow__*`/`.filterbar*` are rendered **only** by `RugTable`/`FilterBar`, imported only by `src/pages/admin/rugs/index.astro`. Public and customer render zero such nodes — verified by grep | Low-Med. Shared file, admin-only selectors.                          |
+| **3** | **Token tiers** — annotate shadowed `tokens.css` properties; add component tier, z-index scale, breakpoint constants; cap `.fields` and `.shell__content`                             | §3.1–3.4, B-10        | `src/styles/tokens.css` (comments only), `src/styles/admin.css`                                  | admin; `tokens.css` edits are comments, zero computed change                                                                                                                                              | Low. `token-cascade.test.ts` must stay green.                        |
+| **4** | **Dark mode** — apply the chosen option, override `--text-on-action`, add the toggle                                                                                                  | §3.5, F-01…F-06       | `src/styles/modes.css`, `AdminLayout.astro`, one small script                                    | admin only (`[data-mode='admin-dark']` block). **Updates `token-cascade.test.ts` EXPECTED — by design**                                                                                                   | Med. Needs contrast re-verification of all three modes.              |
+| **5** | **Component states** — `focus-visible`, `disabled`, `loading`, `empty` across `src/components/ui/*` per the state matrix                                                              | ~35 P2s               | `src/components/ui/*`, `src/styles/components.css`                                               | `ui/*` is **admin-only** — confirmed: no public or customer page imports it                                                                                                                               | Med. Largest batch; split if review is slow.                         |
+| **6** | **Nav & targets** — restore mobile access to `/admin`, `/admin/audit`, `/admin/google`; bring logout and row actions to 44×44                                                         | D-01, D-03            | `src/styles/components.css`, `AppShell.astro`                                                    | admin (`.shell__*` rendered only by `AppShell`, imported only by `AdminLayout`)                                                                                                                           | Med. No JS drawer — CSS-only or a link to the dashboard.             |
+| **7** | **Motion** — collapse ten reduced-motion implementations into one global block                                                                                                        | F-table-4, D5         | all six sheets                                                                                   | **all three realms.** Behaviour-preserving, but must be verified against the locked surfaces                                                                                                              | Med-High. Touches locked realms — do last, verify with `npm run qa`. |
+| **8** | **Forms** — real `<label>`s, `autocomplete`, `inputmode`, error placement; native `<form action>` where the endpoint already exists                                                   | ~19 P2s, E-02         | `src/components/ui/Input.astro`, `RugFields.astro`, admin pages                                  | admin                                                                                                                                                                                                     | Med. Full no-JS parity is a larger project — see §5.                 |
 
 **Gate after each batch:** `npm run build` (runs `astro check`), `npm test`, and for batches 2, 4, 6, 7
 a built run plus `npm run qa`, since **CSP and the route cache are inert in `astro dev`**.
@@ -258,7 +259,7 @@ Batches 1–2 are the ones I would ship first regardless of what else is approve
 
 1. **`RugTable` should be a real `<table>`.** The ARIA scaffolding at `src/components/admin/RugTable.astro:22`
    reimplements, incorrectly, what HTML gives for free. Fixing the roles (batch 1) makes it conformant;
-   replacing the divs with `<table><thead><tbody>` would make it *correct*, and delete the ARIA entirely.
+   replacing the divs with `<table><thead><tbody>` would make it _correct_, and delete the ARIA entirely.
    Larger diff, better outcome. **Your call — I have planned the conformant fix, not the rewrite.**
 
 2. **No-JS parity is claimed more than it is practised.** Only 2 of ~18 admin submit paths work without
@@ -266,8 +267,8 @@ Batches 1–2 are the ones I would ship first regardless of what else is approve
    endpoints already exist and accept POST; most forms could be native `<form action method>` progressively
    enhanced. That is a genuine project, not a batch — flagging it, not scheduling it.
 
-3. **Admin renders raw ISO timestamps next to friendly ones** — `2026-09-09T10:58:18.519Z` in *Created*
-   beside `Sep 9, 11:31 AM` in *Last seen*, in the same table. Formatting is presentation, so it is mine to
+3. **Admin renders raw ISO timestamps next to friendly ones** — `2026-09-09T10:58:18.519Z` in _Created_
+   beside `Sep 9, 11:31 AM` in _Last seen_, in the same table. Formatting is presentation, so it is mine to
    fix; the inconsistency reads as unfinished. **FLAG — confirm before I touch it**, as it borders on content.
 
 4. **Tag names are inconsistently capitalised** in the customer filter rail — `Kilim`, `Denizli`,

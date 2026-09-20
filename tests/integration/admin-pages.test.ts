@@ -191,6 +191,13 @@ describe('/admin/rugs', () => {
     // two-value enum, so a 180px select for two options is furniture. Typing "karavan" finds them.
     expect(html).toContain('data-search="winks sl-021 1389 winks karavanrug"');
     expect(html).toContain('api/image/1U8FwNPCdm-n8RUvSNRcJLBA_27u-Pjkb?w=800');
+    // Add product opens a CENTRED, wide modal (owner, 2026-09-20), not the 480px slide-over it was:
+    // the form is two columns of fields and a description worth writing, and a 480px drawer made
+    // every one of them a single cramped column. Opener, id and the no-JS page are unchanged.
+    expect(html).toContain('<dialog id="add-rug" class="modal modal--wide"');
+    expect(html).not.toContain('class="drawer"');
+    expect(html).toContain('data-open="add-rug"');
+    expect(html).toContain('href="/admin/rugs/new"');
     expect(html).toContain('data-rot="0"');
     expect(html).toContain('135 × 190 cm');
     expect(html).toContain('$576');

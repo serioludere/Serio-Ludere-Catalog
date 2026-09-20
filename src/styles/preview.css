@@ -354,14 +354,19 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: var(--stack-2xl);
+  align-items: center;
+  /* 24 between five links on one row, where 48 between three groups left the row wider than the
+     grid above it. Row and column gap are the same, so a wrapped line keeps the rhythm. */
+  gap: var(--stack-xl);
 }
 
+/* One line, all five (owner, 2026-09-20). The channels used to be three stacked pairs — site over
+   e-mail, the two WhatsApp numbers, Instagram alone — which read as a little table with a ragged
+   last column. `display: contents` dissolves the grouping WITHOUT touching the markup, so the five
+   links become direct children of the row above and take one even gap between them; they still wrap
+   one at a time on a narrow screen rather than folding back into columns. */
 .pv-contact-group {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--stack-xs);
+  display: contents;
 }
 
 .pv-contact {

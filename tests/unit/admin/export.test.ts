@@ -25,7 +25,7 @@ import { rugRow } from '../../helpers/ranges.ts';
 
 const header = (): CellValue[] => [...HEADERS.Products];
 
-/** The header row plus `rows`, as `Products!A1:AP` comes back from batchGet. */
+/** The header row plus `rows`, as `Products!A1:AQ` comes back from batchGet. */
 const values = (...rows: CellValue[][]): CellValue[][] => [header(), ...rows];
 
 describe('column order (brief §9)', () => {
@@ -67,7 +67,7 @@ describe('column order (brief §9)', () => {
       'Published',
     ]);
     expect(row[23]).toBe('Product ID');
-    expect(row.at(-1)).toBe('Internal Notes');
+    expect(row.at(-1)).toBe('Texture Image');
     expect(row.every((label) => PRODUCT_HEADER_LABELS.includes(label as never))).toBe(true);
   });
 });

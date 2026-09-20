@@ -45,6 +45,12 @@ export interface Product {
   /** `Image Src` verbatim, whatever shape it has (Drive id, Drive URL or an https URL). */
   imageSrc: string;
   imageAltText: string;
+  /**
+   * `Texture Image` — the Drive file id of the close-up of the weave (owner, 2026-09-20), shown in
+   * the buyer's product popup where the marker chips used to sit. Normally one of `photos`; `''` when
+   * the studio has not chosen one, and the popup then shows the markers as before.
+   */
+  textureId: string;
   widthCm?: number;
   lengthCm?: number;
   /** `Size Label`, e.g. "240 × 170 cm"; derived when the column is blank. */

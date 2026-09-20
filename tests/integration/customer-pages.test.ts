@@ -50,8 +50,16 @@ vi.mock('../../src/lib/runtime.ts', async () => {
       const parsed = parse(
         build({
           rugs: [
-            row({ id: 'SL-021' }),
-            row({ id: 'SL-022', name: 'Yellow', slug: 'yellow', collection: 'Kilims' }),
+            // SL-021 carries a texture photograph; SL-022 carries a marker tag and no texture, which
+            // is the other half of the product popup's one either/or (owner, 2026-09-20).
+            row({ id: 'SL-021', texture: '1TeXtUrE0000000000000000000000000' }),
+            row({
+              id: 'SL-022',
+              name: 'Yellow',
+              slug: 'yellow',
+              collection: 'Kilims',
+              tags: 'Kilim|Signed',
+            }),
           ],
           collections: [['c1', 'Kilims', 'kilims', 'Flatweaves from Denizli.', '', '', 1]],
           customers: [
@@ -182,6 +190,29 @@ describe('/{slug} — the signed-in catalog', () => {
     expect(html).not.toContain('Enquire');
     // A private preview is never indexed.
     expect(html).toContain('noindex');
+  });
+
+  it('shows the texture photograph in the product popup, or the markers when there is none', async () => {
+    // Owner, 2026-09-20: the popup's one either/or. A rug with a texture chosen shows the weave up
+    // close where the marker chips used to be; a rug without one keeps the chips, so the slot is
+    // never an empty gap. Both templates are server-rendered beside the grid, which is why one page
+    // is enough to see both halves.
+    state.down = false;
+    const { html } = await render(CustomerCatalog, '/hala', { slug: 'hala' }, { customer: 'hala' });
+    const templateFor = (id: string): string =>
+      html.slice(html.indexOf(`data-detail="${id}"`), html.indexOf(`data-detail="${id}"`) + 4000);
+
+    const withTexture = templateFor('SL-021');
+    expect(withTexture).toContain('pv-modal__texture');
+    expect(withTexture).toContain('1TeXtUrE0000000000000000000000000');
+    expect(withTexture).toContain('the weave up close');
+    expect(withTexture).not.toContain('pv-modal__marker');
+
+    const withMarkers = templateFor('SL-022');
+    expect(withMarkers).not.toContain('pv-modal__texture');
+    expect(withMarkers).toContain('pv-modal__marker');
+    // Capitalised again on 2026-09-20 (owner), from the one BADGE_TAG_NAMES list.
+    expect(withMarkers).toContain('>Signed<');
   });
 
   it('never ships a like count below the threshold — not even in an attribute', async () => {

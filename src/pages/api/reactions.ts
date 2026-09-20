@@ -113,9 +113,7 @@ function withVisibleCounts(body: ReactionsResponseBody, isNamedCustomer: boolean
     ...body,
     results: body.results.map((r) => {
       const shown = visibleLikes(r.likes);
-      return shown === undefined
-        ? { ...r, likes: 0, dislikes: 0, rating: 0 }
-        : { ...r, likes: shown };
+      return shown === undefined ? { ...r, likes: 0, dislikes: 0, rating: 0 } : { ...r, likes: shown };
     }),
   };
 }

@@ -245,7 +245,6 @@ describe('deleting collections', () => {
     expect(cache.busts).toBe(1);
   });
 
-
   it('refuses a stale version rather than deleting whatever is there now', async () => {
     const res = await collectionDeletePost(
       ctx({

@@ -56,13 +56,13 @@ describe('the Products contract', () => {
       expect(label, `${key} → column ${index}`).toBeDefined();
     }
     expect(PRODUCT_COLS.productId).toBe(0);
-    expect(PRODUCT_COLS.internalNotes).toBe(PRODUCT_WIDTH - 1);
+    expect(PRODUCT_COLS.textureImage).toBe(PRODUCT_WIDTH - 1);
     expect(new Set(Object.values(PRODUCT_COLS)).size).toBe(Object.values(PRODUCT_COLS).length);
   });
 
   it('reads every tab the brief names, in one batch', () => {
     expect(READ_RANGES).toEqual([
-      'Products!A1:AP',
+      'Products!A1:AQ',
       'Collections!A1:G',
       'Tags!A1:D',
       'Rates!A1:D',

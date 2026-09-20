@@ -27,6 +27,7 @@ const PRODUCT_BASE = {
   scrapedAt: '',
   commitStatus: '' as const,
   internalNotes: '',
+  textureId: '',
 };
 
 function rug(id: string, name: string): Rug {

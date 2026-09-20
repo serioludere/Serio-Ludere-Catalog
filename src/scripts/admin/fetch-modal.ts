@@ -32,7 +32,6 @@ export interface FetchedField {
   error?: string;
 }
 
-
 export interface FetchModalParts {
   dialog: HTMLDialogElement;
   title: HTMLElement;

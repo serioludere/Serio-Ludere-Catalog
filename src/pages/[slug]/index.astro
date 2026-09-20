@@ -201,6 +201,12 @@ const showGate = !error && Boolean(customer) && !signedIn;
      it sits under; it is body size now, runs the full width of the grid, and is clamped to three
      lines with a 'read more' under it. */
   .pv-collection-intro {
+    /* Owner, 2026-09-20: it sat 8px under the tab strip while every other band on this page is 64
+       apart, so the description read as part of the tabs rather than as the introduction to the
+       rugs. 24 is the page's next step up (--stack-xl) and leaves the strip and the paragraph as
+       two things; the 'read more' stays at 8 because it belongs to THIS paragraph, and nesting a
+       small step inside a large one is what makes the rhythm read as deliberate. */
+    margin-top: var(--stack-xl);
     max-width: none;
     font-size: var(--text-base);
     display: -webkit-box;

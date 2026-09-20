@@ -74,6 +74,15 @@ export const RugInput = z.object({
   collections: CollectionList, // each must match a Collections.name (case-insensitive)
   tags: z.array(TagName).max(20).default([]),
   photos: z.array(z.string().regex(DRIVE_ID_RE)).max(12).default([]), // src/lib/images.ts DRIVE_ID_RE
+  /**
+   * The texture photograph (owner, 2026-09-20): the Drive id of the close-up the buyer's popup
+   * shows. `''` is "none", which is also what an omitted field means — a full-width row write
+   * clears the cell, and that is the honest reading of a form that sent no choice.
+   *
+   * Not checked against `photos`: the studio may point at a photograph that lives in the product's
+   * Drive folder without being one of the twelve on the row, and a 422 there would be a puzzle.
+   */
+  textureId: z.union([z.literal(''), z.string().regex(DRIVE_ID_RE)]).default(''),
   widthCm: z.number().int().min(10).max(2000).optional(),
   lengthCm: z.number().int().min(10).max(2000).optional(),
   material: Text(80),

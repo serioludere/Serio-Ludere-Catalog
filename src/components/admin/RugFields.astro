@@ -6,6 +6,7 @@
 import type { AdminCollection, AdminRug, AdminTag } from '../../lib/admin/read.ts';
 import { driveImageUrl } from '../../lib/images.ts';
 import { BADGE_TAG_NAMES } from '../../lib/view.ts';
+import { METHOD_OPTIONS, otherMethods, splitMethods } from '../../lib/method.ts';
 import Chips from './Chips.astro';
 import MultiSelect from '../ui/MultiSelect.astro';
 
@@ -57,6 +58,8 @@ const ownTags = rug?.tags.filter((t) => t.trim()) ?? [];
 const PRESET_TAGS = BADGE_TAG_NAMES;
 // Membership, not the primary: the form must tick every collection the rug is filed under.
 const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().toLowerCase()));
+// The techniques this rug carries, canonically spelled, so the boxes come up ticked (owner, 2026-09-20).
+const chosenMethods = new Set(splitMethods(rug?.method));
 ---
 
 {
@@ -201,7 +204,12 @@ const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().t
     </div>
     <div class="f wide">
       <label for="f_description">Description</label>
-      <textarea id="f_description" rows="3">{rug?.description ?? ''}</textarea>
+      {
+        /* Six rows, not three (owner, 2026-09-20): this is the paragraph the buyer reads under the
+          rug, and editing it three lines at a time — inside what used to be a 480px drawer — meant
+          scrolling a box to re-read your own sentence. It resizes vertically from there. */
+      }
+      <textarea id="f_description" rows="6">{rug?.description ?? ''}</textarea>
     </div>
     <div class="f">
       <label for="f_width">Width (cm)</label>
@@ -219,8 +227,26 @@ const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().t
       <input id="f_material" value={rug?.material ?? ''} />
     </div>
     <div class="f">
-      <label for="f_method">Method</label>
-      <input id="f_method" value={rug?.method ?? ''} />
+      {
+        /* Four techniques as checkboxes (owner, 2026-09-20), not a free-text box: the studio was typing
+          the same four strings, three spellings apart. A rug may carry more than one — a piece can be
+          both flatweave and hand-loomed — and rug-form.ts joins what is ticked back into the single
+          `Method` cell the sheet, the spec panel and the Shopify export all still read.
+
+          Anything a row already carries that is NOT one of the four (a scraped "Handmade pile rug")
+          rides along as an extra ticked option rather than being silently dropped on the next save. */
+      }
+      <span class="f__legend">Method</span>
+      <div id="f_method" class="methods" role="group" aria-label="Method">
+        {
+          [...METHOD_OPTIONS, ...otherMethods(rug?.method)].map((m) => (
+            <label class="chk">
+              <input type="checkbox" data-method value={m} checked={chosenMethods.has(m)} />
+              {m}
+            </label>
+          ))
+        }
+      </div>
     </div>
     <div class="f">
       <label for="f_age">Age</label>
@@ -284,20 +310,40 @@ const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().t
 
   <div class="stack">
     <h3>Photos <span class="cnt-inline" id="photoCount"></span></h3>
+    {
+      /* The texture photograph (owner, 2026-09-20): one of these photos is the close-up of the weave,
+         and the buyer's product popup shows it where the marker chips used to be. A radio per tile,
+         so choosing one un-chooses the last — a rug has exactly one texture — with "No texture photo"
+         below as the way to take the choice back. rug-form.ts reads the checked radio on save; on the
+         ADD form the value is the supplier URL, which it swaps for the Drive id the import returns. */
+    }
+    <p class="hint">Tick the close-up of the weave: the customer sees it in the product popup.</p>
     <div id="photoStrip" class="grid photos">
       {
         rug?.photos.map((id, i) => (
-          <div class="card tile">
+          <label class="card tile">
             <div class="ph">
               <img src={driveImageUrl(id, 800)} alt="" loading="lazy" />
             </div>
             <div class="mt">
-              {i + 1} · {id}
+              <input
+                type="radio"
+                name="texture"
+                data-texture
+                value={id}
+                checked={rug?.textureId === id}
+                aria-label={`Photo ${i + 1} is the texture photo`}
+              />
+              texture · {i + 1}
             </div>
-          </div>
+          </label>
         ))
       }
     </div>
+    <label class="chk" id="textureNone">
+      <input type="radio" name="texture" data-texture value="" checked={!rug?.textureId} />
+      No texture photo
+    </label>
     <p class="hint" id="photoHint" hidden>
       Photo storage is not connected, so photos cannot be uploaded. Paste Google Drive links below instead.
     </p>

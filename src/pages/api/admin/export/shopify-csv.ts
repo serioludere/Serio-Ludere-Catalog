@@ -17,12 +17,12 @@ import {
 } from '../../../../lib/admin/export.ts';
 import { adminGet, methodNotAllowed } from '../../../../lib/admin/http.ts';
 import { getClient } from '../../../../lib/runtime.ts';
-import { TABS } from '../../../../lib/sheets/contract.ts';
+import { PRODUCT_LAST_COL, TABS } from '../../../../lib/sheets/contract.ts';
 
 export const GET = adminGet(async () => {
   // A fresh read, never the 60 s route cache: an export the owner takes right after an edit must
   // contain that edit (docs/ADMIN_SPEC.md §2.3, every admin read is fresh).
-  const [products] = await getClient().batchGet([`${TABS.products}!A1:AP`]);
+  const [products] = await getClient().batchGet([`${TABS.products}!A1:${PRODUCT_LAST_COL}`]);
   return new Response(shopifyProductsCsv(products?.values), {
     status: 200,
     headers: {

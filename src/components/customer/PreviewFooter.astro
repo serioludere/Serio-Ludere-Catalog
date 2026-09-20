@@ -31,8 +31,12 @@ import {
 <footer class="pv-footer">
   <div class="pv-footer-row">
     <div class="pv-footer-brand">
-      {/* Owner, 2026-09-20: the logo mark is gone here too — the name, set in the brand face. */}
-      <p class="pv-footer-mark pv-h4">Serio Ludere</p>
+      {
+        /* Owner, 2026-09-20: the logo mark is gone here too — the name, set in the brand face, in the
+          same capitals the header now uses (see PreviewHeader.astro for why it is typed, not
+          text-transform'd). */
+      }
+      <p class="pv-footer-mark pv-h4">SERIO LUDERE</p>
       <div class="pv-footer-contacts">
         <div class="pv-contact-group">
           <a class="pv-contact" href={STUDIO_SITE} target="_blank" rel="noopener">

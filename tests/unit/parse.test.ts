@@ -22,6 +22,19 @@ describe('header contract', () => {
     expect(() => assertHeaders('Products', [...rugHeaders, 'notes'])).not.toThrow();
     expect(() => assertHeaders('Rates', ['Currency', 'rate_to_base', 'symbol', 'updated_at'])).not.toThrow();
   });
+  it('tolerates a Products sheet that predates the texture column, but not a wrong label', () => {
+    // contract.ts PRODUCT_OPTIONAL_TRAILING: `Texture Image` was appended to a contract that was
+    // already live, so a sheet nobody has re-run `sheet:init` on keeps SERVING rather than 503-ing
+    // the buyer's page. A blank cell in that position is the same thing as a missing one.
+    const short = rugHeaders.slice(0, -1);
+    expect(() => assertHeaders('Products', short)).not.toThrow();
+    expect(() => assertHeaders('Products', [...short, ''])).not.toThrow();
+    expect(() => assertHeaders('Products', [...short, 'texture'])).toThrow(SheetContractError);
+    // The tolerance is the TAIL only: a missing column anywhere else is still a contract error.
+    expect(() => assertHeaders('Products', rugHeaders.slice(0, -2))).toThrow(SheetContractError);
+    // And a row read from such a sheet simply has no texture.
+    expect(parseProducts([short, rugRow().slice(0, -1)]).items[0]!.textureId).toBe('');
+  });
   it('fails loudly naming the wrong column', () => {
     const bad = [...rugHeaders];
     bad[1] = 'title';

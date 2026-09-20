@@ -18,6 +18,10 @@ import fs from 'node:fs';
  * unreferenced — which is only reasonable while the screen it belongs to is genuinely still to come.
  */
 const AWAITING_SCREEN: Record<string, string> = {
+  Drawer:
+    'Figma 73:237 — the slide-over. It held the Add product form until 2026-09-20, when the owner ' +
+    'moved that form into the centred wide Modal (the form is too wide for 480px). The component and ' +
+    'its CSS stay for the next screen that wants a slide-over, and overlay.ts still binds `dialog.drawer`.',
   ImageGallery:
     'Figma 24:261 — the ADMIN rug gallery (520x640 primary + 72x90 thumbs). Not the customer strip, ' +
     'which is 96x120 in the preview realm (57:243). Consumed by the admin rug detail screen, unbuilt.',

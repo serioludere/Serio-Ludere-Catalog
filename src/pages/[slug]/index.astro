@@ -20,6 +20,7 @@ import PreviewGate from '../../components/customer/PreviewGate.astro';
 import PreviewHeader from '../../components/customer/PreviewHeader.astro';
 import PreviewLayout from '../../components/customer/PreviewLayout.astro';
 import ProductCard from '../../components/customer/ProductCard.astro';
+import ProductDialog from '../../components/customer/ProductDialog.astro';
 import CollectionFilters from '../../components/customer/CollectionFilters.astro';
 import PageNav from '../../components/ui/PageNav.astro';
 import { findCustomer, noteVisit } from '../../lib/customer/http.ts';
@@ -135,6 +136,8 @@ const showGate = !error && Boolean(customer) && !signedIn;
               <p class="pv-lede">No rugs published yet.</p>
             )}
             {/* 20 per page (owner, 2026-09-16); filters.ts un-hides it only when there is a page 2. */}
+            {/* Clicking a card opens the rug here instead of navigating (owner, 2026-09-20). */}
+            <ProductDialog cards={cards} rates={rates} baseCurrency={baseCurrency} />
             <PageNav id="gridPager" label="Rugs" />
             <p class="pv-lede" data-grid-empty hidden>
               Nothing matches that filter yet.

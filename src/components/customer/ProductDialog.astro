@@ -1,0 +1,263 @@
+---
+// The product popup on the customer grid (owner, 2026-09-20): clicking a card opens the rug here
+// rather than navigating to its own page. Photo on the left, everything known about the rug on the
+// right, and no empty band above either.
+//
+// Every rug's content is server-rendered into a <template> beside the grid, and the script clones
+// one into the single dialog below. Two reasons it is not fetched on click: the detail page's layout
+// styles are scoped to THAT page, so its markup would arrive here unstyled — and cloning is instant,
+// where a fetch would put a spinner between the click and the rug on a catalogue this small.
+//
+// The cards stay real links to `/{slug}/{id}`. That page is unchanged and still the thing a shared
+// link, a new tab or a browser without JavaScript opens; this only intercepts a plain left click.
+import type { CardView } from '../../lib/view.ts';
+import { driveImageUrl } from '../../lib/images.ts';
+import { money, type RateTable } from '../../lib/currency.ts';
+import { dims, PREVIEW_SEP } from '../../lib/units.ts';
+import Reactions from './Reactions.astro';
+import SpecTable from './SpecTable.astro';
+
+interface Props {
+  cards: readonly CardView[];
+  rates: RateTable;
+  baseCurrency: string;
+}
+const { cards, rates, baseCurrency } = Astro.props;
+
+const photosOf = (card: CardView): string[] =>
+  card.photoUrls?.length ? card.photoUrls : card.photoUrl ? [card.photoUrl] : [];
+const specRowsOf = (card: CardView): Array<{ key: string; value: string }> => [
+  { key: 'Size', value: dims(card.widthCm, card.lengthCm, 'cm', PREVIEW_SEP) },
+  { key: 'Material', value: card.material },
+  { key: 'Method', value: card.method },
+  { key: 'Origin', value: card.origin },
+  { key: 'Pile', value: card.pile },
+  { key: 'Age', value: card.age },
+];
+---
+
+{
+  cards.map((card) => {
+    const photos = photosOf(card);
+    const thumbs = (card.photoIds ?? []).map((id) => driveImageUrl(id, 400));
+    const priceText = money(card.priceUsd, baseCurrency, rates, 'en-US');
+    return (
+      <template data-detail={card.id}>
+        <div class="pv-modal__media">
+          {photos[0] ? (
+            <img class="pv-modal__photo" src={photos[0]} alt={card.name} data-hero-img decoding="async" />
+          ) : (
+            <span class="pv-modal__empty">Photo to come</span>
+          )}
+          {photos.length > 1 && (
+            <div class="pv-thumbs pv-modal__thumbs" data-thumbs role="toolbar" aria-label="Photographs">
+              {photos.map((src, i) => (
+                <button
+                  type="button"
+                  class:list={['pv-thumb', { 'is-on': i === 0 }]}
+                  data-full={src}
+                  data-alt={`${card.name}, photograph ${i + 1}`}
+                  aria-current={i === 0 ? 'true' : undefined}
+                >
+                  <img src={thumbs[i] ?? src} alt={`Photograph ${i + 1}`} loading="lazy" decoding="async" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div class="pv-modal__info">
+          {/* The h2, not an h1: the page already has one, and the dialog is a section of it. */}
+          <h2 class="pv-h1 pv-modal__name">{card.name}</h2>
+          <p class="pv-price" data-price data-usd={card.priceUsd ?? ''} hidden={!priceText}>
+            {priceText}
+          </p>
+          {card.description && <p class="pv-modal__desc">{card.description}</p>}
+          <div class="pv-modal__react">
+            <Reactions rugId={card.id} mode="detail" />
+          </div>
+          <SpecTable rows={specRowsOf(card)} widthCm={card.widthCm} lengthCm={card.lengthCm} />
+        </div>
+      </template>
+    );
+  })
+}
+
+<dialog class="pv-modal" data-product-dialog aria-label="Rug">
+  <button type="button" class="pv-modal__close" data-product-close aria-label="Close">
+    <svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true" focusable="false">
+      <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" stroke-linecap="round"></path>
+    </svg>
+  </button>
+  <div class="pv-modal__body" data-product-body></div>
+</dialog>
+
+<script>
+  import { initProductDialog } from '../../scripts/customer/product-dialog.ts';
+  initProductDialog();
+</script>
+
+<style>
+  /* Split view: photo left, facts right. `--pv-modal-*` are only used here. */
+  .pv-modal {
+    /* A flex column, so the body can be told to fill what is left and scroll INSIDE the dialog.
+       Without it the two columns size to their content and run off the bottom of the dialog. */
+    display: flex;
+    flex-direction: column;
+    width: min(1100px, calc(100vw - var(--gutter) * 2));
+    max-width: none;
+    max-height: min(760px, calc(100dvh - var(--gutter) * 2));
+    padding: 0;
+    border: var(--rule-width) solid var(--rule);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--ink);
+    overflow: hidden;
+  }
+  .pv-modal:not([open]) {
+    display: none;
+  }
+  .pv-modal::backdrop {
+    background: var(--bg-overlay);
+  }
+  .pv-modal__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: grid;
+    /* The photo takes the larger half and the facts column is allowed to scroll on its own, so a
+       long description never pushes the photo off the top of the dialog. */
+    grid-template-columns: 1.15fr 1fr;
+    align-items: stretch;
+  }
+  .pv-modal__media {
+    display: flex;
+    flex-direction: column;
+    gap: var(--stack-md);
+    min-width: 0;
+    min-height: 0;
+    padding: var(--stack-lg);
+    background: var(--bg-inset);
+    border-right: var(--rule-width) solid var(--rule);
+  }
+  .pv-modal__photo {
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 0;
+    /* `contain`, like the card: a rug is never cropped to fit a box (ADR D6). */
+    object-fit: contain;
+  }
+  .pv-modal__empty {
+    display: grid;
+    flex: 1 1 auto;
+    place-items: center;
+    color: var(--ink-muted);
+    font-family: var(--body);
+    font-size: var(--text-sm);
+  }
+  /* The strip is drawn by the detail page's own scoped styles, which do not reach the grid page —
+     so the dialog's copy carries its own, at the smaller size this column has room for. */
+  .pv-modal__thumbs {
+    flex: 0 0 auto;
+    display: flex;
+    justify-content: center;
+    gap: var(--stack-sm);
+    overflow-x: auto;
+  }
+  .pv-modal__thumbs .pv-thumb {
+    flex: 0 0 auto;
+    width: 64px;
+    height: 80px;
+    padding: 0;
+    border: var(--rule-width) solid var(--rule);
+    background: none;
+    cursor: pointer;
+  }
+  .pv-modal__thumbs .pv-thumb.is-on {
+    border: 2px solid var(--ink);
+  }
+  .pv-modal__thumbs .pv-thumb img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .pv-modal__info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--stack-md);
+    min-width: 0;
+    min-height: 0;
+    padding: var(--stack-xl);
+    overflow-y: auto;
+  }
+  .pv-modal__name {
+    margin: 0;
+  }
+  .pv-modal__desc {
+    margin: 0;
+    font-family: var(--body);
+    font-size: var(--text-base);
+    line-height: var(--leading-body);
+    color: var(--ink-soft);
+  }
+  .pv-modal__react {
+    display: flex;
+    align-items: center;
+    gap: var(--stack-sm);
+  }
+  /* The heart is drawn white, to sit on top of a photograph. Here it sits on the panel beside the
+     facts, so it takes the page's ink; liked still turns it red, from the component's own rule. */
+  .pv-modal__react :global(.pv-circle) {
+    color: var(--ink);
+  }
+  /* The spec panel is drawn for a page column; inside the dialog it is already on a panel. */
+  .pv-modal__info :global(.pv-spec) {
+    padding: 0;
+    border: 0;
+    background: none;
+  }
+  .pv-modal__close {
+    position: absolute;
+    inset-block-start: var(--stack-sm);
+    inset-inline-end: var(--stack-sm);
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: var(--rule-width) solid var(--rule);
+    border-radius: 100%;
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .pv-modal__close:hover {
+    color: var(--brand);
+  }
+
+  /* One column on a phone: photo first, facts under it, the whole dialog scrolling as one. */
+  @media (max-width: 767px) {
+    .pv-modal {
+      width: 100vw;
+      max-width: 100vw;
+      max-height: 92dvh;
+      margin: auto auto 0;
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+    .pv-modal__body {
+      grid-template-columns: 1fr;
+      overflow-y: auto;
+    }
+    .pv-modal__media {
+      border-right: 0;
+      border-bottom: var(--rule-width) solid var(--rule);
+    }
+    .pv-modal__photo {
+      max-height: 46dvh;
+    }
+    .pv-modal__info {
+      overflow: visible;
+      padding: var(--stack-lg);
+    }
+  }
+</style>

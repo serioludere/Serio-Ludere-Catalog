@@ -74,6 +74,12 @@ const specRowsOf = (card: CardView): Array<{ key: string; value: string }> => [
           {card.description && <p class="pv-modal__desc">{card.description}</p>}
           <div class="pv-modal__react">
             <Reactions rugId={card.id} mode="detail" />
+            {/* The heart alone says nothing until you already know what it does (owner, 2026-09-20).
+                The button keeps its own "Like this rug" for screen readers; this is the visible word
+                beside it, and it is not a second control — clicking it does nothing. */}
+            <span class="pv-modal__react-label" aria-hidden="true">
+              Like
+            </span>
           </div>
           <SpecTable rows={specRowsOf(card)} widthCm={card.widthCm} lengthCm={card.lengthCm} />
         </div>
@@ -208,6 +214,11 @@ const specRowsOf = (card: CardView): Array<{ key: string; value: string }> => [
      facts, so it takes the page's ink; liked still turns it red, from the component's own rule. */
   .pv-modal__react :global(.pv-circle) {
     color: var(--ink);
+  }
+  .pv-modal__react-label {
+    font-family: var(--body);
+    font-size: var(--text-sm);
+    color: var(--ink-soft);
   }
   /* The spec panel is drawn for a page column; inside the dialog it is already on a panel. */
   .pv-modal__info :global(.pv-spec) {

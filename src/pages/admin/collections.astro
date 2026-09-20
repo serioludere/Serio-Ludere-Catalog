@@ -18,6 +18,7 @@ import { fetchAdminSnapshot, type AdminSnapshot, syncLabel } from '../../lib/adm
 import { getClient } from '../../lib/runtime.ts';
 import { consoleLogger, serializeError } from '../../lib/sheets/errors.ts';
 import { jsonForScript } from '../../lib/view.ts';
+import { COLLECTION_DESCRIPTION_MAX as DESCRIPTION_MAX } from '../../lib/admin/dto.ts';
 
 let snapshot: AdminSnapshot | undefined;
 let error: string | undefined;
@@ -93,12 +94,20 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
             )}
             <div class="crow__edit" hidden>
               <input class="input" data-field="name" value={c.name} aria-label={`Name of ${c.name}`} />
-              <input
-                class="input"
-                data-field="description"
-                value={c.description}
-                aria-label={`Description of ${c.name}`}
-              />
+              {/* A textarea, not a one-line field (owner, 2026-09-20): a collection description runs
+                  to a paragraph and the sheet takes 1000 characters, so the control has to be big
+                  enough to write one in and to say how much room is left. */}
+              <div class="crow__desc">
+                <textarea
+                  class="input crow__desc-box"
+                  data-field="description"
+                  rows="4"
+                  maxlength={DESCRIPTION_MAX}
+                  aria-label={`Description of ${c.name}`}
+                  set:text={c.description}
+                />
+                <p class="hint crow__desc-count" data-desc-count />
+              </div>
               <button type="button" class="btn btn--primary" data-act="save">
                 Save
               </button>

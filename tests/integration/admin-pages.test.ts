@@ -274,7 +274,11 @@ describe('/admin/collections', () => {
     expect(status).toBe(200);
     expect(html.indexOf('data-id="kilims"')).toBeLessThan(html.indexOf('data-id="tulu"'));
     expect(html).toMatch(/<li class="crow" data-id="kilims" data-version="[a-f0-9]{16}" data-name="Kilims"/);
-    expect(html).toContain('data-field="description" value="Flat &quot;weaves&quot;"');
+    // A textarea since 2026-09-20 (a description runs to a paragraph), with the sheet's own cap on
+    // it so the box and the server agree about how much fits.
+    expect(html).toMatch(
+      /<textarea[^>]*data-field="description"[^>]*maxlength="1000"[^>]*>Flat &quot;weaves&quot;<\/textarea>/,
+    );
     expect(html.replace(/\s+/g, ' ')).toContain('<span class="crow__count"> 1 product </span>'); // one rug in Kilims
     expect(html).toContain('id="btnAddCollection"');
     // Owner, 2026-09-18: the ▲/▼ pair and the whole tag half of this page are gone, and so are the

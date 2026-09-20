@@ -4,6 +4,7 @@
 // Owner, 2026-09-18: the ▲/▼ reorder pair and the whole tag half of this page are gone. Tags are
 // assigned on the product form and nowhere else, so there was nothing here to manage; the reorder
 // endpoint went with its controls.
+import { COLLECTION_DESCRIPTION_MAX } from '../../lib/admin/dto.ts';
 import { get, issuesText, post, type ApiOptions } from './api.ts';
 import { byId, clear, el, readJson } from './dom.ts';
 import { hide, msg } from './msg.ts';
@@ -22,6 +23,31 @@ export interface CollectionLike {
 export function collectionRow(c: CollectionLike, index: number, doc: Document = document): HTMLElement {
   const input = (field: string, value: string, label: string): HTMLInputElement =>
     el('input', { 'data-field': field, value, 'aria-label': label, class: 'input' }, [], doc);
+
+  /**
+   * The description box (owner, 2026-09-20): a paragraph-sized textarea with the characters left
+   * under it, built here so a rebuilt row matches what the page rendered.
+   */
+  const descriptionBox = (value: string, label: string): HTMLElement => {
+    const box = el(
+      'textarea',
+      {
+        'data-field': 'description',
+        'aria-label': label,
+        class: 'input crow__desc-box',
+        rows: '4',
+        maxlength: String(COLLECTION_DESCRIPTION_MAX),
+      },
+      value,
+      doc,
+    );
+    return el(
+      'div',
+      { class: 'crow__desc' },
+      [box, el('p', { class: 'hint crow__desc-count', 'data-desc-count': '' }, '', doc)],
+      doc,
+    );
+  };
 
   const ghost = (act: string, label: string, aria?: string): HTMLButtonElement =>
     el(
@@ -67,15 +93,10 @@ export function collectionRow(c: CollectionLike, index: number, doc: Document = 
       { class: 'crow__edit', hidden: 'hidden' },
       [
         input('name', c.name, `Name of ${c.name}`),
-        input('description', description, `Description of ${c.name}`),
+        descriptionBox(description, `Description of ${c.name}`),
         el('button', { type: 'button', class: 'btn btn--primary', 'data-act': 'save' }, 'Save', doc),
         ghost('cancel', 'Cancel'),
-        el(
-          'button',
-          { type: 'button', class: 'btn btn--destructive', 'data-act': 'delete' },
-          'Delete',
-          doc,
-        ),
+        el('button', { type: 'button', class: 'btn btn--destructive', 'data-act': 'delete' }, 'Delete', doc),
       ],
       doc,
     ),
@@ -123,6 +144,23 @@ export function initCollections(doc: Document = document, opts: CollectionsOptio
   const cDescription = byId<HTMLInputElement>('c_description', doc);
   const addCollectionBtn = byId<HTMLButtonElement>('btnAddCollection', doc);
 
+  /**
+   * "180 of 1000 characters" under the description box (owner, 2026-09-20). Written on open and on
+   * every keystroke, and delegated rather than bound per row, so a rebuilt row needs no re-binding.
+   */
+  function countDescription(scope: HTMLElement): void {
+    const box = scope.querySelector<HTMLTextAreaElement>('textarea[data-field="description"]');
+    const out = scope.querySelector<HTMLElement>('[data-desc-count]');
+    if (!box || !out) return;
+    const max = box.maxLength > 0 ? box.maxLength : COLLECTION_DESCRIPTION_MAX;
+    out.textContent = `${box.value.length} of ${max} characters`;
+  }
+  list.addEventListener('input', (e) => {
+    const box = (e.target as HTMLElement).closest<HTMLElement>('[data-field="description"]');
+    const panel = box?.closest<HTMLElement>('.crow__edit');
+    if (panel) countDescription(panel);
+  });
+
   const ordered = (): CollectionLike[] =>
     [...collections.values()].sort(
       (a, b) => (a.sortOrder ?? 1e9) - (b.sortOrder ?? 1e9) || a.name.localeCompare(b.name),
@@ -143,9 +181,10 @@ export function initCollections(doc: Document = document, opts: CollectionsOptio
     }
   };
 
+  /** Reads either control: the name is an <input>, the description a <textarea>. */
   const rowInputs = (tr: HTMLElement): { name: string; description: string } => {
     const v = (field: string): string =>
-      tr.querySelector<HTMLInputElement>(`input[data-field="${field}"]`)?.value.trim() ?? '';
+      tr.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[data-field="${field}"]`)?.value.trim() ?? '';
     return { name: v('name'), description: v('description') };
   };
 
@@ -278,8 +317,10 @@ export function initCollections(doc: Document = document, opts: CollectionsOptio
       if (!panel) return;
       const opening = panel.hidden;
       panel.hidden = !opening;
-      if (opening) panel.querySelector<HTMLInputElement>('input')?.focus();
-      else b.closest<HTMLElement>('.crow')?.querySelector<HTMLButtonElement>('[data-act="edit"]')?.focus();
+      if (opening) {
+        countDescription(panel);
+        panel.querySelector<HTMLInputElement>('input')?.focus();
+      } else b.closest<HTMLElement>('.crow')?.querySelector<HTMLButtonElement>('[data-act="edit"]')?.focus();
     } else if (act === 'expand') {
       // The clamp is released in place and the label follows, so the control always says what it
       // will do next rather than what it just did.

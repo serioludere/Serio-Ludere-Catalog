@@ -110,9 +110,11 @@ export const RugCommit = z.object({
 export type RugCommitT = z.infer<typeof RugCommit>;
 /** Name and description only (owner, 2026-09-16): the studio never set a cover image, and the
  *  column stays in the sheet written blank rather than shifting the Collections contract. */
+/** Exported so the admin's own description box can cap and count against the same number. */
+export const COLLECTION_DESCRIPTION_MAX = 1000;
 export const CollectionInput = z.object({
   name: z.string().trim().min(1).max(80),
-  description: Text(1000),
+  description: Text(COLLECTION_DESCRIPTION_MAX),
 });
 export type CollectionInputT = z.infer<typeof CollectionInput>;
 export const CollectionUpdate = CollectionInput.extend({ version: Version });

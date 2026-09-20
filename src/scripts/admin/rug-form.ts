@@ -221,19 +221,22 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
   const newTag = input('newTag');
   const btnNewTag = byId<HTMLButtonElement>('btnNewTag', doc);
   /**
-   * The Antique / Signed tick boxes (owner, 2026-09-20). They are a shortcut onto the same list of
-   * plain strings the tokens show — ticking adds the tag, unticking removes it — so they must follow
-   * the tokens too: a tag removed by its × unticks here, and one typed by hand ticks here.
+   * The marker buttons — signed / antique (owner, 2026-09-20). They are a shortcut onto the same list
+   * of plain strings the tokens show: pressing one adds that tag, pressing it again removes it. They
+   * follow the tokens too, so a marker removed by its × comes un-pressed here, and one typed by hand
+   * shows as pressed. `aria-pressed` IS the state — there is no separate variable to drift.
    */
-  const presetTags = [...doc.querySelectorAll<HTMLInputElement>('input.tagpreset[data-preset]')];
+  const presetTags = [...doc.querySelectorAll<HTMLButtonElement>('button.tagpreset[data-preset]')];
   function syncPresetTags(): void {
-    for (const box of presetTags) box.checked = chips.has(box.dataset.preset ?? '');
+    for (const b of presetTags)
+      b.setAttribute('aria-pressed', chips.has(b.dataset.preset ?? '') ? 'true' : 'false');
   }
-  for (const box of presetTags) {
-    box.addEventListener('change', () => {
-      const name = box.dataset.preset ?? '';
-      if (box.checked) addTag(name);
-      else chips.remove(name);
+  for (const b of presetTags) {
+    b.addEventListener('click', () => {
+      const name = b.dataset.preset ?? '';
+      if (b.getAttribute('aria-pressed') === 'true') chips.remove(name);
+      else addTag(name);
+      syncPresetTags();
     });
   }
   const url = maybe<HTMLInputElement>('url', doc);

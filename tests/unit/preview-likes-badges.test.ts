@@ -7,28 +7,28 @@ import { describe, expect, it } from 'vitest';
 import { BADGE_TAG_NAMES, badgesFor, MIN_VISIBLE_LIKES, visibleLikes } from '../../src/lib/view.ts';
 
 describe('badgesFor', () => {
-  it('badges Signed and Antique, and nothing else', () => {
-    expect(badgesFor(['Signed'])).toEqual(['Signed']);
-    expect(badgesFor(['Antique'])).toEqual(['Antique']);
+  it('badges signed and antique, and nothing else', () => {
+    expect(badgesFor(['Signed'])).toEqual(['signed']);
+    expect(badgesFor(['Antique'])).toEqual(['antique']);
     expect(badgesFor(['Kilim', 'Red', 'Geometric'])).toEqual([]);
   });
 
   it('badges both when a rug carries both, always in the same order', () => {
     // Whichever order the owner typed the tags in, the corner reads the same way round.
-    expect(badgesFor(['Antique', 'Signed'])).toEqual(['Signed', 'Antique']);
-    expect(badgesFor(['Signed', 'Antique'])).toEqual(['Signed', 'Antique']);
+    expect(badgesFor(['Antique', 'Signed'])).toEqual(['signed', 'antique']);
+    expect(badgesFor(['Signed', 'Antique'])).toEqual(['signed', 'antique']);
   });
 
   it('matches however the owner spelled it', () => {
     // The Tags tab holds the canonical spelling; a rug row carries whatever was typed into it.
-    expect(badgesFor(['signed'])).toEqual(['Signed']);
-    expect(badgesFor(['ANTIQUE'])).toEqual(['Antique']);
-    expect(badgesFor([' Signed '])).toEqual(['Signed']);
+    expect(badgesFor(['signed'])).toEqual(['signed']);
+    expect(badgesFor(['ANTIQUE'])).toEqual(['antique']);
+    expect(badgesFor([' Signed '])).toEqual(['signed']);
   });
 
   it('renders the canonical name, not the typed one', () => {
-    // "signed" in the sheet must still read "Signed" on the card.
-    expect(badgesFor(['signed'])[0]).toBe('Signed');
+    // "Signed" in the sheet must still read "signed" on the card (owner, 2026-09-20: lower case).
+    expect(badgesFor(['Signed'])[0]).toBe('signed');
   });
 
   it('is empty for a rug with no tags at all', () => {
@@ -41,7 +41,7 @@ describe('badgesFor', () => {
   });
 
   it('exposes the badge names so a page cannot drift from this list', () => {
-    expect([...BADGE_TAG_NAMES]).toEqual(['Signed', 'Antique']);
+    expect([...BADGE_TAG_NAMES]).toEqual(['signed', 'antique']);
   });
 });
 

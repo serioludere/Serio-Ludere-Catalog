@@ -359,7 +359,7 @@ describe('add mode', () => {
     expect(val('f_price')).toBe('1335');
   });
 
-  it('adds a whole comma-separated list at once, and keeps Antique / Signed in step', () => {
+  it('adds a whole comma-separated list at once, and keeps the marker buttons in step', () => {
     // Owner, 2026-09-20: type "Wool, Vintage" and press Add tags once, rather than one at a time.
     form = mount(() => ({ status: 500, body: {} }));
     const newTag = document.getElementById('newTag') as HTMLInputElement;
@@ -368,23 +368,21 @@ describe('add mode', () => {
     expect(form.chips.values()).toEqual(['Wool', 'Vintage', 'Signed']);
     expect(newTag.value).toBe('');
 
-    const box = (name: string): HTMLInputElement =>
-      document.querySelector<HTMLInputElement>(`input.tagpreset[data-preset="${name}"]`)!;
-    // Typed by hand, so the tick box for it follows.
-    expect(box('Signed').checked).toBe(true);
-    expect(box('Antique').checked).toBe(false);
+    const marker = (name: string): HTMLButtonElement =>
+      document.querySelector<HTMLButtonElement>(`button.tagpreset[data-preset="${name}"]`)!;
+    // Typed by hand, so the marker for it shows as pressed — case-insensitively.
+    expect(marker('signed').getAttribute('aria-pressed')).toBe('true');
+    expect(marker('antique').getAttribute('aria-pressed')).toBe('false');
 
-    // Ticking adds the tag; unticking takes it off again.
-    box('Antique').checked = true;
-    box('Antique').dispatchEvent(new Event('change', { bubbles: true }));
-    expect(form.chips.values()).toEqual(['Wool', 'Vintage', 'Signed', 'Antique']);
-    box('Antique').checked = false;
-    box('Antique').dispatchEvent(new Event('change', { bubbles: true }));
+    // Pressing adds the tag; pressing again takes it off.
+    marker('antique').click();
+    expect(form.chips.values()).toEqual(['Wool', 'Vintage', 'Signed', 'antique']);
+    marker('antique').click();
     expect(form.chips.values()).toEqual(['Wool', 'Vintage', 'Signed']);
 
-    // …and removing the token with its × unticks the box, rather than leaving it lying.
+    // …and removing the token with its × un-presses the marker, rather than leaving it lit.
     document.querySelector<HTMLButtonElement>('#tagChips [data-tag="Signed"] button[data-remove]')!.click();
-    expect(box('Signed').checked).toBe(false);
+    expect(marker('signed').getAttribute('aria-pressed')).toBe('false');
     expect(form.collect().tags).toEqual(['Wool', 'Vintage']);
   });
 

@@ -120,7 +120,9 @@ export function tagSlug(name: string, tags: Tag[]): string {
  * a buyer scanning a grid wants to see without opening anything. Badging every tag would turn the
  * corner into a second filter strip and bury exactly the signal this is for.
  */
-export const BADGE_TAG_NAMES: readonly string[] = ['Signed', 'Antique'];
+/* Lower case since 2026-09-20 (owner: no shouting capitals anywhere). Matching stays
+   case-insensitive, so rows already carrying "Signed" still earn the badge. */
+export const BADGE_TAG_NAMES: readonly string[] = ['signed', 'antique'];
 
 /**
  * The badges a rug's tags earn, in BADGE_TAG_NAMES order rather than the sheet's.

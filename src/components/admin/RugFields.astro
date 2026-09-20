@@ -5,6 +5,7 @@
 // nothing inline (hash CSP), sheet text only ever lands as text.
 import type { AdminCollection, AdminRug, AdminTag } from '../../lib/admin/read.ts';
 import { driveImageUrl } from '../../lib/images.ts';
+import { BADGE_TAG_NAMES } from '../../lib/view.ts';
 import Chips from './Chips.astro';
 import MultiSelect from '../ui/MultiSelect.astro';
 
@@ -50,9 +51,10 @@ const metaLine = rug ? `${likes} ${likes === 1 ? 'like' : 'likes'} · added ${da
 const v = (s: string | number | undefined): string => (s === undefined ? '' : String(s));
 // The product's OWN tags (owner, 2026-09-18) — there is no registry to offer any more.
 const ownTags = rug?.tags.filter((t) => t.trim()) ?? [];
-// The two the studio reaches for every time, offered as tick boxes (owner, 2026-09-20). Not a
-// registry coming back: they are ordinary strings, and a product may carry neither, one or both.
-const PRESET_TAGS = ['Antique', 'Signed'] as const;
+// The markers (owner, 2026-09-20): the two tags a buyer sees on the card, offered as toggle buttons
+// on both the add and the edit form. Not a registry coming back — they are ordinary tag strings, and
+// a product may carry neither, one or both. BADGE_TAG_NAMES is the one list, shared with the cards.
+const PRESET_TAGS = BADGE_TAG_NAMES;
 // Membership, not the primary: the form must tick every collection the rug is filed under.
 const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().toLowerCase()));
 ---
@@ -114,22 +116,23 @@ const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().t
     <span class="f__legend">Tags</span>
     <div class="tagrow">
       {
-        /* The two tags the studio uses on nearly every product (owner, 2026-09-20). Ticking one adds
-           it, unticking removes it; anything else is still typed below. rug-form.ts keeps these in
-           step with the tokens, so a tag removed by its × unticks here too. */
+        /* The markers (owner, 2026-09-20). Pressing one adds that tag, pressing it again removes it;
+           anything else is still typed below. rug-form.ts keeps these in step with the tokens, so a
+           marker removed by its × comes un-pressed here too. */
       }
       <div class="tagpresets">
         {
           PRESET_TAGS.map((t) => (
-            <label class="chk">
-              <input
-                type="checkbox"
-                class="tagpreset"
-                data-preset={t}
-                checked={ownTags.some((own) => own.trim().toLowerCase() === t.toLowerCase())}
-              />
+            <button
+              type="button"
+              class="chip tagpreset"
+              data-preset={t}
+              aria-pressed={
+                ownTags.some((own) => own.trim().toLowerCase() === t.toLowerCase()) ? 'true' : 'false'
+              }
+            >
               {t}
-            </label>
+            </button>
           ))
         }
       </div>
@@ -235,33 +238,17 @@ const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().t
       </div>
     </div>
     {
-      /* "Rotate photo" is a DISPLAY hint for portrait plates (ADR D6). Gone from the Add form
-         (owner, 2026-09-20): nothing is known about the plate before the photos are even stored, and
-         the Karavan photos that arrive on their side are already turned on import
-         (src/lib/drive/transform.ts). It stays on the edit form, where the rug can be seen. */
-      edit ? (
-        <div class="f">
-          <label for="f_rotate">Rotate photo</label>
-          <select id="f_rotate">
-            <option value="false" selected={(rug?.rotate ?? 'false') === 'false'}>
-              No
-            </option>
-            <option value="true" selected={rug?.rotate === 'true'}>
-              Turn to portrait
-            </option>
-            <option value="force" selected={rug?.rotate === 'force'}>
-              Always turn
-            </option>
-          </select>
-        </div>
-      ) : (
-        <select id="f_rotate" hidden>
-          <option value="false" selected>
-            No
-          </option>
-        </select>
-      )
+      /* "Rotate photo" asked a question the studio should never have to answer (owner, 2026-09-20):
+         a Karavan cover arrives on its side and is turned a quarter to the LEFT on import, always
+         (src/lib/drive/transform.ts), so by the time a photo is stored it is already the right way
+         up. The control is gone from both forms; the stored value rides along hidden so an existing
+         row keeps whatever display hint it already had. */
     }
+    <select id="f_rotate" hidden>
+      <option value="false" selected={(rug?.rotate ?? 'false') === 'false'}>No</option>
+      <option value="true" selected={rug?.rotate === 'true'}>Turn to portrait</option>
+      <option value="force" selected={rug?.rotate === 'force'}>Always turn</option>
+    </select>
     {
       /* "Featured" is gone from both forms (owner, 2026-09-20). The column still exists and still
          orders the catalogue, so the value RIDES ALONG hidden rather than being cleared on every

@@ -10,7 +10,7 @@
 //
 // The cards stay real links to `/{slug}/{id}`. That page is unchanged and still the thing a shared
 // link, a new tab or a browser without JavaScript opens; this only intercepts a plain left click.
-import type { CardView } from '../../lib/view.ts';
+import { badgesFor, type CardView } from '../../lib/view.ts';
 import { driveImageUrl } from '../../lib/images.ts';
 import { money, type RateTable } from '../../lib/currency.ts';
 import { dims, PREVIEW_SEP } from '../../lib/units.ts';
@@ -71,6 +71,17 @@ const specRowsOf = (card: CardView): Array<{ key: string; value: string }> => [
           <p class="pv-price" data-price data-usd={card.priceUsd ?? ''} hidden={!priceText}>
             {priceText}
           </p>
+          {
+            /* The markers (owner, 2026-09-20): the same two the card corner shows, spelled out here
+               where there is room for the word rather than a corner chip. */
+            badgesFor(card.tags.map((t) => t.name)).length > 0 && (
+              <ul class="pv-modal__markers">
+                {badgesFor(card.tags.map((t) => t.name)).map((b) => (
+                  <li class="pv-modal__marker">{b}</li>
+                ))}
+              </ul>
+            )
+          }
           {card.description && <p class="pv-modal__desc">{card.description}</p>}
           <div class="pv-modal__react">
             <Reactions rugId={card.id} mode="detail" />
@@ -197,6 +208,21 @@ const specRowsOf = (card: CardView): Array<{ key: string; value: string }> => [
   }
   .pv-modal__name {
     margin: 0;
+  }
+  .pv-modal__markers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--stack-sm);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .pv-modal__marker {
+    padding: var(--corner-chip-pad, 2px 6px);
+    border: var(--rule-width) solid var(--rule);
+    font-family: var(--body);
+    font-size: var(--text-xs);
+    color: var(--ink-soft);
   }
   .pv-modal__desc {
     margin: 0;

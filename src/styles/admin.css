@@ -471,11 +471,13 @@ html:has(dialog[open]) {
 }
 
 /* ── The two page-owned dialogs ───────────────────────────────────────────────────────────────────
-   `#confirm` (Archive / Restore) and `#pwDialog` (reset a customer password) are bare <dialog>s the
+   `#confirm` (Archive / Restore) and `#renameDialog` (rename a customer) are bare <dialog>s the
    scripts open directly. They take the Modal's surface, edge, scrim and padding so a confirm looks
    like every other overlay in the panel rather than a browser default box. */
+/* The rename dialog carried the id of the password reset it replaced until 2026-09-20; these rules
+   still named #pwDialog, so pressing Rename opened an unstyled browser box that read as broken. */
 dialog#confirm,
-dialog#pwDialog {
+dialog#renameDialog {
   width: min(480px, calc(100vw - var(--gutter) * 2));
   max-width: none;
   padding: var(--stack-xl);
@@ -486,7 +488,7 @@ dialog#pwDialog {
   font-family: var(--body);
 }
 dialog#confirm::backdrop,
-dialog#pwDialog::backdrop {
+dialog#renameDialog::backdrop {
   background: var(--bg-overlay);
 }
 #confirmText {
@@ -497,13 +499,13 @@ dialog#confirm .actions {
   margin-top: var(--stack-xl);
   justify-content: flex-end;
 }
-#pwDialogForm {
+#renameDialogForm {
   display: flex;
   flex-direction: column;
   gap: var(--stack-md);
   margin-top: 0;
 }
-#pwDialogForm h3 {
+#renameDialogForm h3 {
   margin: 0;
   font-family: var(--heading);
   font-size: var(--h4);
@@ -511,17 +513,17 @@ dialog#confirm .actions {
   line-height: var(--leading-heading);
   text-transform: none;
 }
-#pwDialogForm .hint {
+#renameDialogForm .hint {
   margin-top: 0;
 }
-#pwDialogForm .field__label {
+#renameDialogForm .field__label {
   margin-bottom: calc(-1 * var(--stack-xs));
 }
-#pwDialogForm .actions {
+#renameDialogForm .actions {
   margin-top: var(--stack-sm);
   justify-content: flex-end;
 }
-#pwDialogForm .msg {
+#renameDialogForm .msg {
   margin-top: 0;
 }
 

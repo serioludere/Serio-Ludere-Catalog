@@ -1016,3 +1016,11 @@ a:focus-visible {
     gap: var(--stack-sm);
   }
 }
+
+/* Antique / Signed (owner, 2026-09-20): the two tags the studio uses constantly, as tick boxes in
+   front of the free-text field. They read as one row with the tokens they add. */
+.tagpresets {
+  display: flex;
+  align-items: center;
+  gap: var(--stack-md);
+}

@@ -63,6 +63,30 @@ describe('transformsFor', () => {
 });
 
 describe('rotate90', () => {
+  it('turns ANTI-clockwise: the top-left corner ends up bottom-left (owner, 2026-09-20)', async () => {
+    const { default: sharp } = await import('sharp');
+    // 4×2, with only the top-left pixel red. Turning left, that corner travels to the BOTTOM-left;
+    // turning right it would go to the top-right, which is what this rules out.
+    const px = Buffer.alloc(4 * 2 * 3, 255);
+    px[0] = 200;
+    px[1] = 40;
+    px[2] = 40;
+    const before = new Uint8Array(
+      await sharp(px, { raw: { width: 4, height: 2, channels: 3 } })
+        .png()
+        .toBuffer(),
+    );
+    const after = await rotate90(before);
+    const { data, info } = await sharp(after).raw().toBuffer({ resolveWithObject: true });
+    expect([info.width, info.height]).toEqual([2, 4]);
+    const at = (x: number, y: number): number[] => {
+      const i = (y * info.width + x) * info.channels;
+      return [data[i]!, data[i + 1]!, data[i + 2]!];
+    };
+    expect(at(0, 3)).toEqual([200, 40, 40]); // bottom-left: turned left
+    expect(at(1, 0)).toEqual([255, 255, 255]); // top-right: where turning right would have put it
+  });
+
   it('actually turns the image a quarter turn', async () => {
     const before = await landscapePng();
     expect(await sizeOf(before)).toMatchObject({ width: 60, height: 30 });

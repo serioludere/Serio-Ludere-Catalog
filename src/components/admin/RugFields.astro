@@ -50,6 +50,9 @@ const metaLine = rug ? `${likes} ${likes === 1 ? 'like' : 'likes'} · added ${da
 const v = (s: string | number | undefined): string => (s === undefined ? '' : String(s));
 // The product's OWN tags (owner, 2026-09-18) — there is no registry to offer any more.
 const ownTags = rug?.tags.filter((t) => t.trim()) ?? [];
+// The two the studio reaches for every time, offered as tick boxes (owner, 2026-09-20). Not a
+// registry coming back: they are ordinary strings, and a product may carry neither, one or both.
+const PRESET_TAGS = ['Antique', 'Signed'] as const;
 // Membership, not the primary: the form must tick every collection the rug is filed under.
 const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().toLowerCase()));
 ---
@@ -103,11 +106,33 @@ const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().t
     </div>
   </div>
 
-  {/* Owner, 2026-09-18: tags are plain strings on THIS product, not a registry to pick from. What is
-      listed is what the product has; each carries an × that removes it, and the input adds one. */}
+  {
+    /* Owner, 2026-09-18: tags are plain strings on THIS product, not a registry to pick from. What is
+      listed is what the product has; each carries an × that removes it, and the input adds one. */
+  }
   <div class="f">
     <span class="f__legend">Tags</span>
     <div class="tagrow">
+      {
+        /* The two tags the studio uses on nearly every product (owner, 2026-09-20). Ticking one adds
+           it, unticking removes it; anything else is still typed below. rug-form.ts keeps these in
+           step with the tokens, so a tag removed by its × unticks here too. */
+      }
+      <div class="tagpresets">
+        {
+          PRESET_TAGS.map((t) => (
+            <label class="chk">
+              <input
+                type="checkbox"
+                class="tagpreset"
+                data-preset={t}
+                checked={ownTags.some((own) => own.trim().toLowerCase() === t.toLowerCase())}
+              />
+              {t}
+            </label>
+          ))
+        }
+      </div>
       <div class="tagtokens" id="tagChips" role="list" aria-label="Tags on this product">
         {
           ownTags.map((t) => (
@@ -121,9 +146,9 @@ const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().t
         }
       </div>
       <div class="newtag">
-        <label class="sr-only" for="newTag">New tag name</label>
-        <input id="newTag" placeholder="New tag" autocomplete="off" />
-        <button class="chip" id="btnNewTag" type="button"> Add tag </button>
+        <label class="sr-only" for="newTag">New tags, separated by commas</label>
+        <input id="newTag" placeholder="New tags, separated by commas" autocomplete="off" />
+        <button class="chip" id="btnNewTag" type="button"> Add tags </button>
       </div>
     </div>
   </div>
@@ -209,19 +234,40 @@ const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().t
         <button class="chip" id="btnRound" type="button">Round to {roundStep}</button>
       </div>
     </div>
-    <div class="f">
-      <label for="f_rotate">Rotate photo</label>
-      <select id="f_rotate">
-        <option value="false" selected={(rug?.rotate ?? 'false') === 'false'}>No</option>
-        <option value="true" selected={rug?.rotate === 'true'}>Turn to portrait</option>
-        <option value="force" selected={rug?.rotate === 'force'}>Always turn</option>
-      </select>
-    </div>
-    <div class="f">
-      <label class="chk" for="f_featured"
-        ><input type="checkbox" id="f_featured" checked={rug?.featured === true} /> Featured</label
-      >
-    </div>
+    {
+      /* "Rotate photo" is a DISPLAY hint for portrait plates (ADR D6). Gone from the Add form
+         (owner, 2026-09-20): nothing is known about the plate before the photos are even stored, and
+         the Karavan photos that arrive on their side are already turned on import
+         (src/lib/drive/transform.ts). It stays on the edit form, where the rug can be seen. */
+      edit ? (
+        <div class="f">
+          <label for="f_rotate">Rotate photo</label>
+          <select id="f_rotate">
+            <option value="false" selected={(rug?.rotate ?? 'false') === 'false'}>
+              No
+            </option>
+            <option value="true" selected={rug?.rotate === 'true'}>
+              Turn to portrait
+            </option>
+            <option value="force" selected={rug?.rotate === 'force'}>
+              Always turn
+            </option>
+          </select>
+        </div>
+      ) : (
+        <select id="f_rotate" hidden>
+          <option value="false" selected>
+            No
+          </option>
+        </select>
+      )
+    }
+    {
+      /* "Featured" is gone from both forms (owner, 2026-09-20). The column still exists and still
+         orders the catalogue, so the value RIDES ALONG hidden rather than being cleared on every
+         save — removing the control must not silently un-feature a rug that is featured. */
+    }
+    <input type="checkbox" id="f_featured" checked={rug?.featured === true} hidden />
     <div class="f">
       <label for="f_sourceUrl">Supplier link</label>
       <input id="f_sourceUrl" inputmode="url" value={rug?.sourceUrl ?? ''} autocomplete="off" />

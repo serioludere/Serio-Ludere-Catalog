@@ -48,11 +48,11 @@ export function transformsFor(supplier: string, index: number): ImageTransform[]
 }
 
 /**
- * Rotates a quarter turn clockwise.
+ * Rotates a quarter turn ANTI-clockwise (owner, 2026-09-20: "to the left, not to the right").
  *
- * Clockwise because the owner did not say which way and every Karavan plate this was checked
- * against is a landscape file of a portrait rug lying on its right side. If it turns out to be the
- * other way, this is a one-character change (90 → 270).
+ * It turned clockwise from 2026-09-13, which was a guess made when the direction had not been said.
+ * The name is kept: it is the transform's identity across the sheet, the audit log and every caller,
+ * and "rotate90" says how far, not which way.
  *
  * sharp is imported dynamically: it is a native module that Astro already pulls in, and loading it
  * eagerly would drag it into every context that touches Drive, tests included.
@@ -61,7 +61,7 @@ export async function rotate90(bytes: Uint8Array): Promise<Uint8Array> {
   const { default: sharp } = await import('sharp');
   // `withMetadata()` keeps the EXIF orientation flag consistent with the pixels we just moved;
   // without it a viewer that honours EXIF would helpfully rotate the image back again.
-  const out = await sharp(bytes).rotate(90).withMetadata().toBuffer();
+  const out = await sharp(bytes).rotate(270).withMetadata().toBuffer();
   return new Uint8Array(out);
 }
 

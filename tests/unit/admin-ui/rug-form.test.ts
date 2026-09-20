@@ -10,7 +10,12 @@ import { installDom } from '../../helpers/dom.ts';
 import RugFields from '../../../src/components/admin/RugFields.astro';
 import type { AdminRug } from '../../../src/lib/admin/read.ts';
 import { jsonForScript } from '../../../src/lib/view.ts';
-import { idFromSku, initRugForm, parsePhotoLines, type RugForm } from '../../../src/scripts/admin/rug-form.ts';
+import {
+  idFromSku,
+  initRugForm,
+  parsePhotoLines,
+  type RugForm,
+} from '../../../src/scripts/admin/rug-form.ts';
 
 const PHOTO = '1U8FwNPCdm-n8RUvSNRcJLBA_27u-Pjkb';
 const collections = [
@@ -354,6 +359,35 @@ describe('add mode', () => {
     expect(val('f_price')).toBe('1335');
   });
 
+  it('adds a whole comma-separated list at once, and keeps Antique / Signed in step', () => {
+    // Owner, 2026-09-20: type "Wool, Vintage" and press Add tags once, rather than one at a time.
+    form = mount(() => ({ status: 500, body: {} }));
+    const newTag = document.getElementById('newTag') as HTMLInputElement;
+    newTag.value = ' Wool , Vintage ,, Signed ';
+    document.getElementById('btnNewTag')!.click();
+    expect(form.chips.values()).toEqual(['Wool', 'Vintage', 'Signed']);
+    expect(newTag.value).toBe('');
+
+    const box = (name: string): HTMLInputElement =>
+      document.querySelector<HTMLInputElement>(`input.tagpreset[data-preset="${name}"]`)!;
+    // Typed by hand, so the tick box for it follows.
+    expect(box('Signed').checked).toBe(true);
+    expect(box('Antique').checked).toBe(false);
+
+    // Ticking adds the tag; unticking takes it off again.
+    box('Antique').checked = true;
+    box('Antique').dispatchEvent(new Event('change', { bubbles: true }));
+    expect(form.chips.values()).toEqual(['Wool', 'Vintage', 'Signed', 'Antique']);
+    box('Antique').checked = false;
+    box('Antique').dispatchEvent(new Event('change', { bubbles: true }));
+    expect(form.chips.values()).toEqual(['Wool', 'Vintage', 'Signed']);
+
+    // …and removing the token with its × unticks the box, rather than leaving it lying.
+    document.querySelector<HTMLButtonElement>('#tagChips [data-tag="Signed"] button[data-remove]')!.click();
+    expect(box('Signed').checked).toBe(false);
+    expect(form.collect().tags).toEqual(['Wool', 'Vintage']);
+  });
+
   it('adds tags locally — no registry call — and the × takes one off again', () => {
     // Owner, 2026-09-18: a tag is a plain string on THIS product. There is no Tags tab to register it
     // in, so adding one writes nothing; it is saved with the product like any other field. The
@@ -641,9 +675,7 @@ describe('edit mode', () => {
       );
       (document.getElementById('btnDelete') as HTMLButtonElement).click();
       await vi.waitFor(() => expect(went).toEqual(['/admin/rugs']));
-      expect(calls).toEqual([
-        { url: '/api/admin/rugs/SL-021/delete', body: { version: 'b'.repeat(16) } },
-      ]);
+      expect(calls).toEqual([{ url: '/api/admin/rugs/SL-021/delete', body: { version: 'b'.repeat(16) } }]);
     });
 
     it('stays put and says so when Drive kept a photo, rather than leaving silent orphans', async () => {
@@ -746,5 +778,28 @@ describe('the fetch modal gates the form (P5-P9)', () => {
     document.querySelector<HTMLButtonElement>('[data-fetch-footer] .btn--ghost')!.click();
     expect(cls('preview')).toBe('preview on');
     expect(val('f_supplier')).toBe('ecarpetgallery');
+  });
+  it('a PARTIAL fetch hands the fields over instead of leaving the modal over them', async () => {
+    // Owner, 2026-09-20: "they seem to be editable, but I can't". The modal is a modal — everything
+    // behind it is inert — so filling the form AND leaving it open made the form unusable: it looked
+    // filled in and swallowed every click. A partial result belongs in the form, so the modal closes.
+    const form = mountWithModal(() => ({
+      status: 422,
+      body: {
+        ok: false,
+        error: 'partial',
+        message: 'Some fields could not be read.',
+        data: { ...scraped, priceUsd: undefined },
+        manual: { supplier: 'ecarpetgallery', supplierRef: '380114', sourceUrl: scraped.sourceUrl },
+      },
+    }));
+    set('url', scraped.sourceUrl);
+    await form.fetchUrl();
+
+    expect(document.getElementById('fetch-result')?.hasAttribute('open')).toBe(false);
+    expect(cls('preview')).toBe('preview on');
+    expect(val('f_material')).toBe('Wool');
+    expect(text('m1')).toContain('Some fields could not be read.');
+    expect(text('m1')).toContain('filled in below');
   });
 });

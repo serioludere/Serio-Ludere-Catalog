@@ -215,10 +215,27 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     // Removing a tag with the × is an edit like any other, so the unsaved-work guard has to see it.
     onChange: () => {
       dirty = true;
+      syncPresetTags();
     },
   });
   const newTag = input('newTag');
   const btnNewTag = byId<HTMLButtonElement>('btnNewTag', doc);
+  /**
+   * The Antique / Signed tick boxes (owner, 2026-09-20). They are a shortcut onto the same list of
+   * plain strings the tokens show — ticking adds the tag, unticking removes it — so they must follow
+   * the tokens too: a tag removed by its × unticks here, and one typed by hand ticks here.
+   */
+  const presetTags = [...doc.querySelectorAll<HTMLInputElement>('input.tagpreset[data-preset]')];
+  function syncPresetTags(): void {
+    for (const box of presetTags) box.checked = chips.has(box.dataset.preset ?? '');
+  }
+  for (const box of presetTags) {
+    box.addEventListener('change', () => {
+      const name = box.dataset.preset ?? '';
+      if (box.checked) addTag(name);
+      else chips.remove(name);
+    });
+  }
   const url = maybe<HTMLInputElement>('url', doc);
   const btnFetch = maybe<HTMLButtonElement>('btnFetch', doc);
   const supplierTitle = maybe('supplierTitle', doc);
@@ -362,6 +379,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
         .filter((n): n is string => n !== undefined),
     );
     chips.set(rug.tags);
+    syncPresetTags();
     f.width.value = rug.widthCm === undefined ? '' : String(rug.widthCm);
     f.length.value = rug.lengthCm === undefined ? '' : String(rug.lengthCm);
     f.material.value = rug.material;
@@ -471,7 +489,13 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     return chips.add(name);
   };
 
-  const showFetchError = (fail: ApiFail): void => {
+  /**
+   * `filled` = a partial scrape has already been applied to the form, so the fields below are the
+   * thing to look at. The modal must NOT stay open over them (owner, 2026-09-20): it is a modal
+   * dialog, so everything behind it is inert — the form looked filled in and editable and swallowed
+   * every click. The error goes inline instead, above the fields it is about.
+   */
+  const showFetchError = (fail: ApiFail, filled = false): void => {
     if (!m1) return;
     const link = el('a', { href: '#', id: 'btnManual' }, 'Enter manually', doc);
     link.addEventListener('click', (e) => {
@@ -479,6 +503,11 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
       manualEntry();
     });
     const text = fail.status === 400 ? issuesText(fail) : fail.message;
+    if (filled) {
+      modal?.close();
+      msg(m1, `${text} — what could be read is filled in below. Check it, then save.`, 'err');
+      return;
+    }
     if (modal) {
       // P9 (85:2652). The host is named because "blocked the request" is only useful when you know
       // who blocked it, and it is the one part of the message the owner can act on.
@@ -535,8 +564,12 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     if (!r.ok) {
       lastManual = (r.body?.manual as ManualLike | null | undefined) ?? undefined;
       const partial = r.body?.data as Partial<ScrapedLike> | null | undefined;
-      if (partial && r.status === 422) applyScrape(partial);
-      showFetchError(r);
+      const filled = Boolean(partial) && r.status === 422;
+      if (filled) {
+        applyScrape(partial!);
+        showFooter(false);
+      }
+      showFetchError(r, filled);
       return;
     }
     // Named `fetched`, not `data`: `data` is the page's own admin-data block in the enclosing
@@ -784,6 +817,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     if (url) url.value = '';
     if (!keepCollection) setMultiSelect(collection, []);
     chips.set([]);
+    syncPresetTags();
     for (const node of [
       f.id,
       f.slug,
@@ -860,10 +894,20 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
       addNewTag();
     }
   });
+  /**
+   * Adds everything typed in the field at once (owner, 2026-09-20): "Wool, Vintage, Signed" is three
+   * tags, not one. Commas and new lines both separate, blanks are dropped, and a tag already on the
+   * product is silently skipped — so pasting a list twice does not duplicate anything.
+   */
   const addNewTag = (): void => {
-    const name = newTag.value.trim();
-    if (!name) return;
-    if (addTag(name)) newTag.value = '';
+    const names = newTag.value
+      .split(/[,\n]/)
+      .map((t) => t.trim())
+      .filter(Boolean);
+    if (names.length === 0) return;
+    for (const name of names) addTag(name);
+    newTag.value = '';
+    syncPresetTags();
   };
   btnAdd?.addEventListener('click', () => void add());
   btnClear?.addEventListener('click', () => {

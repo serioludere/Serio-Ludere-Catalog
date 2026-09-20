@@ -40,7 +40,7 @@ describe('the catalog header (53:35)', () => {
     const html = await catalog();
     // The logo mark is gone from this corner, and the deep band with it: the name is plain text in
     // the brand face, so the top of the page costs one row rather than a third of the first screen.
-    expect(html).toMatch(/class="[^"]*pv-wordmark[^"]*pv-h4[^"]*"[^>]*>Serio Ludere</);
+    expect(html).toMatch(/class="[^"]*pv-wordmark[^"]*pv-h4[^"]*"[^>]*>\s*Serio Ludere\s*</);
     expect(html).not.toContain('pv-logo-mark');
     expect(html).not.toContain('admin-logo');
     // Figma 53:37 puts the buyer's name on the right of this header. The owner removed it on

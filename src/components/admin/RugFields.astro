@@ -1,13 +1,23 @@
 ---
-// The rug field grid shared by /admin/rugs/new (add mode: name + collection + tags + supplier link
-// → Fetch → preview) and /admin/rugs/[id] (edit mode: the same grid with id readonly, a hidden
-// version, Save / Archive / Restore). docs/ADMIN_SPEC.md §8.3. Wired by src/scripts/admin/rug-form.ts;
-// nothing inline (hash CSP), sheet text only ever lands as text.
+// The rug field grid shared by /admin/rugs/new (add mode: supplier link → Fetch → review) and
+// /admin/rugs/[id] (edit mode: the same grid with id readonly, a hidden version, Save / Delete).
+// docs/ADMIN_SPEC.md §8.3. Wired by src/scripts/admin/rug-form.ts; nothing inline (hash CSP), sheet
+// text only ever lands as text.
+//
+// ORDER (owner, 2026-09-21). The add form is really two screens in one: before a fetch it asks for a
+// link, and after one it is a REVIEW of what came back. The review is now ordered the way the studio
+// reads a rug — the photographs first, because that is what identifies it, then what it is called
+// and where it is filed, then what it is, then what it cost:
+//
+//   photos · name + collections · tags · description · supplier link · size · material + method ·
+//   age + origin · price + supplier · notes · what the supplier said · Save
+//
+// The supplier's own measurement and price sit at the BOTTOM with the scrape warnings: they are
+// provenance for a number already in the form above, not a field to fill in.
 import type { AdminCollection, AdminRug, AdminTag } from '../../lib/admin/read.ts';
 import { driveImageUrl } from '../../lib/images.ts';
 import { BADGE_TAG_NAMES } from '../../lib/view.ts';
-import { METHOD_OPTIONS, otherMethods, splitMethods } from '../../lib/method.ts';
-import Chips from './Chips.astro';
+import { MATERIAL_OPTIONS, METHOD_OPTIONS, extraTerms, splitTerms } from '../../lib/terms.ts';
 import MultiSelect from '../ui/MultiSelect.astro';
 
 interface Props {
@@ -19,7 +29,7 @@ interface Props {
   driveScopeOk: boolean | null;
   nextId?: string;
   /**
-   * False inside the Add-product drawer, whose FOOTER owns Fetch (Figma P3 80:1480 draws the action
+   * False inside the Add-product modal, whose FOOTER owns Fetch (Figma P3 80:1480 draws the action
    * in the footer bar, not floating inline mid-body). The standalone /admin/rugs/new page — the
    * no-JS fallback — has no footer, so it keeps the inline control. rug-form.ts finds the button by
    * id across the whole document, so it does not care which of the two rendered it.
@@ -58,21 +68,36 @@ const ownTags = rug?.tags.filter((t) => t.trim()) ?? [];
 const PRESET_TAGS = BADGE_TAG_NAMES;
 // Membership, not the primary: the form must tick every collection the rug is filed under.
 const chosenCollections = new Set((rug?.collections ?? []).map((c) => c.trim().toLowerCase()));
-// The techniques this rug carries, canonically spelled, so the boxes come up ticked (owner, 2026-09-20).
-const chosenMethods = new Set(splitMethods(rug?.method));
+
+/* Material and Method are dropdowns over a closed list (owner, 2026-09-21), not free text: the
+   studio was typing the same handful of words, several spellings apart, and the buyer's spec panel
+   showed every one of them. A value the ROW already carries that is not on the list rides along as
+   an extra, already-ticked option — removing a control must never silently rewrite a rug. */
+const termOptions = (
+  cell: string | undefined,
+  options: readonly string[],
+): Array<{ value: string; label: string; selected: boolean }> => {
+  const chosen = new Set(splitTerms(cell, options).map((t) => t.toLowerCase()));
+  return [...options, ...extraTerms(cell, options)].map((value) => ({
+    value,
+    label: value,
+    selected: chosen.has(value.toLowerCase()),
+  }));
+};
+const materialOptions = termOptions(rug?.material, MATERIAL_OPTIONS);
+const methodOptions = termOptions(rug?.method, METHOD_OPTIONS);
 ---
 
 {
-  /* The add strip. Every control carries a VISIBLE label: these were placeholder-only, and a
-    placeholder disappears the moment you type — so the one time you need to know what a field is
-    (checking what you just entered) is the one time nothing tells you. The revealed `.fields` grid
-    below always had labels; this brings the top of the form up to the same standard. */
+  /* Before the fetch there is one question — which link — so that is all this strip asks. Everything
+     else moved into the review below, where it is answered against what came back (owner,
+     2026-09-21). On edit the strip carries the product's number instead, read-only. */
 }
 <div class="addform">
   {
     /* Owner, 2026-09-16: adding a product no longer asks for the number. The server has already
       allocated the next one, nobody typed it, and a field you cannot usefully change is noise at the
-      top of the drawer — so on add it rides along hidden and rug-form.ts reads it exactly as before.
+      top of the form — so on add it rides along hidden and rug-form.ts reads it exactly as before.
       Editing still shows it, read-only: there it is the row's reference, not an input. */
     edit ? (
       <div class="f">
@@ -84,80 +109,6 @@ const chosenMethods = new Set(splitMethods(rug?.method));
       <input type="hidden" id="f_id" value={nextId ?? ''} />
     )
   }
-
-  <div class="row">
-    {
-      !edit && (
-        <div class="f grow">
-          <label for="yourName">Product name</label>
-          <input id="yourName" placeholder="e.g. Khal Mohammadi" autocomplete="off" />
-        </div>
-      )
-    }
-    <div class="f narrow">
-      <span class="f__legend">Collections</span>
-      <MultiSelect
-        id="f_collection"
-        name="collection"
-        label="Collections"
-        placeholder="Choose collections…"
-        required
-        options={collections.map((c) => ({
-          value: c.name,
-          label: c.name,
-          selected: chosenCollections.has(c.name.trim().toLowerCase()),
-        }))}
-      />
-    </div>
-  </div>
-
-  {
-    /* Owner, 2026-09-18: tags are plain strings on THIS product, not a registry to pick from. What is
-      listed is what the product has; each carries an × that removes it, and the input adds one. */
-  }
-  <div class="f">
-    <span class="f__legend">Tags</span>
-    <div class="tagrow">
-      {
-        /* The markers (owner, 2026-09-20). Pressing one adds that tag, pressing it again removes it;
-           anything else is still typed below. rug-form.ts keeps these in step with the tokens, so a
-           marker removed by its × comes un-pressed here too. */
-      }
-      <div class="tagpresets">
-        {
-          PRESET_TAGS.map((t) => (
-            <button
-              type="button"
-              class="chip tagpreset"
-              data-preset={t}
-              aria-pressed={
-                ownTags.some((own) => own.trim().toLowerCase() === t.toLowerCase()) ? 'true' : 'false'
-              }
-            >
-              {t}
-            </button>
-          ))
-        }
-      </div>
-      <div class="tagtokens" id="tagChips" role="list" aria-label="Tags on this product">
-        {
-          ownTags.map((t) => (
-            <span class="tagtoken" data-tag={t} role="listitem">
-              <span class="tagtoken__label">{t}</span>
-              <button type="button" class="tagtoken__x" data-remove={t} aria-label={`Remove ${t}`}>
-                ×
-              </button>
-            </span>
-          ))
-        }
-      </div>
-      <div class="newtag">
-        <label class="sr-only" for="newTag">New tags, separated by commas</label>
-        <input id="newTag" placeholder="New tags, separated by commas" autocomplete="off" />
-        <button class="chip" id="btnNewTag" type="button"> Add tags </button>
-      </div>
-    </div>
-  </div>
   {
     !edit && (
       <>
@@ -179,10 +130,6 @@ const chosenMethods = new Set(splitMethods(rug?.method));
             )}
           </div>
         </div>
-        <p class="hint">
-          The name is what customers see. The supplier link fills in size, material, age and price.
-        </p>
-        <p class="hint" id="supplierTitle" hidden />
         <div id="m1" class="msg" />
       </>
     )
@@ -190,124 +137,10 @@ const chosenMethods = new Set(splitMethods(rug?.method));
 </div>
 
 <div id="preview" class:list={['preview', { on: edit }]}>
-  <div class="fields">
-    <div class="f">
-      <label for="f_slug">Web address</label>
-      <div class="pair">
-        <input id="f_slug" value={rug?.slug ?? ''} autocomplete="off" />
-        <button class="chip" id="btnSlug" type="button" title="Regenerate from the name">↻</button>
-      </div>
-    </div>
-    <div class="f">
-      <label for="f_name">Name (shown to customers)</label>
-      <input id="f_name" value={rug?.name ?? ''} autocomplete="off" />
-    </div>
-    <div class="f wide">
-      <label for="f_description">Description</label>
-      {
-        /* Six rows, not three (owner, 2026-09-20): this is the paragraph the buyer reads under the
-          rug, and editing it three lines at a time — inside what used to be a 480px drawer — meant
-          scrolling a box to re-read your own sentence. It resizes vertically from there. */
-      }
-      <textarea id="f_description" rows="6">{rug?.description ?? ''}</textarea>
-    </div>
-    <div class="f">
-      <label for="f_width">Width (cm)</label>
-      <input id="f_width" inputmode="numeric" value={v(rug?.widthCm)} />
-    </div>
-    <div class="f">
-      <label for="f_length">Length (cm)</label>
-      <div class="pair">
-        <input id="f_length" inputmode="numeric" value={v(rug?.lengthCm)} />
-        <button class="chip" id="btnSwap" type="button" title="Swap width and length">⇄</button>
-      </div>
-    </div>
-    <div class="f">
-      <label for="f_material">Material</label>
-      <input id="f_material" value={rug?.material ?? ''} />
-    </div>
-    <div class="f">
-      {
-        /* Four techniques as checkboxes (owner, 2026-09-20), not a free-text box: the studio was typing
-          the same four strings, three spellings apart. A rug may carry more than one — a piece can be
-          both flatweave and hand-loomed — and rug-form.ts joins what is ticked back into the single
-          `Method` cell the sheet, the spec panel and the Shopify export all still read.
-
-          Anything a row already carries that is NOT one of the four (a scraped "Handmade pile rug")
-          rides along as an extra ticked option rather than being silently dropped on the next save. */
-      }
-      <span class="f__legend">Method</span>
-      <div id="f_method" class="methods" role="group" aria-label="Method">
-        {
-          [...METHOD_OPTIONS, ...otherMethods(rug?.method)].map((m) => (
-            <label class="chk">
-              <input type="checkbox" data-method value={m} checked={chosenMethods.has(m)} />
-              {m}
-            </label>
-          ))
-        }
-      </div>
-    </div>
-    <div class="f">
-      <label for="f_age">Age</label>
-      <input id="f_age" value={rug?.age ?? ''} />
-    </div>
-    <div class="f">
-      <label for="f_origin">Origin</label>
-      <input id="f_origin" value={rug?.origin ?? ''} />
-    </div>
-    <div class="f">
-      <label for="f_price">Retail price (USD)</label>
-      <div class="pair">
-        <input id="f_price" inputmode="decimal" value={v(rug?.priceUsd)} />
-        <button class="chip" id="btnRound" type="button">Round to {roundStep}</button>
-      </div>
-    </div>
-    {
-      /* "Rotate photo" asked a question the studio should never have to answer (owner, 2026-09-20):
-         a Karavan cover arrives on its side and is turned a quarter to the LEFT on import, always
-         (src/lib/drive/transform.ts), so by the time a photo is stored it is already the right way
-         up. The control is gone from both forms; the stored value rides along hidden so an existing
-         row keeps whatever display hint it already had. */
-    }
-    <select id="f_rotate" hidden>
-      <option value="false" selected={(rug?.rotate ?? 'false') === 'false'}>No</option>
-      <option value="true" selected={rug?.rotate === 'true'}>Turn to portrait</option>
-      <option value="force" selected={rug?.rotate === 'force'}>Always turn</option>
-    </select>
-    {
-      /* "Featured" is gone from both forms (owner, 2026-09-20). The column still exists and still
-         orders the catalogue, so the value RIDES ALONG hidden rather than being cleared on every
-         save — removing the control must not silently un-feature a rug that is featured. */
-    }
-    <input type="checkbox" id="f_featured" checked={rug?.featured === true} hidden />
-    <div class="f">
-      <label for="f_sourceUrl">Supplier link</label>
-      <input id="f_sourceUrl" inputmode="url" value={rug?.sourceUrl ?? ''} autocomplete="off" />
-    </div>
-    <div class="f">
-      <label for="f_supplier">Supplier</label>
-      <select id="f_supplier">
-        <option value="" selected={!rug?.supplier}>Owned / other</option>
-        <option value="ecarpetgallery" selected={rug?.supplier === 'ecarpetgallery'}>ECG</option>
-        <option value="karavanrug" selected={rug?.supplier === 'karavanrug'}>KV</option>
-      </select>
-    </div>
-    <div class="f">
-      <label for="f_supplierRef">Supplier ref</label>
-      <input id="f_supplierRef" value={rug?.supplierRef ?? ''} autocomplete="off" />
-    </div>
-    <div class="f wide">
-      <label for="f_notes">Notes (internal)</label>
-      <textarea id="f_notes" rows="2">{rug?.notes ?? ''}</textarea>
-    </div>
-  </div>
-
-  <p class="hint" id="ftHint" hidden></p>
-  <p class="hint" id="priceHint" hidden></p>
-  <p class="hint" id="tagHint" hidden></p>
-  <ul class="hint warnings" id="warnings" hidden></ul>
-
+  {
+    /* The photographs first (owner, 2026-09-21): they are how the studio knows which rug this is,
+       and they used to sit below every field, two scrolls down. */
+  }
   <div class="stack">
     <h3>Photos <span class="cnt-inline" id="photoCount"></span></h3>
     {
@@ -352,6 +185,213 @@ const chosenMethods = new Set(splitMethods(rug?.method));
       <textarea id="f_photos" rows="3">{rug?.photos.join('\n') ?? ''}</textarea>
     </div>
   </div>
+
+  <div class="fields">
+    <div class="f">
+      {
+        /* The one name field (owner, 2026-09-21). The add form used to ask for a name at the top AND
+          show "Name (shown to customers)" here, which were the same string in two boxes; the top one
+          is gone and this is it. */
+      }
+      <label for="f_name">Product name</label>
+      <input id="f_name" value={rug?.name ?? ''} placeholder="e.g. Khal Mohammadi" autocomplete="off" />
+    </div>
+    <div class="f">
+      <span class="f__legend">Collections</span>
+      <MultiSelect
+        id="f_collection"
+        name="collection"
+        label="Collections"
+        placeholder="Choose collections…"
+        required
+        options={collections.map((c) => ({
+          value: c.name,
+          label: c.name,
+          selected: chosenCollections.has(c.name.trim().toLowerCase()),
+        }))}
+      />
+    </div>
+
+    {
+      /* Owner, 2026-09-18: tags are plain strings on THIS product, not a registry to pick from. What is
+        listed is what the product has; each carries an × that removes it, and the input adds one. */
+    }
+    <div class="f wide">
+      <span class="f__legend">Tags</span>
+      <div class="tagrow">
+        {
+          /* The markers (owner, 2026-09-20). Pressing one adds that tag, pressing it again removes it;
+             anything else is still typed below. rug-form.ts keeps these in step with the tokens, so a
+             marker removed by its × comes un-pressed here too. */
+        }
+        <div class="tagpresets">
+          {
+            PRESET_TAGS.map((t) => (
+              <button
+                type="button"
+                class="chip tagpreset"
+                data-preset={t}
+                aria-pressed={
+                  ownTags.some((own) => own.trim().toLowerCase() === t.toLowerCase()) ? 'true' : 'false'
+                }
+              >
+                {t}
+              </button>
+            ))
+          }
+        </div>
+        <div class="tagtokens" id="tagChips" role="list" aria-label="Tags on this product">
+          {
+            ownTags.map((t) => (
+              <span class="tagtoken" data-tag={t} role="listitem">
+                <span class="tagtoken__label">{t}</span>
+                <button type="button" class="tagtoken__x" data-remove={t} aria-label={`Remove ${t}`}>
+                  ×
+                </button>
+              </span>
+            ))
+          }
+        </div>
+        <div class="newtag">
+          <label class="sr-only" for="newTag">New tags, separated by commas</label>
+          <input id="newTag" placeholder="New tags, separated by commas" autocomplete="off" />
+          <button class="chip" id="btnNewTag" type="button"> Add tags </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="f wide">
+      <label for="f_description">Description</label>
+      {
+        /* Six rows, not three (owner, 2026-09-20): this is the paragraph the buyer reads under the
+          rug, and editing it three lines at a time — inside what used to be a 480px drawer — meant
+          scrolling a box to re-read your own sentence. It resizes vertically from there. */
+      }
+      <textarea id="f_description" rows="6">{rug?.description ?? ''}</textarea>
+    </div>
+
+    <div class="f wide">
+      <label for="f_sourceUrl">Supplier link</label>
+      <input id="f_sourceUrl" inputmode="url" value={rug?.sourceUrl ?? ''} autocomplete="off" />
+    </div>
+
+    <div class="f">
+      <label for="f_width">Width (cm)</label>
+      <input id="f_width" inputmode="numeric" value={v(rug?.widthCm)} />
+    </div>
+    <div class="f">
+      <label for="f_length">Length (cm)</label>
+      <div class="pair">
+        <input id="f_length" inputmode="numeric" value={v(rug?.lengthCm)} />
+        <button class="chip" id="btnSwap" type="button" title="Swap width and length">⇄</button>
+      </div>
+    </div>
+
+    <div class="f">
+      <span class="f__legend">Material</span>
+      <MultiSelect
+        id="f_material"
+        name="material"
+        label="Material"
+        placeholder="Choose materials…"
+        options={materialOptions}
+      />
+    </div>
+    <div class="f">
+      <span class="f__legend">Method</span>
+      <MultiSelect
+        id="f_method"
+        name="method"
+        label="Method"
+        placeholder="Choose methods…"
+        options={methodOptions}
+      />
+    </div>
+
+    <div class="f">
+      <label for="f_age">Age</label>
+      <input id="f_age" value={rug?.age ?? ''} />
+    </div>
+    <div class="f">
+      <label for="f_origin">Origin</label>
+      <input id="f_origin" value={rug?.origin ?? ''} />
+    </div>
+
+    <div class="f">
+      <label for="f_price">Retail price (USD)</label>
+      <div class="pair">
+        <input id="f_price" inputmode="decimal" value={v(rug?.priceUsd)} />
+        <button class="chip" id="btnRound" type="button">Round to {roundStep}</button>
+      </div>
+    </div>
+    <div class="f">
+      <label for="f_supplier">Supplier</label>
+      <select id="f_supplier">
+        <option value="" selected={!rug?.supplier}>Owned / other</option>
+        <option value="ecarpetgallery" selected={rug?.supplier === 'ecarpetgallery'}>ECG</option>
+        <option value="karavanrug" selected={rug?.supplier === 'karavanrug'}>KV</option>
+      </select>
+    </div>
+
+    {
+      /* The web address is the rug's URL for as long as it exists, so it is editable where a rug
+         EXISTS. On add it is left empty and the server derives a unique handle from the name — which
+         is also why it no longer needs a field: a handle nobody has linked to yet is not a decision,
+         and one typed by hand could collide and dead-end the save (owner, 2026-09-21). */
+      edit ? (
+        <div class="f">
+          <label for="f_slug">Web address</label>
+          <div class="pair">
+            <input id="f_slug" value={rug?.slug ?? ''} autocomplete="off" />
+            <button class="chip" id="btnSlug" type="button" title="Regenerate from the name">
+              ↻
+            </button>
+          </div>
+        </div>
+      ) : (
+        <input type="hidden" id="f_slug" value="" />
+      )
+    }
+    <div class="f">
+      <label for="f_supplierRef">Supplier ref</label>
+      <input id="f_supplierRef" value={rug?.supplierRef ?? ''} autocomplete="off" />
+    </div>
+
+    <div class="f wide">
+      <label for="f_notes">Notes (internal)</label>
+      <textarea id="f_notes" rows="2">{rug?.notes ?? ''}</textarea>
+    </div>
+
+    {
+      /* "Rotate photo" asked a question the studio should never have to answer (owner, 2026-09-20):
+         a Karavan cover arrives on its side and is turned a quarter to the LEFT on import, always
+         (src/lib/drive/transform.ts), so by the time a photo is stored it is already the right way
+         up. The control is gone from both forms; the stored value rides along hidden so an existing
+         row keeps whatever display hint it already had. */
+    }
+    <select id="f_rotate" hidden>
+      <option value="false" selected={(rug?.rotate ?? 'false') === 'false'}>No</option>
+      <option value="true" selected={rug?.rotate === 'true'}>Turn to portrait</option>
+      <option value="force" selected={rug?.rotate === 'force'}>Always turn</option>
+    </select>
+    {
+      /* "Featured" is gone from both forms (owner, 2026-09-20). The column still exists and still
+         orders the catalogue, so the value RIDES ALONG hidden rather than being cleared on every
+         save — removing the control must not silently un-feature a rug that is featured. */
+    }
+    <input type="checkbox" id="f_featured" checked={rug?.featured === true} hidden />
+  </div>
+
+  {
+    /* What the supplier said, at the bottom (owner, 2026-09-21): the measurement its page printed,
+       the price it asked, and anything the scrape had to convert or guess. Every one of them is
+       provenance for a number that is already in a field above, so it belongs under the form rather
+       than between the fields it explains. */
+  }
+  <p class="hint" id="ftHint" hidden></p>
+  <p class="hint" id="priceHint" hidden></p>
+  <p class="hint" id="tagHint" hidden></p>
+  <ul class="hint warnings" id="warnings" hidden></ul>
 
   <div class="actions">
     {

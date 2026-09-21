@@ -1,11 +1,15 @@
-// Add + edit rug form (docs/ADMIN_SPEC.md §8.3), the legacy "Add rug" flow rebuilt: Fetch →
-// preview → photos strip → Add to sheet (photos first, then the row), manual entry on any scrape
-// failure, "Round to 5", swap sides, "+ new tag"; in edit mode Save with the version
-// token (409 → the form reloads the fresh row). Keyboard:
-// Enter in the link field fetches, Enter in "your name" moves to the link, Escape hides the
-// banner, Ctrl/⌘+S saves. Buttons are disabled while a request is in flight.
+// Add + edit rug form (docs/ADMIN_SPEC.md §8.3): paste a supplier link → Fetch → REVIEW what came
+// back → Save (photos into Drive first, then the row), manual entry on any scrape failure, "Round
+// to 5", swap sides, "+ new tag"; in edit mode Save with the version token (409 → the form reloads
+// the fresh row). Keyboard: Enter in the link field fetches, Escape hides the banner, Ctrl/⌘+S
+// saves. Buttons are disabled while a request is in flight.
+//
+// The review is ordered as the studio reads a rug (owner, 2026-09-21) — photos, name + collections,
+// tags, description, link, size, material + method, the rest — with what the supplier SAID at the
+// bottom. Material and Method are multi-select dropdowns over the closed lists in src/lib/terms.ts,
+// and the scrape is read into them rather than typed.
 import { extractDriveId } from '../../lib/images.ts';
-import { joinMethods, splitMethods } from '../../lib/method.ts';
+import { MATERIAL_OPTIONS, METHOD_OPTIONS, joinTerms, splitTerms, termsFromScrape } from '../../lib/terms.ts';
 import { slugify } from '../../lib/text.ts';
 import {
   PHOTOS_TIMEOUT_MS,
@@ -206,7 +210,6 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
 
   /* ---------- elements ---------- */
   const input = (id: string): HTMLInputElement => byId<HTMLInputElement>(id, doc);
-  const yourName = maybe<HTMLInputElement>('yourName', doc);
   const collection = byId<HTMLElement>('f_collection', doc);
   /**
    * P5-P9 (Figma 81:1865 … 85:2652). Undefined on any page that does not render the modal — the
@@ -246,7 +249,6 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
   }
   const url = maybe<HTMLInputElement>('url', doc);
   const btnFetch = maybe<HTMLButtonElement>('btnFetch', doc);
-  const supplierTitle = maybe('supplierTitle', doc);
   const m1 = maybe('m1', doc);
   const preview = byId('preview', doc);
   const f = {
@@ -256,7 +258,6 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     description: byId<HTMLTextAreaElement>('f_description', doc),
     width: input('f_width'),
     length: input('f_length'),
-    material: input('f_material'),
     age: input('f_age'),
     origin: input('f_origin'),
     price: input('f_price'),
@@ -269,37 +270,51 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     photos: byId<HTMLTextAreaElement>('f_photos', doc),
     version: input('f_version'),
   };
-  const btnSlug = byId<HTMLButtonElement>('btnSlug', doc);
+  // Edit only: on add the handle is the server's to derive, so there is no control to bind.
+  const btnSlug = maybe<HTMLButtonElement>('btnSlug', doc);
   const btnSwap = byId<HTMLButtonElement>('btnSwap', doc);
   const btnRound = byId<HTMLButtonElement>('btnRound', doc);
   const ftHint = byId('ftHint', doc);
   const priceHint = byId('priceHint', doc);
   const tagHint = byId('tagHint', doc);
   const warnings = byId('warnings', doc);
-  /* Method is a checkbox group since 2026-09-20 (owner), so it is read and written through these
-     two rather than through a `.value`. A technique the group does not list — scraped, or typed by
-     an earlier version of this form — is added as a ticked option instead of being dropped. */
+  /* Material and Method are multi-select dropdowns over a closed list since 2026-09-21 (owner), so
+     both are read and written through these rather than through a `.value`. A value the list does
+     not carry — scraped, or typed by an earlier version of this form — is ADDED as a ticked option
+     rather than dropped: removing a control must never silently rewrite a rug.
+
+     `setTerms` is the one writer, so the same rule holds whether the value came from the server
+     (fill), from a scrape (applyScrape) or from a reset. */
+  const materialGroup = byId('f_material', doc);
   const methodGroup = byId('f_method', doc);
-  const methodBoxes = (): HTMLInputElement[] => [
-    ...methodGroup.querySelectorAll<HTMLInputElement>('input[data-method]'),
-  ];
-  const methodValue = (): string =>
-    joinMethods(
-      methodBoxes()
-        .filter((b) => b.checked)
-        .map((b) => b.value),
+
+  const termValue = (group: HTMLElement, options: readonly string[]): string =>
+    joinTerms(multiSelectValues(group), options);
+
+  const setTerms = (group: HTMLElement, values: readonly string[], options: readonly string[]): void => {
+    const wanted = splitTerms(values.join(','), options);
+    const known = new Set(
+      [...group.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')].map((b) =>
+        b.value.toLowerCase(),
+      ),
     );
-  const setMethod = (value: string): void => {
-    const wanted = new Set(splitMethods(value));
-    for (const box of methodBoxes()) {
-      box.checked = wanted.has(box.value);
-      wanted.delete(box.value);
+    const panel = group.querySelector<HTMLElement>('.msel__panel') ?? group;
+    for (const extra of wanted.filter((t) => !known.has(t.toLowerCase()))) {
+      // The same markup Checkbox.astro renders, so an added option is indistinguishable from a
+      // listed one — same box, same row height, same 44px target.
+      const id = `${group.id}__${extra.replace(/[^A-Za-z0-9_-]+/g, '-')}`;
+      const box = el(
+        'input',
+        { class: 'check__box', type: 'checkbox', id, name: group.id, value: extra },
+        [],
+        doc,
+      );
+      known.add(extra.toLowerCase());
+      panel.appendChild(
+        el('label', { class: 'check msel__opt', for: id }, [box, el('span', {}, extra, doc)], doc),
+      );
     }
-    for (const extra of wanted) {
-      const box = el('input', { type: 'checkbox', 'data-method': '', value: extra }, [], doc);
-      (box as HTMLInputElement).checked = true;
-      methodGroup.appendChild(el('label', { class: 'chk' }, [box, ` ${extra}`], doc));
-    }
+    setMultiSelect(group, wanted);
   };
 
   const photoStrip = byId('photoStrip', doc);
@@ -423,8 +438,17 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     photoCount.textContent = total ? `${n} of ${total} selected` : '';
   }
 
+  /**
+   * The handle, from the name — on EDIT only (owner, 2026-09-21).
+   *
+   * The add form has no web-address field any more, and deriving one behind the studio's back would
+   * be worse than not having it: two rugs that honestly share a name would collide, and the save
+   * would 409 on a field nobody can see or correct. Left empty, the server allocates a unique handle
+   * (`uniqueSlug`, ids.ts) and the second "Bokhara" simply becomes `bokhara-2`.
+   */
   const regenerateSlug = (): void => {
-    f.slug.value = slugify(f.name.value.trim() || (yourName?.value.trim() ?? '')) || '';
+    if (!edit) return;
+    f.slug.value = slugify(f.name.value.trim()) || '';
   };
 
   /* ---------- fill / collect ---------- */
@@ -447,8 +471,8 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     syncPresetTags();
     f.width.value = rug.widthCm === undefined ? '' : String(rug.widthCm);
     f.length.value = rug.lengthCm === undefined ? '' : String(rug.lengthCm);
-    f.material.value = rug.material;
-    setMethod(rug.method);
+    setTerms(materialGroup, splitTerms(rug.material, MATERIAL_OPTIONS), MATERIAL_OPTIONS);
+    setTerms(methodGroup, splitTerms(rug.method, METHOD_OPTIONS), METHOD_OPTIONS);
     f.age.value = rug.age;
     f.origin.value = rug.origin;
     f.price.value = rug.priceUsd === undefined ? '' : String(rug.priceUsd);
@@ -468,7 +492,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
   const collect = (): RugBody => {
     const { ids } = parsePhotoLines(f.photos.value);
     const body: RugBody = {
-      name: f.name.value.trim() || (yourName?.value.trim() ?? ''),
+      name: f.name.value.trim(),
       description: f.description.value.trim(),
       collections: multiSelectValues(collection),
       tags: chips.values(),
@@ -476,8 +500,8 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
       textureId: textureId(),
       widthCm: intOf(f.width.value),
       lengthCm: intOf(f.length.value),
-      material: f.material.value.trim(),
-      method: methodValue(),
+      material: termValue(materialGroup, MATERIAL_OPTIONS),
+      method: termValue(methodGroup, METHOD_OPTIONS),
       age: f.age.value.trim(),
       origin: f.origin.value.trim(),
       priceUsd: parsePrice(f.price.value),
@@ -506,14 +530,28 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
   const applyScrape = (d: Partial<ScrapedLike>): void => {
     scraped = d;
     manual = false;
-    const mine = yourName?.value.trim() ?? '';
-    if (mine) f.name.value = mine;
+    /* The name (owner, 2026-09-21). It used to be typed above the link and the supplier's title was
+       shown beside it as a hint the studio retyped by hand; the name field lives in the review now,
+       so the title FILLS it and the studio edits what is already there. A name they typed first
+       still wins — the scrape completes a blank field, it never overwrites an answer. */
+    f.name.value = f.name.value.trim() || (d.supplierTitle ?? '').trim();
     if (!f.slug.value.trim() && f.name.value.trim()) regenerateSlug();
     f.description.value = d.description ?? '';
     f.width.value = d.widthCm === undefined ? '' : String(d.widthCm);
     f.length.value = d.lengthCm === undefined ? '' : String(d.lengthCm);
-    f.material.value = d.material ?? '';
-    setMethod(d.method ?? '');
+    /* Read the supplier's words into the two lists (owner, 2026-09-21). The supplier's own field
+       first; only when that says nothing recognisable does the title and the description get a look,
+       because a description mentioning cotton may be describing the foundation or the fringe. */
+    setTerms(
+      materialGroup,
+      termsFromScrape(d.material, MATERIAL_OPTIONS, d.supplierTitle, d.description),
+      MATERIAL_OPTIONS,
+    );
+    setTerms(
+      methodGroup,
+      termsFromScrape(d.method, METHOD_OPTIONS, d.supplierTitle, d.description),
+      METHOD_OPTIONS,
+    );
     f.age.value = d.age ?? '';
     f.origin.value = d.origin ?? '';
     f.price.value = d.suggestedRetailUsd === undefined ? '' : String(d.suggestedRetailUsd);
@@ -523,8 +561,6 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     // The scraped SKU becomes the product id (owner, 2026-09-18). Only on add: an existing rug's id is
     // its reference and never moves. Falls back to the allocated SL-nnn when the SKU is unusable.
     if (!edit) f.id.value = idFromSku(d.supplierRef) ?? data.nextId ?? '';
-    if (supplierTitle)
-      setHint(supplierTitle, d.supplierTitle ? `Supplier calls it: ${d.supplierTitle}` : null);
     setHint(ftHint, d.sizeRaw ? `Supplier measurement: ${d.sizeRaw}` : null);
     if (d.seenPrice !== undefined) {
       const seen = `${money(d.seenPrice)}${d.seenCurrency && d.seenCurrency !== 'USD' ? ` ${d.seenCurrency}` : ''}`;
@@ -664,13 +700,10 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
   const manualEntry = (): void => {
     manual = true;
     scraped = undefined;
-    const mine = yourName?.value.trim() ?? '';
-    if (mine) f.name.value = mine;
     if (!f.slug.value.trim() && f.name.value.trim()) regenerateSlug();
     f.sourceUrl.value = lastManual?.sourceUrl ?? url?.value.trim() ?? '';
     f.supplier.value = lastManual?.supplier ?? '';
     f.supplierRef.value = lastManual?.supplierRef ?? '';
-    if (supplierTitle) setHint(supplierTitle, null);
     setHint(ftHint, null);
     setHint(priceHint, null);
     tagHint.hidden = true;
@@ -690,7 +723,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
       collection.querySelector<HTMLElement>('summary')?.focus();
       return false;
     }
-    if (!(f.name.value.trim() || yourName?.value.trim())) {
+    if (!f.name.value.trim()) {
       msg(m2, 'Give the rug a name.', 'err');
       f.name.focus();
       return false;
@@ -889,8 +922,8 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     manual = false;
     scraped = undefined;
     lastManual = undefined;
-    if (yourName) yourName.value = '';
     if (url) url.value = '';
+    f.name.value = '';
     if (!keepCollection) setMultiSelect(collection, []);
     chips.set([]);
     syncPresetTags();
@@ -900,7 +933,6 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
       f.name,
       f.width,
       f.length,
-      f.material,
       f.age,
       f.origin,
       f.price,
@@ -909,7 +941,8 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     ]) {
       node.value = '';
     }
-    setMethod('');
+    setTerms(materialGroup, [], MATERIAL_OPTIONS);
+    setTerms(methodGroup, [], METHOD_OPTIONS);
     f.description.value = '';
     f.notes.value = '';
     f.photos.value = '';
@@ -917,7 +950,6 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     f.rotate.value = 'false';
     f.featured.checked = false;
     f.id.value = data.nextId ?? '';
-    if (supplierTitle) setHint(supplierTitle, null);
     setHint(ftHint, null);
     setHint(priceHint, null);
     tagHint.hidden = true;
@@ -926,7 +958,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     preview.classList.remove('on');
     showFooter(true);
     if (m1) hide(m1);
-    yourName?.focus();
+    url?.focus();
   };
 
   /* ---------- wiring ---------- */
@@ -938,16 +970,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
       void fetchUrl(false);
     }
   });
-  yourName?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && url) {
-      e.preventDefault();
-      url.focus();
-    }
-  });
-  yourName?.addEventListener('input', () => {
-    if (!edit) f.name.value = yourName.value;
-  });
-  btnSlug.addEventListener('click', regenerateSlug);
+  btnSlug?.addEventListener('click', regenerateSlug);
   f.name.addEventListener('input', () => {
     if (!edit && !f.slug.dataset.touched) regenerateSlug();
   });

@@ -7,7 +7,7 @@ import { a as adminRuntime } from "./http_YuZl1CQP.mjs";
 import { i as fetchAdminSnapshot, m as roundStepOf } from "./read_D-x4Tjt2.mjs";
 import { o as jsonForScript } from "./view_DWDnTEhK.mjs";
 import { t as $$AdminLayout } from "./AdminLayout_DwEWQHde.mjs";
-import { t as $$RugFields } from "./RugFields_B5kBcacc.mjs";
+import { t as $$RugFields } from "./RugFields_DqM1q4CO.mjs";
 import { t as $$FetchModal } from "./FetchModal_ax6b96p1.mjs";
 import { n as nextRugId } from "./ids_BJimAI-C.mjs";
 import { f as reservedIds, r as driveScope } from "./_shared_Be6KMbAz.mjs";

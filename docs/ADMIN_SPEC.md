@@ -822,27 +822,33 @@ Applied:
   are inlined and hashed).
 - Initial data reaches scripts via `<script type="application/json" id="…">` blocks rendered with the existing
   `jsonForScript()` (escapes `<`, `>`, `&`, U+2028/9) or via `data-*` attributes — never by string-building JS.
-- All listeners via `addEventListener`; Enter in the URL field triggers Fetch, Enter in "your name" moves focus to the
-  URL field (legacy), Escape hides the current `.msg`, `Ctrl/⌘+S` on the form = Save, buttons are `disabled` while a
-  request is in flight and the message shows the `busy` state.
+- All listeners via `addEventListener`; Enter in the URL field triggers Fetch, Escape hides the current `.msg`,
+  `Ctrl/⌘+S` on the form = Save, buttons are `disabled` while a request is in flight and the message shows the
+  `busy` state.
 
 ### 8.3 Pages
 
 **`/admin/rugs/new` (Add rug)** — `rug-form.ts` in add mode.
 
-- Row 1: `#yourName` ("Your name for this rug — e.g. Khal Mohammadi"), collection `<select>` from Collections (first
-  option "Collection…", **required**, legacy error _"Pick a collection first — without it the rug won't appear
-  anywhere."_). Row 2: tag chips from Tags (multi-select) + "+ new tag" inline input (calls `tag.create`). Row 3:
-  `#url` + **Fetch**. Hints: _"Your name is what clients see. The link only supplies size, material, age and price."_,
-  `#supplierTitle` ("Supplier calls it: …"), `#m1` message.
-- Preview (`.preview.on` after Fetch or manual entry): `.fields` grid — `Rug number (id)` (prefilled from
-  `next-id`, editable), `Slug` (derived, regenerate button), `Name (what clients see)`, `Description` (textarea, spans
-  the grid), `Width (cm)`, `Length (cm)` (+ swap button, `ftHint` "Supplier measurement: 4'3" × 7'5""), `Material`,
-  `Method`, `Age`, `Origin`, `Retail price (USD)` (+ **Round to 5** button, `priceHint` "Supplier price $700 → ×1.6 →
-  $1,120 → rounded $1,120" or the markup-unset hint), `Rotate` (select), `Featured` (checkbox), `Status` (select,
-  default from Settings), `Supplier link` (readonly = normalised `sourceUrl`), `Supplier` / `Supplier ref` (readonly
-  from the scrape, editable in manual mode), `Notes`. `tagHint` "Suggested tags: … · use these" adds chips
-  (creating missing tags on Add, after confirmation).
+- **Before the fetch** (owner, 2026-09-21) the strip asks ONE question: `#url` + **Fetch**, and `#m1`. The name, the
+  collections and the tags moved into the review below, where they are answered against what came back — the old
+  `#yourName` and the `#supplierTitle` hint ("Supplier calls it: …") were the same string twice over, and the scrape
+  now FILLS the name instead of printing it beside an empty box. On edit the strip carries `Product number`, read-only.
+- **The review** (`.preview.on` after Fetch or manual entry) reads the way the studio reads a rug:
+  photos · `Product name` + `Collections` · tags · `Description` · `Supplier link` · `Width (cm)` + `Length (cm)`
+  (+ swap) · `Material` + `Method` · `Age` + `Origin` · `Retail price (USD)` (+ **Round to N**) + `Supplier` ·
+  `Supplier ref` (and `Web address` on edit only) · `Notes`. `Rotate` and `Featured` ride along hidden.
+- **Material and Method are multi-select dropdowns over a closed list** (owner, 2026-09-21), not free text:
+  Material = Wool · Viscose · Silk · Cotton · Bamboo; Method = Hand-Knotted · Flatweave · Hand-Woven ·
+  Hand-Embroidered · Jacquard Loom · Aghabani - Natural Dye · Vegetable Dye. Both join into the one text cell the
+  sheet already has (`src/lib/terms.ts`). The scrape is READ into them — the supplier's own field first, then the
+  title and description — and a value a row already carries that nothing recognises rides along as a ticked extra.
+- **The supplier's own words sit at the BOTTOM**, under the fields and above the actions: `ftHint` ("Supplier
+  measurement: 4'3" × 7'5""), `priceHint` ("Supplier price $700 → ×1.6 → $1,120 → rounded $1,120", or the
+  markup-unset hint), `tagHint`, and the scrape `warnings` ("no cm on page; converted …"). Each is provenance for a
+  number already in a field above, not a field to fill in.
+- **No web-address field on add**: the handle is left empty and the server derives a unique one from the name
+  (`uniqueSlug`), so two rugs that honestly share a name cannot collide on a field nobody can see. Edit keeps it.
 - Photos strip: scraped thumbnails as `.card .ph` tiles with a checkbox each (all checked, max 12, drag-free order =
   page order; first = card image), `.cnt` badge with the count; disabled with hint when `driveScopeOk` is false.
   Below: a `photos` textarea (one Drive id/link per line) for manual ids.

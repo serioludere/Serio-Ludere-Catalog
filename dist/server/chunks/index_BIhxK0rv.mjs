@@ -11,7 +11,7 @@ import { t as $$PageNav } from "./PageNav_B-pEwqJa.mjs";
 import { n as $$Icon, t as $$AdminLayout } from "./AdminLayout_DwEWQHde.mjs";
 import { t as $$Button } from "./Button_tGQG9sds.mjs";
 import { n as $$Modal, t as $$EmptyState } from "./EmptyState_CZUIISsq.mjs";
-import { t as $$RugFields } from "./RugFields_B5kBcacc.mjs";
+import { t as $$RugFields } from "./RugFields_DqM1q4CO.mjs";
 import { t as fetchAdminSnapshotWithLikes } from "./likes_CN0ZY-6a.mjs";
 import { t as $$FetchModal } from "./FetchModal_ax6b96p1.mjs";
 import { n as nextRugId } from "./ids_BJimAI-C.mjs";

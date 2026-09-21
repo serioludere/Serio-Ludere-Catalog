@@ -6,7 +6,7 @@ import { i as getClient, vt as consoleLogger, yt as serializeError } from "./run
 import { A as ID_RE, m as roundStepOf, o as findRugById } from "./read_D-x4Tjt2.mjs";
 import { o as jsonForScript } from "./view_DWDnTEhK.mjs";
 import { t as $$AdminLayout } from "./AdminLayout_DwEWQHde.mjs";
-import { t as $$RugFields } from "./RugFields_B5kBcacc.mjs";
+import { t as $$RugFields } from "./RugFields_DqM1q4CO.mjs";
 import { t as fetchAdminSnapshotWithLikes } from "./likes_CN0ZY-6a.mjs";
 //#region src/pages/admin/rugs/[id].astro
 var _id__exports = /* @__PURE__ */ __exportAll({

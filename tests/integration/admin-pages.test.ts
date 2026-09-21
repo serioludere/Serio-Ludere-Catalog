@@ -211,8 +211,23 @@ describe('/admin/rugs/new', () => {
     const { status, html } = await render(NewPage, '/admin/rugs/new');
     expect(status).toBe(200);
     expect(html).toContain(String.raw`href="/admin/rugs" aria-current="page"`);
-    expect(html).toContain('id="yourName"');
+    /* Owner, 2026-09-21: before a fetch this form asks ONE question — the link — so the name field
+       that used to sit above it is gone, and the review below owns the name, the collections and the
+       tags. The two term dropdowns replace the free-text Material and Method boxes. */
+    expect(html).not.toContain('id="yourName"');
+    expect(html).toContain('id="f_name"');
+    expect(html).toMatch(/<input class="check__box" type="checkbox" id="f_material__Wool"[^>]*value="Wool">/);
+    expect(html).toMatch(
+      /<input class="check__box" type="checkbox" id="f_method__Hand-Knotted"[^>]*value="Hand-Knotted">/,
+    );
+    // …and the web address is the server's to derive on add, so it rides along as a hidden input.
+    expect(html).toContain('<input type="hidden" id="f_slug"');
+    expect(html).not.toContain('Web address');
+    expect(html).not.toContain('Name (shown to customers)');
+    expect(html).not.toContain('The name is what customers see');
+    expect(html).not.toContain('id="supplierTitle"');
     // The collection picker is a multi-select of checkboxes now, not a <select> of options.
+
     expect(html).toMatch(
       /<input class="check__box" type="checkbox" id="f_collection__Kilims"[^>]*value="Kilims">/,
     );

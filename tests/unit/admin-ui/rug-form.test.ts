@@ -143,6 +143,14 @@ function fakeFetch(
 }
 
 const val = (id: string): string => (document.getElementById(id) as HTMLInputElement).value;
+/** The ticked options of a multi-select (Collections, Material, Method), in DOM order. */
+const picked = (id: string): string[] =>
+  [...document.querySelectorAll<HTMLInputElement>(`#${id} input[type="checkbox"]`)]
+    .filter((b) => b.checked)
+    .map((b) => b.value);
+/** Every option a multi-select offers, ticked or not. */
+const options = (id: string): string[] =>
+  [...document.querySelectorAll<HTMLInputElement>(`#${id} input[type="checkbox"]`)].map((b) => b.value);
 const set = (id: string, v: string): void => {
   (document.getElementById(id) as HTMLInputElement).value = v;
 };
@@ -305,18 +313,68 @@ describe('add mode', () => {
     expect(document.activeElement).toBe(id); // and the cursor is in the field that needs filling
   });
 
-  it('Enter in "your name" moves to the link, Enter in the link fetches, the preview fills from the scrape', async () => {
+  it('lays the review out in the order the studio reads a rug, hints last', () => {
+    /* Owner, 2026-09-21. After a fetch this form is a REVIEW, and it now reads top to bottom the way
+       the rug does: the photographs that say which rug this is, what it is called and where it is
+       filed, what it is, then what it cost. The supplier's own measurement and price are provenance
+       for numbers already in the fields above, so they sit under the form, not between the fields.
+
+       Anchored on ids, not on text, so a re-worded label does not fail this — the point is ORDER. */
+    form = mount(() => ({ status: 500, body: {} }));
+    const preview = document.getElementById('preview')!;
+    const at = (selector: string): number => {
+      const node = preview.querySelector(selector);
+      expect(node, selector).not.toBeNull();
+      return [...preview.querySelectorAll('*')].indexOf(node!);
+    };
+    const order = [
+      '#photoStrip',
+      '#f_name',
+      '#f_collection',
+      '#tagChips',
+      '#f_description',
+      '#f_sourceUrl',
+      '#f_width',
+      '#f_length',
+      '#f_material',
+      '#f_method',
+      '#ftHint',
+      '#priceHint',
+      '#warnings',
+    ].map((sel) => ({ sel, at: at(sel) }));
+    expect(order.map((o) => o.sel)).toEqual([...order].sort((a, b) => a.at - b.at).map((o) => o.sel));
+    // The actions close the form, under everything including the supplier's own words.
+    expect(at('#btnAdd')).toBeGreaterThan(at('#warnings'));
+  });
+
+  it('asks one question before the fetch, and drops the fields that duplicated it', () => {
+    // The pre-fetch strip is the link and nothing else; name, collections and tags are answered in
+    // the review against what came back. "Name (shown to customers)" was the same string as the old
+    // top field, and the web address is derived by the server on add (owner, 2026-09-21).
+    form = mount(() => ({ status: 500, body: {} }));
+    const strip = document.querySelector('.addform')!;
+    expect(strip.querySelector('#url')).not.toBeNull();
+    expect(strip.querySelector('#f_name')).toBeNull();
+    expect(strip.querySelector('#f_collection')).toBeNull();
+    expect(document.getElementById('yourName')).toBeNull();
+    expect(document.getElementById('supplierTitle')).toBeNull();
+    expect(document.getElementById('btnSlug')).toBeNull();
+    expect((document.getElementById('f_slug') as HTMLInputElement).type).toBe('hidden');
+    expect(document.body.textContent).not.toContain('The name is what customers see');
+    expect(document.body.textContent).not.toContain('Name (shown to customers)');
+    expect(document.body.textContent).not.toContain('Web address');
+  });
+
+  it('Enter in the link fetches, and the review fills from the scrape', async () => {
     form = mount((url) =>
       url === '/api/admin/scrape'
         ? { status: 200, body: { ok: true, data: scraped, via: 'impit', cached: false, ms: 5 } }
         : { status: 500, body: {} },
     );
-    const yourName = document.getElementById('yourName') as HTMLInputElement;
+    // Owner, 2026-09-21: before a fetch this form asks ONE question, so the name field that used
+    // to sit above the link is gone and the link is all there is.
+    expect(document.getElementById('yourName')).toBeNull();
     const url = document.getElementById('url') as HTMLInputElement;
-    yourName.value = 'Khal Mohammadi';
-    yourName.dispatchEvent(new Event('input'));
-    yourName.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-    expect(document.activeElement).toBe(url);
     url.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     expect(cls('m1')).toBe('msg on err'); // "Paste a link first."
     url.value = 'https://ecarpetgallery.com/us_en/red-5x8-andelz-area-rugs-380114';
@@ -328,8 +386,10 @@ describe('add mode', () => {
     expect(cls('preview')).toBe('preview on');
     expect(cls('m1')).toBe('msg on ok');
     expect(text('m1')).toContain('2 photos');
-    expect(val('f_name')).toBe('Khal Mohammadi'); // the owner's name wins
-    expect(val('f_slug')).toBe('khal-mohammadi');
+    expect(val('f_name')).toBe('Red 5x8 Andelz Area Rug'); // the supplier's title, there to correct
+    // The handle is the server's to derive now: no field, and nothing sent (owner, 2026-09-21).
+    expect(val('f_slug')).toBe('');
+    expect(form.collect().slug).toBeUndefined();
     expect(val('f_description')).toBe('Hand-knotted in Afghanistan');
     expect(val('f_width')).toBe('130');
     expect(val('f_length')).toBe('226');
@@ -337,7 +397,6 @@ describe('add mode', () => {
     expect(val('f_sourceUrl')).toBe(scraped.sourceUrl);
     expect(val('f_supplier')).toBe('ecarpetgallery');
     expect(val('f_supplierRef')).toBe('380114');
-    expect(text('supplierTitle')).toBe('Supplier calls it: Red 5x8 Andelz Area Rug');
     expect(text('ftHint')).toBe(`Supplier measurement: 4'3" x 7'5"`);
     expect(text('priceHint')).toBe('Supplier price $700 → ×1.6 → $1,120 → rounded $1,120');
     // The supplier's SKU becomes our product id (owner, 2026-09-18), in place of the allocated SL-030.
@@ -428,7 +487,6 @@ describe('add mode', () => {
         manual: { supplier: 'ecarpetgallery', supplierRef: '380114', sourceUrl: scraped.sourceUrl },
       },
     }));
-    set('yourName', 'Red one');
     set('url', 'https://ecarpetgallery.com/us_en/red-5x8-andelz-area-rugs-380114');
     await form.fetchUrl();
     expect(cls('m1')).toBe('msg on err');
@@ -440,7 +498,9 @@ describe('add mode', () => {
     expect(val('f_supplier')).toBe('ecarpetgallery');
     expect(val('f_supplierRef')).toBe('380114');
     expect(val('f_sourceUrl')).toBe(scraped.sourceUrl);
-    expect(val('f_name')).toBe('Red one');
+    // The name is typed in the review the manual path just opened — there is nowhere else to type it.
+    set('f_name', 'Red one');
+    expect(form.collect().name).toBe('Red one');
     expect(form.scraped()).toBeUndefined();
     // Escape hides the banner
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
@@ -475,9 +535,12 @@ describe('add mode', () => {
         };
       return { status: 500, body: {} };
     });
-    set('yourName', 'Khal Mohammadi');
     set('url', 'https://ecarpetgallery.com/us_en/red-5x8-andelz-area-rugs-380114');
     await form.fetchUrl();
+    // The review is where the rug is named now: the scrape fills the supplier's title and the studio
+    // corrects it (owner, 2026-09-21).
+    expect(val('f_name')).toBe('Red 5x8 Andelz Area Rug');
+    set('f_name', 'Khal Mohammadi');
     await form.add();
     expect(cls('m2')).toBe('msg on err');
     expect(text('m2')).toContain('Pick a collection first');
@@ -498,9 +561,10 @@ describe('add mode', () => {
     const create = calls.find((c) => c.url === '/api/admin/rugs');
     // Every photo landed, so the row is written complete rather than pending.
     expect(create?.body).toMatchObject({ commitStatus: 'complete' });
+    // No slug: with no web-address field, the server derives a unique handle from the name.
+    expect(create?.body.slug).toBeUndefined();
     expect(create?.body).toMatchObject({
       id: '380114',
-      slug: 'khal-mohammadi',
       name: 'Khal Mohammadi',
       collections: ['Kilims'],
       tags: [],
@@ -521,7 +585,7 @@ describe('add mode', () => {
     expect(text('m1')).toContain('380114. 1 photo saved, 1 failed.');
     expect(document.querySelector('#m1 a')?.getAttribute('href')).toBe('/admin/rugs/380114');
     // reset: name/url cleared, collection kept, preview closed
-    expect(val('yourName')).toBe('');
+    expect(val('f_name')).toBe('');
     expect(val('url')).toBe('');
     expect(pickedCollections()).toEqual(['Kilims']);
     expect(cls('preview')).toBe('preview');
@@ -603,33 +667,39 @@ describe('edit mode', () => {
     expect(text('m2')).toContain('Saved name');
   });
 
-  it('ticks the method the row carries, keeps an unlisted one, and saves what is ticked', async () => {
-    // Owner, 2026-09-20: four techniques as checkboxes over the one `Method` cell. The fixture rug
-    // says "Hand-woven", which is the same technique as "Handwoven" — so THAT box comes up ticked
-    // and the other three do not. A spelling the studio used for months must not read as "none".
+  it('ticks the material and method the row carries, and keeps an unlisted one', async () => {
+    /* Owner, 2026-09-21: two closed lists over the one `Material` / `Method` cell each. The fixture
+       rug says "100% Wool" and "Hand-woven" — supplier spellings, not the list's — so the dropdowns
+       come up ticked on Wool and Hand-Woven rather than reading as "none". */
     const form = mount(() => ({ status: 200, body: { ok: true, rug, changed: ['method'] } }));
-    const boxes = (): HTMLInputElement[] => [
-      ...document.querySelectorAll<HTMLInputElement>('#f_method input[data-method]'),
-    ];
-    expect(boxes().map((b) => b.value)).toEqual(['Flatweave', 'Hand-loomed', 'Hand-knotted', 'Handwoven']);
-    expect(
-      boxes()
-        .filter((b) => b.checked)
-        .map((b) => b.value),
-    ).toEqual(['Handwoven']);
+    expect(options('f_material')).toEqual(['Wool', 'Viscose', 'Silk', 'Cotton', 'Bamboo']);
+    expect(options('f_method')).toEqual([
+      'Hand-Knotted',
+      'Flatweave',
+      'Hand-Woven',
+      'Hand-Embroidered',
+      'Jacquard Loom',
+      'Aghabani - Natural Dye',
+      'Vegetable Dye',
+    ]);
+    expect(picked('f_material')).toEqual(['Wool']);
+    expect(picked('f_method')).toEqual(['Hand-Woven']);
 
-    // A second technique is a tick, not a re-type, and both land in the one cell.
-    boxes()[0]!.checked = true;
-    expect(form.collect().method).toBe('Flatweave, Handwoven');
+    // A second value is a tick, not a re-type, and both land in the one cell.
+    const silk = document.querySelector<HTMLInputElement>('#f_material input[value="Silk"]')!;
+    silk.checked = true;
+    expect(form.collect().material).toBe('Wool, Silk');
 
-    // Something the four do not cover survives as its own ticked option rather than being dropped.
-    form.applyScrape({ method: 'Handmade pile rug' });
-    expect(
-      boxes()
-        .filter((b) => b.checked)
-        .map((b) => b.value),
-    ).toEqual(['Handmade pile rug']);
-    expect(form.collect().method).toBe('Handmade pile rug');
+    // Something the lists do not cover survives as its own ticked option rather than being dropped.
+    form.applyScrape({ method: 'Aghabani' });
+    expect(picked('f_method')).toEqual(['Aghabani - Natural Dye']);
+    // "Hand-loomed" is the list this replaced; it is hand-woven, and it is read as that.
+    form.fill({ ...rug, method: 'Hand-loomed' });
+    expect(picked('f_method')).toEqual(['Hand-Woven']);
+    // Something nothing recognises is kept verbatim, as its own ticked option.
+    form.fill({ ...rug, method: 'Tufted' });
+    expect(picked('f_method')).toEqual(['Tufted']);
+    expect(form.collect().method).toBe('Tufted');
   });
 
   it('saves the texture photograph the studio ticks, and "none" when it is un-ticked', async () => {
@@ -788,14 +858,11 @@ describe('the fetch modal gates the form (P5-P9)', () => {
     await form.fetchUrl();
 
     expect(document.getElementById('fetch-result')?.hasAttribute('open')).toBe(false);
-    expect(val('f_material')).toBe('Wool');
-    // Method is a checkbox group since 2026-09-20 (owner): the scrape TICKS the technique it found.
-    expect(form.collect().method).toBe('Hand-knotted');
-    expect(
-      [...document.querySelectorAll<HTMLInputElement>('#f_method input[data-method]')]
-        .filter((b) => b.checked)
-        .map((b) => b.value),
-    ).toEqual(['Hand-knotted']);
+    // Both are dropdowns over a closed list since 2026-09-21 (owner), and the scrape is READ into
+    // them: "Wool" and "Hand-knotted" from the supplier's own fields become Wool and Hand-Knotted.
+    expect(picked('f_material')).toEqual(['Wool']);
+    expect(picked('f_method')).toEqual(['Hand-Knotted']);
+    expect(form.collect().method).toBe('Hand-Knotted');
     // …and the SKU is the id, so what is about to be saved is filed under the supplier's number.
     expect(val('f_id')).toBe('380114');
     expect(text('m1')).toContain('Found it');
@@ -856,7 +923,7 @@ describe('the fetch modal gates the form (P5-P9)', () => {
 
     expect(document.getElementById('fetch-result')?.hasAttribute('open')).toBe(false);
     expect(cls('preview')).toBe('preview on');
-    expect(val('f_material')).toBe('Wool');
+    expect(picked('f_material')).toEqual(['Wool']);
     expect(text('m1')).toContain('Some fields could not be read.');
     expect(text('m1')).toContain('filled in below');
   });

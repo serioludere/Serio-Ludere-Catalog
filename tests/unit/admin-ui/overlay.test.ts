@@ -84,6 +84,62 @@ describe('closing', () => {
   });
 });
 
+describe('backdrop dismissal', () => {
+  /** happy-dom has no layout: the dialog is given a box so "outside the frame" means something. */
+  function boxed(el: HTMLElement): void {
+    el.getBoundingClientRect = () =>
+      ({ left: 100, top: 100, right: 400, bottom: 500, x: 100, y: 100, width: 300, height: 400 }) as DOMRect;
+  }
+
+  function press(target: EventTarget, x: number, y: number): void {
+    target.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: x, clientY: y }));
+  }
+  function release(target: EventTarget, x: number, y: number): void {
+    target.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: x, clientY: y }));
+  }
+
+  let dialog: HTMLElement;
+  beforeEach(() => {
+    dialog = document.getElementById('add-rug')!;
+    boxed(dialog);
+    off.push(bindOverlays());
+    document.getElementById('opener')!.click();
+  });
+
+  it('closes when the whole gesture happened on the backdrop', () => {
+    press(dialog, 20, 20);
+    release(dialog, 20, 20);
+    expect(dialog.hasAttribute('open')).toBe(false);
+  });
+
+  it('stays open when a drag begins in the form and ends past the frame', () => {
+    // Selecting the text in a field and letting go outside: the browser fires ONE click, on the
+    // <dialog> itself, at coordinates outside its box. That is not a dismissal.
+    press(document.getElementById('first')!, 200, 200);
+    release(dialog, 20, 20);
+    expect(dialog.hasAttribute('open')).toBe(true);
+  });
+
+  it('stays open when a backdrop press is released inside the form', () => {
+    press(dialog, 20, 20);
+    release(document.getElementById('first')!, 200, 200);
+    expect(dialog.hasAttribute('open')).toBe(true);
+  });
+
+  it('does not carry a backdrop press over to the next click', () => {
+    press(dialog, 20, 20);
+    release(document.getElementById('first')!, 200, 200);
+    release(dialog, 20, 20); // a click with no press of its own
+    expect(dialog.hasAttribute('open')).toBe(true);
+  });
+
+  it('ignores a click inside the frame that targets the dialog', () => {
+    press(dialog, 200, 200);
+    release(dialog, 200, 200);
+    expect(dialog.hasAttribute('open')).toBe(true);
+  });
+});
+
 describe('teardown', () => {
   it('stops listening once unbound, so a second bind cannot double-fire', () => {
     const stop = bindOverlays();

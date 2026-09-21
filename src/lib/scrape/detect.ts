@@ -6,26 +6,39 @@ import type { DetectError, Detected, ManualEntry, Supplier } from './types.ts';
 const ECG_HOSTS: readonly string[] = ['ecarpetgallery.com', 'www.ecarpetgallery.com'];
 const KV_HOSTS: readonly string[] = ['karavanrug.com', 'www.karavanrug.com'];
 
-/**
- * `/us_en/red-5x8-andelz-area-rugs-380114` → urlKey + sku (store code optional, forced to us_en).
+/*
+ * WHY THE PATH IS PARSED AT ALL (owner asked, 2026-09-21: "why not accept any link from these two
+ * hosts, whatever the tail?").
  *
- * Category segments in the middle are skipped (owner, 2026-09-21). ECG serves the same product under
- * whatever path you browsed to it by —
- * `/ca_en/shop-by-shape/rectangle-rugs/green-6x8-finest-peshawar-bokhara-area-rugs-417246` — and the
- * studio copies the link from the address bar, not from a canonical page. Refusing those was the most
- * common way "not a supported product link" was earned by a link that IS the product page. The url
- * key is unique in Magento, so the categories are decoration: the outbound URL is rebuilt from the
- * key alone, exactly as it always was.
+ * It is not a permission check — the HOST allow-list is what decides whether we fetch anything, and
+ * `fetch.ts` re-validates every redirect hop against it, so a strange path was never a security
+ * question. The path is read for two things the scrape cannot do without:
  *
- * `.html` is tolerated for the same reason, and dropped for the same reason.
+ *   1. the URL we actually request, which is REBUILT from `(supplier, key)` rather than taken as
+ *      pasted, so a tracking query, a store code or a category trail cannot change what is fetched
+ *      or make two links to one rug look like two rugs;
+ *   2. the supplier's reference — the ECG sku, the Shopify handle — which becomes `supplierRef` and,
+ *      on the add form, the product id.
+ *
+ * So "any tail" is exactly right for a PRODUCT link, and these two rules now find the identifier
+ * wherever it sits in the path rather than insisting on a position. What they still refuse is a link
+ * with no product in it — a category, a search, the home page — because there is nothing there to
+ * fetch, nothing to file it under, and a rug scraped from a listing page would be whichever one the
+ * page happened to show first. That refusal now says so in as many words (see scrape/index.ts).
  */
-export const ECG_PATH_RE =
-  /^\/(?:(us_en|ca_en|eu_en|ca_fr)\/)?(?:[a-z0-9-]+\/)*([a-z0-9-]+?-(\d{4,}))(?:\.html)?\/?$/;
-/**
- * `/products/<handle>` (Shopify), with the optional `/collections/<collection>` prefix Shopify writes
- * into every link followed from a collection page. Same product, same handle, one canonical URL.
- */
-export const KV_PATH_RE = /^(?:\/collections\/[a-z0-9-]+)?\/products\/([a-z0-9-]+)\/?$/;
+
+/** The ECG url key, wherever it sits: the last path segment ending in a 4+ digit sku. */
+export const ECG_KEY_RE = /^([a-z0-9-]+?-(\d{4,}))(?:\.html)?$/;
+/** The Shopify handle: whatever follows a `products` segment, wherever that segment sits. */
+export const KV_HANDLE_RE = /^[a-z0-9-]+$/;
+
+/** Path segments, lowercased, with the empty ones a leading/trailing/double slash leaves behind. */
+function segmentsOf(path: string): string[] {
+  return path
+    .toLowerCase()
+    .split('/')
+    .filter((s) => s !== '');
+}
 
 export const ECG_BASE = 'https://ecarpetgallery.com/us_en/';
 export const KV_BASE = 'https://karavanrug.com/products/';
@@ -61,17 +74,29 @@ export function detectSupplier(input: string): Detected | DetectError {
   if (hostnameProblem(url.hostname)) return { error: 'invalid_url' };
   const supplier = supplierForHost(url.hostname);
   if (!supplier) return { error: 'unsupported_host' };
-  const path = url.pathname.toLowerCase();
+  const segments = segmentsOf(url.pathname);
   if (supplier === 'ecarpetgallery') {
-    const m = ECG_PATH_RE.exec(path);
-    const urlKey = m?.[2];
-    const sku = m?.[3];
+    /* The LAST segment that looks like a url key, so a category trail, a store code, a `.html` or
+       anything else ECG puts in front of the product is simply walked past. Last rather than first:
+       every segment before the product is a category, and a category is never the thing you pasted. */
+    let urlKey: string | undefined;
+    let sku: string | undefined;
+    for (const segment of segments) {
+      const m = ECG_KEY_RE.exec(segment);
+      if (m) {
+        urlKey = m[1];
+        sku = m[2];
+      }
+    }
     if (!urlKey || !sku) return { error: 'invalid_url' };
     const sourceUrl = `${ECG_BASE}${urlKey}`;
     return { supplier, urlKey, sku, supplierRef: sku, sourceUrl, htmlUrl: sourceUrl };
   }
-  const m = KV_PATH_RE.exec(path);
-  const handle = m?.[1];
+  // Shopify always spells a product `/products/<handle>`; what precedes it (a collection, a locale
+  // prefix like /en-ca) is Shopify's own routing and never changes which product it is.
+  const at = segments.lastIndexOf('products');
+  const next = at === -1 ? undefined : segments[at + 1];
+  const handle = next && KV_HANDLE_RE.test(next) ? next : undefined;
   if (!handle) return { error: 'invalid_url' };
   const sourceUrl = `${KV_BASE}${handle}`;
   return {

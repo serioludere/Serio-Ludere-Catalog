@@ -40,7 +40,7 @@ import {
   type ScrapedRug,
 } from './types.ts';
 
-export { detectSupplier, manualFallback, manualFromDetected, ECG_PATH_RE, KV_PATH_RE } from './detect.ts';
+export { detectSupplier, manualFallback, manualFromDetected, ECG_KEY_RE, KV_HANDLE_RE } from './detect.ts';
 export { parseSize, parseFeetInchesSide, ftInToCm, orderPair } from './size.ts';
 export {
   parseMoney,
@@ -333,11 +333,18 @@ export async function scrapeRug(input: string, opts: ScrapeOptions = {}): Promis
 
   const det = detectSupplier(input);
   if ('error' in det) {
+    /* The link is from a supplier we know when `manualFallback` recognises the host, so the only way
+       to get here is a page with no product in it — a category, a search, the home page. "Not a
+       supported product link" was true and useless: it reads as "your supplier is not supported",
+       which is the one thing it does not mean. Say what is wrong and what to do instead. */
+    const fallback = manualFallback(input);
     const message =
       det.error === 'unsupported_host'
         ? 'only ecarpetgallery.com and karavanrug.com product links are supported'
-        : 'not a supported product link';
-    return { ok: false, code: det.error, message, manual: manualFallback(input) };
+        : fallback
+          ? 'that link has no product in it — open the rug on the supplier site and copy the link from its own page'
+          : 'not a supported product link';
+    return { ok: false, code: det.error, message, manual: fallback };
   }
   const manual = manualFromDetected(det);
 

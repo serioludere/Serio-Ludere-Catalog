@@ -52,25 +52,14 @@ var defaultScrapeCache = new ScrapeCache();
 //#region src/lib/scrape/detect.ts
 var ECG_HOSTS = ["ecarpetgallery.com", "www.ecarpetgallery.com"];
 var KV_HOSTS = ["karavanrug.com", "www.karavanrug.com"];
-/**
-* `/us_en/red-5x8-andelz-area-rugs-380114` → urlKey + sku (store code optional, forced to us_en).
-*
-* Category segments in the middle are skipped (owner, 2026-09-21). ECG serves the same product under
-* whatever path you browsed to it by —
-* `/ca_en/shop-by-shape/rectangle-rugs/green-6x8-finest-peshawar-bokhara-area-rugs-417246` — and the
-* studio copies the link from the address bar, not from a canonical page. Refusing those was the most
-* common way "not a supported product link" was earned by a link that IS the product page. The url
-* key is unique in Magento, so the categories are decoration: the outbound URL is rebuilt from the
-* key alone, exactly as it always was.
-*
-* `.html` is tolerated for the same reason, and dropped for the same reason.
-*/
-var ECG_PATH_RE = /^\/(?:(us_en|ca_en|eu_en|ca_fr)\/)?(?:[a-z0-9-]+\/)*([a-z0-9-]+?-(\d{4,}))(?:\.html)?\/?$/;
-/**
-* `/products/<handle>` (Shopify), with the optional `/collections/<collection>` prefix Shopify writes
-* into every link followed from a collection page. Same product, same handle, one canonical URL.
-*/
-var KV_PATH_RE = /^(?:\/collections\/[a-z0-9-]+)?\/products\/([a-z0-9-]+)\/?$/;
+/** The ECG url key, wherever it sits: the last path segment ending in a 4+ digit sku. */
+var ECG_KEY_RE = /^([a-z0-9-]+?-(\d{4,}))(?:\.html)?$/;
+/** The Shopify handle: whatever follows a `products` segment, wherever that segment sits. */
+var KV_HANDLE_RE = /^[a-z0-9-]+$/;
+/** Path segments, lowercased, with the empty ones a leading/trailing/double slash leaves behind. */
+function segmentsOf(path) {
+	return path.toLowerCase().split("/").filter((s) => s !== "");
+}
 var ECG_BASE = "https://ecarpetgallery.com/us_en/";
 var KV_BASE = "https://karavanrug.com/products/";
 function supplierForHost(hostname) {
@@ -98,11 +87,17 @@ function detectSupplier(input) {
 	if (hostnameProblem(url.hostname)) return { error: "invalid_url" };
 	const supplier = supplierForHost(url.hostname);
 	if (!supplier) return { error: "unsupported_host" };
-	const path = url.pathname.toLowerCase();
+	const segments = segmentsOf(url.pathname);
 	if (supplier === "ecarpetgallery") {
-		const m = ECG_PATH_RE.exec(path);
-		const urlKey = m?.[2];
-		const sku = m?.[3];
+		let urlKey;
+		let sku;
+		for (const segment of segments) {
+			const m = ECG_KEY_RE.exec(segment);
+			if (m) {
+				urlKey = m[1];
+				sku = m[2];
+			}
+		}
 		if (!urlKey || !sku) return { error: "invalid_url" };
 		const sourceUrl = `${ECG_BASE}${urlKey}`;
 		return {
@@ -114,7 +109,9 @@ function detectSupplier(input) {
 			htmlUrl: sourceUrl
 		};
 	}
-	const handle = KV_PATH_RE.exec(path)?.[1];
+	const at = segments.lastIndexOf("products");
+	const next = at === -1 ? void 0 : segments[at + 1];
+	const handle = next && KV_HANDLE_RE.test(next) ? next : void 0;
 	if (!handle) return { error: "invalid_url" };
 	const sourceUrl = `${KV_BASE}${handle}`;
 	return {
@@ -1954,12 +1951,13 @@ async function scrapeRug(input, opts = {}) {
 	};
 	const det = detectSupplier(input);
 	if ("error" in det) {
-		const message = det.error === "unsupported_host" ? "only ecarpetgallery.com and karavanrug.com product links are supported" : "not a supported product link";
+		const fallback = manualFallback(input);
+		const message = det.error === "unsupported_host" ? "only ecarpetgallery.com and karavanrug.com product links are supported" : fallback ? "that link has no product in it — open the rug on the supplier site and copy the link from its own page" : "not a supported product link";
 		return {
 			ok: false,
 			code: det.error,
 			message,
-			manual: manualFallback(input)
+			manual: fallback
 		};
 	}
 	const manual = manualFromDetected(det);

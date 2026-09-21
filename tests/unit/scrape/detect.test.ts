@@ -93,6 +93,74 @@ describe('detectSupplier (ADMIN_SPEC §4.2)', () => {
     }
   });
 
+  it('finds the product wherever it sits in the path, whatever the tail', () => {
+    /* Owner, 2026-09-21: "accept links from these two domains no matter what the tail". The path is
+       not a permission check — the HOST allow-list is, and fetch.ts re-validates every redirect hop
+       against it — so the only job left is finding the identifier. These are the shapes the two
+       stores actually produce: store codes, category trails, locale prefixes, `.html`, tracking
+       query, a missing scheme. Every one names the same rug and rebuilds to the same canonical URL. */
+    for (const input of [
+      'https://ecarpetgallery.com/us_en/red-5x8-andelz-area-rugs-380114',
+      'https://ecarpetgallery.com/ca_en/shop-by-shape/rectangle-rugs/red-5x8-andelz-area-rugs-380114',
+      'https://ecarpetgallery.com/shop-by-colour/reds/on-sale/red-5x8-andelz-area-rugs-380114.html',
+      'https://www.ecarpetgallery.com/eu_en/a/b/c/d/red-5x8-andelz-area-rugs-380114/?utm_source=x#top',
+      'ecarpetgallery.com/red-5x8-andelz-area-rugs-380114',
+    ]) {
+      expect(detectSupplier(input), input).toMatchObject({
+        supplier: 'ecarpetgallery',
+        sku: '380114',
+        sourceUrl: 'https://ecarpetgallery.com/us_en/red-5x8-andelz-area-rugs-380114',
+      });
+    }
+    for (const input of [
+      'https://karavanrug.com/products/vintage-turkish-runner-rug',
+      'https://karavanrug.com/collections/vintage-rugs/products/vintage-turkish-runner-rug',
+      'https://karavanrug.com/en-ca/collections/all/products/vintage-turkish-runner-rug?variant=1',
+      'karavanrug.com/products/vintage-turkish-runner-rug',
+    ]) {
+      expect(detectSupplier(input), input).toMatchObject({
+        supplier: 'karavanrug',
+        handle: 'vintage-turkish-runner-rug',
+        sourceUrl: 'https://karavanrug.com/products/vintage-turkish-runner-rug',
+      });
+    }
+  });
+
+  it('takes the LAST key in the path, because everything before a product is a category', () => {
+    // A category can itself end in digits ("8x10-rugs-2024"); the product is the one at the end.
+    expect(
+      detectSupplier('https://ecarpetgallery.com/us_en/clearance-2024/red-5x8-andelz-area-rugs-380114'),
+    ).toMatchObject({ sku: '380114', urlKey: 'red-5x8-andelz-area-rugs-380114' });
+  });
+
+  it('refuses a page with no product in it, and says so rather than blaming the supplier', async () => {
+    /* The one thing a broadened rule must NOT do is accept a listing: there is no rug to fetch, no
+       reference to file it under, and whatever was scraped would be whichever product the page
+       happened to show first. The message has to say that — "not a supported product link" reads as
+       "your supplier is not supported", which is the one thing it does not mean. */
+    const { scrapeRug } = await import('../../../src/lib/scrape/index.ts');
+    for (const input of [
+      'https://ecarpetgallery.com/ca_en/shop-by-shape/rectangle-rugs/',
+      'https://ecarpetgallery.com/us_en/catalogsearch/result/?q=380114',
+      'https://ecarpetgallery.com/',
+      'https://karavanrug.com/collections/vintage-rugs',
+    ]) {
+      const r = await scrapeRug(input, { respectRobots: false });
+      expect(r.ok, input).toBe(false);
+      if (r.ok) continue;
+      expect(r.code).toBe('invalid_url');
+      expect(r.message).toContain('has no product in it');
+      // …and the supplier is still recognised, so "Enter manually" opens pre-filled.
+      expect(r.manual?.supplier).toMatch(/ecarpetgallery|karavanrug/);
+    }
+    const other = await scrapeRug('https://rugsource.com/products/foo', { respectRobots: false });
+    expect(other.ok).toBe(false);
+    if (!other.ok) {
+      expect(other.code).toBe('unsupported_host');
+      expect(other.message).toContain('only ecarpetgallery.com and karavanrug.com');
+    }
+  });
+
   it('refuses hosts off the allow-list, including look-alikes', () => {
     for (const input of [
       'https://example.com/products/x',

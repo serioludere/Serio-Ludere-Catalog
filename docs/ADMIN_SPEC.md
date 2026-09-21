@@ -488,16 +488,24 @@ export interface ScrapedRug {
 
 ### 4.2 URL normalisation and supplier detection (`detect.ts`)
 
-1. `new URL(input)`; require `https:` (rewrite `http:` to `https:`), no userinfo, no port, hostname compared
+1. `new URL(input)`, assuming `https://` when the pasted string names no scheme; require `https:` (rewrite `http:`
+   to `https:`), no userinfo, no port, hostname compared
    **case-sensitively after lowercasing** against the allow-list `{ ecarpetgallery.com, www.ecarpetgallery.com,
 karavanrug.com, www.karavanrug.com }`; anything else → 400 `unsupported_host` (the UI offers manual entry).
 2. Strip query and hash (tracking).
-3. **ECG**: path `^/(?:(us_en|ca_en|eu_en|ca_fr)/)?([a-z0-9-]+?-(\d{4,}))/?$` → `urlKey`, `sku`; outbound
+3. **ECG**: the LAST path segment matching `^([a-z0-9-]+?-(\d{4,}))(?:\.html)?$` → `urlKey`, `sku`; outbound
    `https://ecarpetgallery.com/us_en/<urlKey>` (store code forced to `us_en` so the price is USD — verified: the same
    product is 700 USD / 900 EUR / 980 CAD by store path).
-4. **KV**: path `^/products/([a-z0-9-]+)/?$` → `handle`; outbound `https://karavanrug.com/products/<handle>.js`
-   (documented Shopify Ajax product endpoint) and `https://karavanrug.com/products/<handle>` (HTML, for JSON-LD).
+4. **KV**: the segment after the last `products` segment, matching `^[a-z0-9-]+$` → `handle`; outbound
+   `https://karavanrug.com/products/<handle>.js` (documented Shopify Ajax product endpoint) and
+   `https://karavanrug.com/products/<handle>` (HTML, for JSON-LD).
 5. The outbound URL is **rebuilt** from `(supplier, urlKey|handle)`; the pasted string is never fetched as is.
+6. **Any tail is accepted** (owner, 2026-09-21): store codes, category trails, locale prefixes, `.html`, tracking
+   query, a missing scheme. The path is not a permission check — the host allow-list is, and §4.3 re-validates every
+   redirect hop against it — so the only thing the path is read for is the identifier, and it is found wherever it
+   sits. What is still refused is a URL with **no product in it** (a category, a search, the home page): there is
+   nothing to fetch and nothing to file it under, and the 400 now says that rather than "not a supported product
+   link", which read as "your supplier is not supported".
 
 ### 4.3 Fetch layer (`fetch.ts`) — two clients chosen by host
 

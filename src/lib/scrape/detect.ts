@@ -6,10 +6,26 @@ import type { DetectError, Detected, ManualEntry, Supplier } from './types.ts';
 const ECG_HOSTS: readonly string[] = ['ecarpetgallery.com', 'www.ecarpetgallery.com'];
 const KV_HOSTS: readonly string[] = ['karavanrug.com', 'www.karavanrug.com'];
 
-/** `/us_en/red-5x8-andelz-area-rugs-380114` → urlKey + sku (store code optional, forced to us_en). */
-export const ECG_PATH_RE = /^\/(?:(us_en|ca_en|eu_en|ca_fr)\/)?([a-z0-9-]+?-(\d{4,}))\/?$/;
-/** `/products/<handle>` (Shopify). */
-export const KV_PATH_RE = /^\/products\/([a-z0-9-]+)\/?$/;
+/**
+ * `/us_en/red-5x8-andelz-area-rugs-380114` → urlKey + sku (store code optional, forced to us_en).
+ *
+ * Category segments in the middle are skipped (owner, 2026-09-21). ECG serves the same product under
+ * whatever path you browsed to it by —
+ * `/ca_en/shop-by-shape/rectangle-rugs/green-6x8-finest-peshawar-bokhara-area-rugs-417246` — and the
+ * studio copies the link from the address bar, not from a canonical page. Refusing those was the most
+ * common way "not a supported product link" was earned by a link that IS the product page. The url
+ * key is unique in Magento, so the categories are decoration: the outbound URL is rebuilt from the
+ * key alone, exactly as it always was.
+ *
+ * `.html` is tolerated for the same reason, and dropped for the same reason.
+ */
+export const ECG_PATH_RE =
+  /^\/(?:(us_en|ca_en|eu_en|ca_fr)\/)?(?:[a-z0-9-]+\/)*([a-z0-9-]+?-(\d{4,}))(?:\.html)?\/?$/;
+/**
+ * `/products/<handle>` (Shopify), with the optional `/collections/<collection>` prefix Shopify writes
+ * into every link followed from a collection page. Same product, same handle, one canonical URL.
+ */
+export const KV_PATH_RE = /^(?:\/collections\/[a-z0-9-]+)?\/products\/([a-z0-9-]+)\/?$/;
 
 export const ECG_BASE = 'https://ecarpetgallery.com/us_en/';
 export const KV_BASE = 'https://karavanrug.com/products/';
@@ -31,7 +47,11 @@ export function detectSupplier(input: string): Detected | DetectError {
   if (!raw) return { error: 'invalid_url' };
   let url: URL;
   try {
-    url = new URL(raw);
+    // A link copied as text often arrives without its scheme. `manualFallback` below has always
+    // assumed https for exactly that case; the detector refusing what the fallback accepts was a
+    // difference with no reason behind it. Anything that names a scheme keeps it, and is then held
+    // to the https rule three lines down.
+    url = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(raw) ? raw : `https://${raw}`);
   } catch {
     return { error: 'invalid_url' };
   }

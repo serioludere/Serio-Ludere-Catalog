@@ -49,6 +49,50 @@ describe('detectSupplier (ADMIN_SPEC §4.2)', () => {
     }
   });
 
+  it('accepts a link copied from a category page, which is how the studio copies them', () => {
+    /* The studio's own failing link (2026-09-21): browsed to by shape, so ECG wrote two category
+       segments into the path, and the detector refused a URL that IS the product page —
+       `POST /api/admin/scrape` 400, "not a supported product link". The url key is unique in
+       Magento, so the categories are decoration and the outbound URL is unchanged. */
+    for (const input of [
+      'https://ecarpetgallery.com/ca_en/shop-by-shape/rectangle-rugs/green-6x8-finest-peshawar-bokhara-area-rugs-417246',
+      'https://ecarpetgallery.com/shop-by-shape/rectangle-rugs/green-6x8-finest-peshawar-bokhara-area-rugs-417246',
+      'https://ecarpetgallery.com/us_en/green-6x8-finest-peshawar-bokhara-area-rugs-417246.html',
+      'ecarpetgallery.com/us_en/green-6x8-finest-peshawar-bokhara-area-rugs-417246',
+    ]) {
+      expect(detectSupplier(input), input).toMatchObject({
+        supplier: 'ecarpetgallery',
+        sku: '417246',
+        urlKey: 'green-6x8-finest-peshawar-bokhara-area-rugs-417246',
+        sourceUrl: 'https://ecarpetgallery.com/us_en/green-6x8-finest-peshawar-bokhara-area-rugs-417246',
+      });
+    }
+  });
+
+  it('accepts the /collections/<collection>/products/<handle> link Shopify writes', () => {
+    // Every Karavan link followed from a collection page carries that prefix; same product, same
+    // handle, and the canonical URL the scraper fetches is the same either way.
+    expect(
+      detectSupplier('https://karavanrug.com/collections/vintage-rugs/products/vintage-turkish-runner-rug'),
+    ).toMatchObject({
+      supplier: 'karavanrug',
+      handle: 'vintage-turkish-runner-rug',
+      sourceUrl: 'https://karavanrug.com/products/vintage-turkish-runner-rug',
+    });
+  });
+
+  it('still refuses the category pages themselves, which carry no product', () => {
+    // The widening is for a product reached THROUGH a category, never for the category.
+    for (const input of [
+      'https://ecarpetgallery.com/ca_en/shop-by-shape/rectangle-rugs/',
+      'https://ecarpetgallery.com/us_en/shop-by-size/8x10-rugs',
+      'https://karavanrug.com/collections/vintage-rugs',
+      'https://karavanrug.com/collections/vintage-rugs/products/',
+    ]) {
+      expect(detectSupplier(input), input).toEqual({ error: 'invalid_url' });
+    }
+  });
+
   it('refuses hosts off the allow-list, including look-alikes', () => {
     for (const input of [
       'https://example.com/products/x',

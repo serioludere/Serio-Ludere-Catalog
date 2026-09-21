@@ -52,10 +52,25 @@ var defaultScrapeCache = new ScrapeCache();
 //#region src/lib/scrape/detect.ts
 var ECG_HOSTS = ["ecarpetgallery.com", "www.ecarpetgallery.com"];
 var KV_HOSTS = ["karavanrug.com", "www.karavanrug.com"];
-/** `/us_en/red-5x8-andelz-area-rugs-380114` → urlKey + sku (store code optional, forced to us_en). */
-var ECG_PATH_RE = /^\/(?:(us_en|ca_en|eu_en|ca_fr)\/)?([a-z0-9-]+?-(\d{4,}))\/?$/;
-/** `/products/<handle>` (Shopify). */
-var KV_PATH_RE = /^\/products\/([a-z0-9-]+)\/?$/;
+/**
+* `/us_en/red-5x8-andelz-area-rugs-380114` → urlKey + sku (store code optional, forced to us_en).
+*
+* Category segments in the middle are skipped (owner, 2026-09-21). ECG serves the same product under
+* whatever path you browsed to it by —
+* `/ca_en/shop-by-shape/rectangle-rugs/green-6x8-finest-peshawar-bokhara-area-rugs-417246` — and the
+* studio copies the link from the address bar, not from a canonical page. Refusing those was the most
+* common way "not a supported product link" was earned by a link that IS the product page. The url
+* key is unique in Magento, so the categories are decoration: the outbound URL is rebuilt from the
+* key alone, exactly as it always was.
+*
+* `.html` is tolerated for the same reason, and dropped for the same reason.
+*/
+var ECG_PATH_RE = /^\/(?:(us_en|ca_en|eu_en|ca_fr)\/)?(?:[a-z0-9-]+\/)*([a-z0-9-]+?-(\d{4,}))(?:\.html)?\/?$/;
+/**
+* `/products/<handle>` (Shopify), with the optional `/collections/<collection>` prefix Shopify writes
+* into every link followed from a collection page. Same product, same handle, one canonical URL.
+*/
+var KV_PATH_RE = /^(?:\/collections\/[a-z0-9-]+)?\/products\/([a-z0-9-]+)\/?$/;
 var ECG_BASE = "https://ecarpetgallery.com/us_en/";
 var KV_BASE = "https://karavanrug.com/products/";
 function supplierForHost(hostname) {
@@ -73,7 +88,7 @@ function detectSupplier(input) {
 	if (!raw) return { error: "invalid_url" };
 	let url;
 	try {
-		url = new URL(raw);
+		url = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(raw) ? raw : `https://${raw}`);
 	} catch {
 		return { error: "invalid_url" };
 	}

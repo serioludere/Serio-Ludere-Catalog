@@ -19,7 +19,8 @@ the legacy shared secret (redacted)). That secret and the deployment URL are bur
 - Add what the owner asked for: **description, tags, collection dropdown, supplier link** on every rug; a **Collections**
   tab (add/edit/reorder); a **rug CRUD dashboard**; a **unique client-link generator** (link carries the client's code so
   their ❤/👎 are attributed); an **audit log**; **round up prices to the next multiple of five**; the best
-  practical **scraper** for ecarpetgallery.com and karavanrug.com.
+  practical **scraper** for ecarpetgallery.com, karavanrug.com and serioludere.com (the studio's own
+  Shopify storefront, added 2026-09-21; it reads through the same Shopify rungs as karavanrug).
 - Keep the public site untouched: the Rugs `A:V` contract is frozen, `likes/dislikes/rating` (Q:S) are never written,
   `/`, `/rugs/[slug]`, `/tags/[slug]`, `/api/vote`, `/api/health`, `/api/revalidate` keep their behaviour.
 
@@ -491,15 +492,18 @@ export interface ScrapedRug {
 1. `new URL(input)`, assuming `https://` when the pasted string names no scheme; require `https:` (rewrite `http:`
    to `https:`), no userinfo, no port, hostname compared
    **case-sensitively after lowercasing** against the allow-list `{ ecarpetgallery.com, www.ecarpetgallery.com,
-karavanrug.com, www.karavanrug.com }`; anything else → 400 `unsupported_host` (the UI offers manual entry).
+karavanrug.com, www.karavanrug.com, serioludere.com, www.serioludere.com }`; anything else → 400
+   `unsupported_host` (the UI offers manual entry).
 2. Strip query and hash (tracking).
 3. **ECG**: the LAST path segment matching `^([a-z0-9-]+?-(\d{4,}))(?:\.html)?$` → `urlKey`, `sku`; outbound
    `https://ecarpetgallery.com/us_en/<urlKey>` (store code forced to `us_en` so the price is USD — verified: the same
    product is 700 USD / 900 EUR / 980 CAD by store path).
-4. **KV**: the segment after the last `products` segment, matching `^[a-z0-9-]+$` → `handle`; outbound
+4. **Shopify (KV and Serio Ludere)**: the segment after the last `products` segment, matching
+   `^[a-z0-9-]+$` → `handle`; outbound
    `https://karavanrug.com/products/<handle>.js` (documented Shopify Ajax product endpoint) and
    `https://karavanrug.com/products/<handle>` (HTML, for JSON-LD).
-5. The outbound URL is **rebuilt** from `(supplier, urlKey|handle)`; the pasted string is never fetched as is.
+5. The outbound URL is **rebuilt** from `(supplier, urlKey|handle)` on that shop's own host; the pasted string
+   is never fetched as is.
 6. **Any tail is accepted** (owner, 2026-09-21): store codes, category trails, locale prefixes, `.html`, tracking
    query, a missing scheme. The path is not a permission check — the host allow-list is, and §4.3 re-validates every
    redirect hop against it — so the only thing the path is read for is the identifier, and it is found wherever it
@@ -838,6 +842,11 @@ Applied:
   photos · `Product name` + `Collections` · tags · `Description` · `Supplier link` · `Width (cm)` + `Length (cm)`
   (+ swap) · `Material` + `Method` · `Age` + `Origin` · `Retail price (USD)` (+ **Round to N**) + `Supplier` ·
   `Supplier ref` (and `Web address` on edit only) · `Notes`. `Rotate` and `Featured` ride along hidden.
+- **Markers are their own control** (owner, 2026-09-21): Signed / Antique sit under a `Markers` legend with
+  "Shown to the customer on the card and in the product popup", above the tag box, which says "The studio's own
+  filing. Never shown to the customer." They still travel in the one Tags CELL — `badgesFor()` reads the buyer's
+  corner badge from there — but the tag tokens never show them, and a marker name typed into the tag box presses
+  the marker instead of making a token.
 - **Material and Method are multi-select dropdowns over a closed list** (owner, 2026-09-21), not free text:
   Material = Wool · Viscose · Silk · Cotton · Bamboo; Method = Hand-Knotted · Flatweave · Hand-Woven ·
   Hand-Embroidered · Jacquard Loom · Aghabani - Natural Dye · Vegetable Dye. Both join into the one text cell the

@@ -14,13 +14,17 @@ export const SUPPLIER_HOSTS: readonly string[] = [
   'www.ecarpetgallery.com',
   'karavanrug.com',
   'www.karavanrug.com',
+  // The studio's own storefront (owner, 2026-09-21). Shopify, so it reads through the same rungs.
+  'serioludere.com',
+  'www.serioludere.com',
 ];
 
-/** Hosts a scraped photo URL may point at (ECG's image CDN, Shopify's CDN, KV's /cdn/ proxy). */
+/** Hosts a scraped photo URL may point at (ECG's image CDN, Shopify's CDN, the two shops' /cdn/). */
 export const IMAGE_HOSTS: readonly string[] = [
   'images.ecarpetwholesale.com',
   'cdn.shopify.com',
   'karavanrug.com',
+  'serioludere.com',
 ];
 
 export const JINA_HOST = 'r.jina.ai';
@@ -110,7 +114,10 @@ export function validateOutboundUrl(input: string | URL, allowHosts: readonly st
 export function isAllowedImageUrl(input: string): boolean {
   try {
     const url = validateOutboundUrl(input, IMAGE_HOSTS, 'image URL');
-    if (url.hostname === 'karavanrug.com') return url.pathname.startsWith('/cdn/');
+    // A Shopify shop also serves its images from its own domain under /cdn/; nothing else on the
+    // storefront host is an image we would fetch.
+    if (url.hostname === 'karavanrug.com' || url.hostname === 'serioludere.com')
+      return url.pathname.startsWith('/cdn/');
     return true;
   } catch {
     return false;

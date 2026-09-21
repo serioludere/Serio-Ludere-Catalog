@@ -12,6 +12,24 @@ export const SETTINGS_KEYS = [
   'price_round_step',
 ] as const;
 export type SettingsKey = (typeof SETTINGS_KEYS)[number];
+
+/**
+ * Keys this app used to have and no longer reads (owner, 2026-09-21: "if it is useless, remove it").
+ *
+ * `default_status` chose the status a new product was created with; products lost their status on
+ * 2026-09-16 and nothing has read the key since. The ROW is still in the studio's sheet, and it was
+ * being reported on the dashboard as `unknown key "default_status" ignored` every time the settings
+ * were read — an alarm about a decision we made ourselves.
+ *
+ * Retired is not the same as unknown: a retired key is dropped quietly, an unrecognised one is still
+ * reported, because that one is a typo the studio wants to know about. Deleting the sheet row is
+ * safe and optional; nothing here needs it gone.
+ */
+export const RETIRED_SETTINGS_KEYS: readonly string[] = ['default_status'];
+
+export function isRetiredSettingsKey(key: string): boolean {
+  return RETIRED_SETTINGS_KEYS.includes(key.trim().toLowerCase());
+}
 export const SUPPLIERS = ['ecarpetgallery', 'karavanrug'] as const;
 export type Supplier = (typeof SUPPLIERS)[number];
 
@@ -81,6 +99,8 @@ export function parseSettings(values: CellValue[][] | undefined, logger?: Logger
     const cells = values[i] ?? [];
     const key = cellText(cells[0]);
     if (!key) continue;
+    // A key we retired ourselves is not news: no row, no warning, no settings control for it.
+    if (isRetiredSettingsKey(key)) continue;
     const value = cellText(cells[1]);
     out.rows.push({
       row: i + 1,

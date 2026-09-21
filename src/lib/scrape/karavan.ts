@@ -3,7 +3,7 @@
 // now lives in `shopify.ts` (ladder rung 1) and is re-exported here under the historic names; what
 // stays is what is specific to KV: the "Item Details" spec block, the method keyword fallback, the
 // tag tidying and the JSON-LD/OG currency read. Pure: takes the fetched bodies, returns a ScrapedRug.
-import { KV_BASE } from './detect.ts';
+import { SHOPIFY_BASE } from './detect.ts';
 import {
   collapse,
   dedupeStrings,
@@ -25,7 +25,7 @@ import {
   type ShopifyProduct,
 } from './shopify.ts';
 import { parseSize } from './size.ts';
-import type { FieldStatusMap, ScrapedRug } from './types.ts';
+import type { FieldStatusMap, ScrapedRug, ShopifySupplier } from './types.ts';
 
 export { withWidth };
 /** Historic names: KV's product payload is an ordinary Shopify one (`shopify.ts`). */
@@ -52,6 +52,9 @@ export const KV_METHOD_KEYWORDS: readonly string[] = [
 ];
 
 /** Headings that KV prints on their own line with the value on the next (`Size` / `305 x 370 cm …`). */
+/* A heading may carry more words than the fact it names — KV prints "Material & Design" over the
+   material, and "Size" over the size. Matched on the FIRST word so a section title reads as its
+   fact, and only for headings where that cannot be ambiguous. */
 const KV_HEADINGS: readonly string[] = [
   'stock code',
   'size',
@@ -74,9 +77,9 @@ export function parseKaravanSpecs(descriptionHtml: string): { text: string; spec
   const specs = labelValueLines(text);
   const lines = text.split('\n');
   for (let i = 0; i < lines.length - 1; i++) {
-    const heading = collapse(lines[i]).replace(/:$/, '').toLowerCase();
+    const heading = collapse(lines[i]).replace(/:$/, '').toLowerCase().replace(/&amp;/g, '&');
     const key = KV_HEADINGS.find(
-      (h) => heading === h || (h === 'material' && heading.startsWith('material')),
+      (h) => heading === h || heading.startsWith(`${h} `) || heading.startsWith(`${h} &`),
     );
     const next = collapse(lines[i + 1]);
     if (key && next && !specs.has(key)) specs.set(key, next);
@@ -85,11 +88,54 @@ export function parseKaravanSpecs(descriptionHtml: string): { text: string; spec
 }
 
 /**
- * Builds the ScrapedRug for a KV handle from whichever bodies were fetched. Undefined when no product
- * body parsed. `seenCurrency` comes from the HTML's JSON-LD / og meta, else USD is assumed and flagged.
+ * The product as the PAGE describes it, for when neither JSON endpoint answered.
+ *
+ * Why this exists (owner, 2026-09-21: "the scrape does not fill the data from karavanrug.com"): the
+ * adapter used to return undefined without `.js` or `.json`, and the ladder then fell back to the
+ * generic rungs, which know a name, a price and a photograph — and nothing about size, material,
+ * method, age or origin. So a Shopify rug arrived with five empty fields while an ECG rug, whose
+ * adapter reads the HTML itself, arrived complete. That asymmetry was the bug, not the endpoints.
+ *
+ * Both endpoints failing is ordinary: `/products/<handle>.js` 404s on some Shopify shops, and a
+ * storefront may rate-limit or block them for a server that is not a browser. The page itself is the
+ * one thing that is always there, and its JSON-LD carries the same description the endpoints do —
+ * which is where every spec is written.
  */
-export function parseKaravan(handle: string, src: KaravanSources): ScrapedRug | undefined {
-  const product = parseKaravanProduct(src.js, src.json);
+function productFromHtml(html: string | undefined, handle: string): ShopifyProduct | undefined {
+  if (!html) return undefined;
+  const g = extractGeneric(loadHtml(html));
+  const title = g.ld?.name ?? g.title;
+  const description = g.ld?.description ?? g.description ?? '';
+  // A 404 page is still a page: it has a title and no product in it. Anything without a name or a
+  // description is not worth pretending about — the caller then reports `parse_failed`, which is true.
+  if (!title || !description) return undefined;
+  const images = g.ld?.images?.length ? g.ld.images : g.image ? [g.image] : [];
+  return {
+    title,
+    handle,
+    descriptionHtml: description,
+    tags: [],
+    variantPrice: g.ld?.price ?? g.price,
+    variantSku: g.ld?.sku ?? g.sku,
+    images,
+    media: images.map((src) => ({ src })),
+    source: 'html',
+  };
+}
+
+/**
+ * Builds the ScrapedRug for a KV handle from whichever bodies were fetched. Undefined when the page
+ * carried no product at all. `seenCurrency` comes from the HTML's JSON-LD / og meta, else USD is
+ * assumed and flagged.
+ */
+export function parseKaravan(
+  handle: string,
+  src: KaravanSources,
+  /* Which Shopify shop this came from (owner, 2026-09-21). Defaults to KV, which is the only shop
+     that existed when this adapter was written and the one every fixture is taken from. */
+  supplier: ShopifySupplier = 'karavanrug',
+): ScrapedRug | undefined {
+  const product = parseKaravanProduct(src.js, src.json) ?? productFromHtml(src.html, handle);
   if (!product) return undefined;
   const warnings: string[] = [];
   const { text, specs } = parseKaravanSpecs(product.descriptionHtml);
@@ -170,9 +216,9 @@ export function parseKaravan(handle: string, src: KaravanSources): ScrapedRug | 
   }
 
   return {
-    supplier: 'karavanrug',
+    supplier,
     supplierRef: collapse(supplierRef),
-    sourceUrl: `${KV_BASE}${handle}`,
+    sourceUrl: `${SHOPIFY_BASE[supplier]}${handle}`,
     supplierTitle: product.title,
     description,
     widthCm: size?.widthCm,

@@ -93,7 +93,7 @@ export const RugInput = z.object({
   rotate: z.enum(['force', 'true', 'false']).default('false'),
   featured: z.boolean().default(false),
   sourceUrl: HttpsUrl.optional(),
-  supplier: z.enum(['ecarpetgallery', 'karavanrug', '']).default(''),
+  supplier: z.enum(['ecarpetgallery', 'karavanrug', 'serioludere', '']).default(''),
   supplierRef: Text(40),
   notes: Text(2000),
   roundPrice: z.boolean().default(false), // apply roundUpToStep(priceUsd) server-side before writing (§7)
@@ -181,7 +181,7 @@ export const PhotoImportRequest = z.object({
    * to the first image (src/lib/drive/transform.ts). Sent explicitly rather than sniffed from the
    * photo host: Karavan is a Shopify store, so its images arrive from the shared cdn.shopify.com.
    */
-  supplier: z.enum(['ecarpetgallery', 'karavanrug', '']).default(''),
+  supplier: z.enum(['ecarpetgallery', 'karavanrug', 'serioludere', '']).default(''),
 });
 export type PhotoImportRequestT = z.infer<typeof PhotoImportRequest>;
 export const SettingsUpdate = z.object({

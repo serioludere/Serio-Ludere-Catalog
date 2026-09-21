@@ -320,7 +320,59 @@ describe('scrapeRug: karavanrug.com', () => {
     expect(r).toMatchObject({ ok: false, code: 'parse_failed' });
   });
 
-  it('falls through to the JSON-LD rung when the Shopify payload is broken (brief §11)', async () => {
+  it('reads the studio’s own storefront through the same rungs', async () => {
+    /* Owner, 2026-09-21: serioludere.com is a source like any other. It is Shopify, so it takes the
+       same ladder as karavanrug.com — the fixture bodies are served from the SL host here, and the
+       only thing that differs is which shop the canonical URL is rebuilt on. */
+    const slBase = `https://serioludere.com/products/${KV_OUSHAK_HANDLE}`;
+    const r = await scrapeRug(`serioludere.com/collections/all/products/${KV_OUSHAK_HANDLE}`, {
+      fetchImpl: fakeTransport({
+        [`${slBase}.js`]: { body: kvJs, contentType: JS_CT },
+        [`${slBase}.json`]: { body: kvJson, contentType: JSON_CT },
+        [slBase]: { body: kvHtml },
+      }),
+      cache: new ScrapeCache(),
+      ...guards(),
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.data.supplier).toBe('serioludere');
+    expect(r.data.sourceUrl).toBe(slBase);
+    expect(r.data).toMatchObject({ widthCm: 305, lengthCm: 370, seenCurrency: 'USD' });
+    expect(r.data.material).toBeTruthy();
+    expect(r.data.photos.length).toBeGreaterThan(0);
+  });
+
+  it('says so plainly when a storefront is still behind its password', async () => {
+    // serioludere.com is "COMING SOON" at the time of writing: Shopify answers 401 to everything.
+    // "fetch_failed: HTTP 401" would send the studio looking for a fault that is not there.
+    const slBase = `https://serioludere.com/products/${KV_OUSHAK_HANDLE}`;
+    const r = await scrapeRug(slBase, {
+      fetchImpl: fakeTransport({
+        [`${slBase}.js`]: { status: 401, body: '' },
+        [`${slBase}.json`]: { status: 401, body: '' },
+        [slBase]: { status: 401, body: '' },
+      }),
+      cache: new ScrapeCache(),
+      ...guards(),
+    });
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.message).toContain('serioludere.com is password-protected');
+    // …and the shop is still recognised, so Enter manually opens pre-filled.
+    expect(r.manual?.supplier).toBe('serioludere');
+  });
+
+  it('reads the PAGE when neither Shopify payload answers, rather than filling three fields', async () => {
+    /* Owner, 2026-09-21: "the scrape does not fill the data from karavanrug.com, unlike products
+       coming from ecarpetgallery". This was why. Without `.js` and `.json` the adapter gave up and
+       the generic rungs answered — they know a title, a price and a photograph, and nothing about
+       size, material, method, age or origin — while ECG, whose adapter reads the HTML itself, came
+       back complete. Both endpoints failing is ordinary: `.js` 404s on some shops, and a storefront
+       may refuse them for a server that is not a browser.
+
+       The adapter now builds the product from the page's own JSON-LD, so the SPEC BLOCK is read and
+       every field lands. The old expectations are kept below as the contrast they are. */
     const r = await scrapeRug(kvBase, {
       fetchImpl: fakeTransport(
         kvRoutes({
@@ -333,17 +385,22 @@ describe('scrapeRug: karavanrug.com', () => {
     });
     expect(r.ok).toBe(true);
     if (!r.ok) return;
-    // Rung 2 supplies title, sku, price and currency; the size is read out of the title, so it is
-    // flagged `inferred` rather than `found`.
     expect(r.data).toMatchObject({
-      supplierRef: '11103-7321',
+      // The stock code the page prints, not the JSON-LD sku "11103-7321" the generic rung used.
+      supplierRef: '11103',
       seenCurrency: 'USD',
       widthCm: 305,
       lengthCm: 370,
       sizeLabel: '305 × 370 cm',
       sizeBand: 'XL',
     });
-    expect(r.data.fieldStatus.widthCm).toBe('inferred');
+    // The five fields that used to come back empty on this path.
+    expect(r.data.material).toBeTruthy();
+    expect(r.data.method).toBeTruthy();
+    expect(r.data.age).toBeTruthy();
+    expect(r.data.photos.length).toBeGreaterThan(0);
+    // Read from the page's own Size line, so it is stated rather than guessed from the title.
+    expect(r.data.fieldStatus.widthCm).toBe('found');
     expect(r.data.fieldStatus.seenPrice).toBe('found');
   });
 });

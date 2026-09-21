@@ -1,6 +1,6 @@
 import { a as sequence, mt as defineMiddleware } from "./chunks/runtime_skv-YCY6.mjs";
-import { b as adminGate, s as gateConfig } from "./chunks/http_YuZl1CQP.mjs";
-import { o as customerGate, t as customerGateConfig } from "./chunks/http_8ENQoy7e.mjs";
+import { b as adminGate, s as gateConfig } from "./chunks/http_CvlaKNqx.mjs";
+import { o as customerGate, t as customerGateConfig } from "./chunks/http_BaxLaokF.mjs";
 //#region src/middleware.ts
 var securityHeaders = defineMiddleware(async (_context, next) => {
 	const response = await next();

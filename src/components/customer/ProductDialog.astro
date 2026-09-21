@@ -44,11 +44,28 @@ const specRowsOf = (card: CardView): Array<{ key: string; value: string }> => [
     return (
       <template data-detail={card.id}>
         <div class="pv-modal__media">
-          {photos[0] ? (
-            <img class="pv-modal__photo" src={photos[0]} alt={card.name} data-hero-img decoding="async" />
-          ) : (
-            <span class="pv-modal__empty">Photo to come</span>
-          )}
+          {/* The rug and its weave, side by side (owner, 2026-09-21). The texture used to sit under
+              the title in the facts column, where it read as an afterthought to the price; beside
+              the hero it does the job it is for — the whole piece from across a room, and the knot
+              in the hand, in one look. */}
+          <div class:list={['pv-modal__plates', { 'has-texture': Boolean(card.textureUrl) }]}>
+            {photos[0] ? (
+              <img class="pv-modal__photo" src={photos[0]} alt={card.name} data-hero-img decoding="async" />
+            ) : (
+              <span class="pv-modal__empty">Photo to come</span>
+            )}
+            {card.textureUrl && (
+              <figure class="pv-modal__texture">
+                <img
+                  src={card.textureUrl}
+                  alt={`${card.name}, the weave up close`}
+                  loading="lazy"
+                  decoding="async"
+                />
+                <figcaption class="pv-modal__texture-label">texture</figcaption>
+              </figure>
+            )}
+          </div>
           {photos.length > 1 && (
             <div class="pv-thumbs pv-modal__thumbs" data-thumbs role="toolbar" aria-label="Photographs">
               {photos.map((src, i) => (
@@ -72,31 +89,15 @@ const specRowsOf = (card: CardView): Array<{ key: string; value: string }> => [
             {priceText}
           </p>
           {
-            /* The texture photograph (owner, 2026-09-20), in the slot the marker chips held.
-               A rug is a material before it is a pattern, and the hero shows the whole piece from
-               across a room; this is the one place the buyer can see the weave up close without
-               opening the gallery. The studio chooses which photo it is, on the product form.
-
-               A rug with no texture chosen keeps the markers rather than leaving a hole — they are
-               the same two the card corner shows, spelled out here where there is room for the word. */
-            card.textureUrl ? (
-              <figure class="pv-modal__texture">
-                <img
-                  src={card.textureUrl}
-                  alt={`${card.name}, the weave up close`}
-                  loading="lazy"
-                  decoding="async"
-                />
-                <figcaption class="pv-modal__texture-label">texture</figcaption>
-              </figure>
-            ) : (
-              badgesFor(card.tags.map((t) => t.name)).length > 0 && (
-                <ul class="pv-modal__markers">
-                  {badgesFor(card.tags.map((t) => t.name)).map((b) => (
-                    <li class="pv-modal__marker">{b}</li>
-                  ))}
-                </ul>
-              )
+            /* The markers: the same two the card corner shows, spelled out here where there is room
+               for the word. They are back to being unconditional — the texture photograph moved to
+               the media column beside the hero (owner, 2026-09-21), so it no longer takes this slot. */
+            badgesFor(card.tags.map((t) => t.name)).length > 0 && (
+              <ul class="pv-modal__markers">
+                {badgesFor(card.tags.map((t) => t.name)).map((b) => (
+                  <li class="pv-modal__marker">{b}</li>
+                ))}
+              </ul>
             )
           }
           {card.description && <p class="pv-modal__desc">{card.description}</p>}
@@ -172,12 +173,26 @@ const specRowsOf = (card: CardView): Array<{ key: string; value: string }> => [
     background: var(--bg-inset);
     border-right: var(--rule-width) solid var(--rule);
   }
+  /* Hero and texture share the media column's height; the texture takes a third of its width, so a
+     rug still reads as the subject and the weave as the detail. Without a texture the hero simply
+     has the row to itself and nothing about the old layout changes. */
+  .pv-modal__plates {
+    flex: 1 1 auto;
+    display: flex;
+    gap: var(--stack-md);
+    min-width: 0;
+    min-height: 0;
+  }
   .pv-modal__photo {
     flex: 1 1 auto;
     width: 100%;
+    min-width: 0;
     min-height: 0;
     /* `contain`, like the card: a rug is never cropped to fit a box (ADR D6). */
     object-fit: contain;
+  }
+  .pv-modal__plates.has-texture .pv-modal__photo {
+    width: auto;
   }
   .pv-modal__empty {
     display: grid;
@@ -234,26 +249,29 @@ const specRowsOf = (card: CardView): Array<{ key: string; value: string }> => [
     padding: 0;
     list-style: none;
   }
-  /* The texture plate: a small framed square, wide enough to read the knots and small enough that it
-     never competes with the hero on the left. `cover`, not `contain` — a crop of a close-up is still
-     a close-up, where letterboxing it would waste the little room this has. */
+  /* The texture plate: a full-height column beside the hero. `cover`, not `contain` — a crop of a
+     close-up is still a close-up, where letterboxing it would waste the room it has. */
   .pv-modal__texture {
+    flex: 0 0 32%;
     display: flex;
-    align-items: center;
-    gap: var(--stack-md);
+    flex-direction: column;
+    gap: var(--stack-xs);
+    min-width: 0;
     margin: 0;
   }
   .pv-modal__texture img {
-    flex: none;
-    width: 96px;
-    height: 96px;
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 0;
     object-fit: cover;
     border: var(--rule-width) solid var(--rule);
   }
   .pv-modal__texture-label {
+    flex: none;
     font-family: var(--body);
     font-size: var(--text-xs);
     color: var(--ink-muted);
+    text-align: center;
   }
   .pv-modal__marker {
     padding: var(--corner-chip-pad, 2px 6px);
@@ -329,6 +347,17 @@ const specRowsOf = (card: CardView): Array<{ key: string; value: string }> => [
     }
     .pv-modal__photo {
       max-height: 46dvh;
+    }
+    /* Side by side still — the pair IS the point — but the weave gives up width first, and the row
+       keeps the hero's height so neither plate stretches. */
+    .pv-modal__plates.has-texture .pv-modal__photo {
+      max-height: 34dvh;
+    }
+    .pv-modal__texture {
+      flex-basis: 28%;
+    }
+    .pv-modal__texture img {
+      max-height: 34dvh;
     }
     .pv-modal__info {
       overflow: visible;

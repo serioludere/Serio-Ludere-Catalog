@@ -31,7 +31,7 @@ export interface ShopifyProduct {
   variantSku?: string;
   images: string[];
   media: Array<{ src: string; width?: number; height?: number }>;
-  source: 'js' | 'json';
+  source: 'js' | 'json' | 'html';
 }
 
 function isRecord(v: unknown): v is Record<string, unknown> {

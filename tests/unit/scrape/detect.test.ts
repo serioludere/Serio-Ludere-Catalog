@@ -157,8 +157,36 @@ describe('detectSupplier (ADMIN_SPEC §4.2)', () => {
     expect(other.ok).toBe(false);
     if (!other.ok) {
       expect(other.code).toBe('unsupported_host');
-      expect(other.message).toContain('only ecarpetgallery.com and karavanrug.com');
+      expect(other.message).toContain('only ecarpetgallery.com, karavanrug.com and serioludere.com');
     }
+  });
+
+  it('accepts the studio’s own Shopify storefront as a third source', () => {
+    // Owner, 2026-09-21. serioludere.com is Shopify, like karavanrug.com, so it reads through the
+    // same rungs; only the host it is rebuilt on differs.
+    for (const input of [
+      'https://serioludere.com/products/oushak-rug',
+      'https://www.serioludere.com/collections/all/products/oushak-rug?variant=1',
+      'serioludere.com/products/oushak-rug',
+    ]) {
+      expect(detectSupplier(input), input).toMatchObject({
+        supplier: 'serioludere',
+        handle: 'oushak-rug',
+        supplierRef: 'oushak-rug',
+        sourceUrl: 'https://serioludere.com/products/oushak-rug',
+        jsUrl: 'https://serioludere.com/products/oushak-rug.js',
+        jsonUrl: 'https://serioludere.com/products/oushak-rug.json',
+      });
+    }
+    // A rebuild never crosses shops: a Karavan link stays on Karavan.
+    expect(detectSupplier('https://karavanrug.com/products/oushak-rug')).toMatchObject({
+      supplier: 'karavanrug',
+      sourceUrl: 'https://karavanrug.com/products/oushak-rug',
+    });
+    // …and the manual-entry pre-fill knows the new shop too, rather than dead-ending on it.
+    expect(manualFallback('https://serioludere.com/collections/all')).toMatchObject({
+      supplier: 'serioludere',
+    });
   });
 
   it('refuses hosts off the allow-list, including look-alikes', () => {

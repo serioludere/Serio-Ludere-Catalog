@@ -11,6 +11,22 @@ import { HEADERS, SETTINGS_SEED } from '../../../src/lib/sheets/contract.ts';
 const header = [...HEADERS.Settings];
 
 describe('parseSettings (ADMIN_SPEC §3.2)', () => {
+  it('ignores a key this app retired, without calling it unknown', () => {
+    /* Owner, 2026-09-21: the dashboard was reporting `unknown key "default_status" ignored` on every
+       read. The key chose a new product's status; products lost their status on 2026-09-16 and
+       nothing has read it since — so the warning was an alarm about our own decision, on a row the
+       studio never has to touch. Retired is dropped quietly; a typo is still reported, because that
+       one they DO want to know about. */
+    const s = parseSettings([
+      [...HEADERS.Settings],
+      ['price_round_step', '5', '', ''],
+      ['default_status', 'draft', '2026-09-01', 'owner'],
+      ['retial_markup', '1.6', '', ''],
+    ]);
+    expect(s.warnings).toEqual(['Settings row 4: unknown key "retial_markup" ignored']);
+    expect(s.rows.map((r) => r.key)).toEqual(['price_round_step', 'retial_markup']);
+    expect(s.priceRoundStep).toBe(5);
+  });
   it('parses the seed to the documented defaults', () => {
     const s = parseSettings([header, ...SETTINGS_SEED.map(([k, v]) => [k, v, '', ''])]);
     expect(s.retailMarkup).toBeUndefined();

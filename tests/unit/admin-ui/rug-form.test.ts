@@ -419,31 +419,53 @@ describe('add mode', () => {
     expect(val('f_price')).toBe('1335');
   });
 
-  it('adds a whole comma-separated list at once, and keeps the marker buttons in step', () => {
-    // Owner, 2026-09-20: type "Wool, Vintage" and press Add tags once, rather than one at a time.
+  it('keeps the markers out of the tags, and sends both in the one cell', () => {
+    /* Owner, 2026-09-21: Signed and Antique are MARKERS, not tags. They are what the buyer sees in
+       the corner of the card, the tags are the studio's own filing, and putting them in one box made
+       them look like the same kind of thing. So the markers have their own control, the tag tokens
+       never show them — and the sheet still gets one Tags cell, because that is where badgesFor()
+       reads the badge from. */
     form = mount(() => ({ status: 500, body: {} }));
     const newTag = document.getElementById('newTag') as HTMLInputElement;
-    newTag.value = ' Wool , Vintage ,, Signed ';
-    document.getElementById('btnNewTag')!.click();
-    expect(form.chips.values()).toEqual(['Wool', 'Vintage', 'Signed']);
-    expect(newTag.value).toBe('');
-
     const marker = (name: string): HTMLButtonElement =>
       document.querySelector<HTMLButtonElement>(`button.tagpreset[data-preset="${name}"]`)!;
-    // Typed by hand, so the marker for it shows as pressed — case-insensitively.
+
+    // Owner, 2026-09-20: type "Wool, Vintage" and press Add tags once, rather than one at a time.
+    newTag.value = ' Wool , Vintage ,, Signed ';
+    document.getElementById('btnNewTag')!.click();
+    expect(newTag.value).toBe('');
+    // "Signed" typed into the tag box is the marker, not a token that happens to be spelled like one.
+    expect(form.chips.values()).toEqual(['Wool', 'Vintage']);
     expect(marker('Signed').getAttribute('aria-pressed')).toBe('true');
     expect(marker('Antique').getAttribute('aria-pressed')).toBe('false');
+    expect(form.collect().tags).toEqual(['Wool', 'Vintage', 'Signed']);
 
-    // Pressing adds the tag; pressing again takes it off.
+    // Pressing a marker puts it on the rug; pressing it again takes it off. Neither touches the tags.
     marker('Antique').click();
-    expect(form.chips.values()).toEqual(['Wool', 'Vintage', 'Signed', 'Antique']);
+    expect(form.collect().tags).toEqual(['Wool', 'Vintage', 'Signed', 'Antique']);
+    expect(form.chips.values()).toEqual(['Wool', 'Vintage']);
     marker('Antique').click();
-    expect(form.chips.values()).toEqual(['Wool', 'Vintage', 'Signed']);
+    expect(form.collect().tags).toEqual(['Wool', 'Vintage', 'Signed']);
 
-    // …and removing the token with its × un-presses the marker, rather than leaving it lit.
-    document.querySelector<HTMLButtonElement>('#tagChips [data-tag="Signed"] button[data-remove]')!.click();
-    expect(marker('Signed').getAttribute('aria-pressed')).toBe('false');
+    // The markers are not in the token list at all, so there is no × that could half-remove one.
+    expect(document.querySelector('#tagChips [data-tag="Signed"]')).toBeNull();
+    marker('Signed').click();
     expect(form.collect().tags).toEqual(['Wool', 'Vintage']);
+  });
+
+  it('shows the markers under their own label, away from the tags', () => {
+    // The separation has to be visible, not just structural: each control says what it is, and the
+    // markers' line says where the customer sees them.
+    form = mount(() => ({ status: 500, body: {} }));
+    const legends = [...document.querySelectorAll('.f__legend')].map((n) => n.textContent?.trim());
+    expect(legends).toContain('Markers');
+    expect(legends).toContain('Tags');
+    const markerBlock = document.querySelector('button.tagpreset')!.closest('.f')!;
+    const tagBlock = document.getElementById('tagChips')!.closest('.f')!;
+    expect(markerBlock).not.toBe(tagBlock);
+    expect(markerBlock.querySelector('.f__legend')?.textContent?.trim()).toBe('Markers');
+    expect(markerBlock.textContent).toContain('Shown to the customer');
+    expect(tagBlock.textContent).toContain('Never shown to the customer');
   });
 
   it('adds tags locally — no registry call — and the × takes one off again', () => {

@@ -21,6 +21,9 @@ export const DOWNLOAD_HOSTS: readonly string[] = [
   'images.ecarpetwholesale.com',
   'cdn.shopify.com',
   'karavanrug.com',
+  // The studio's own storefront (owner, 2026-09-21): Shopify, so its photos are on cdn.shopify.com,
+  // but a theme may serve them from the shop's own /cdn/ path too.
+  'serioludere.com',
 ];
 
 export interface DownloadResult {

@@ -61,7 +61,14 @@ const day = (iso: string | undefined): string => {
 const metaLine = rug ? `${likes} ${likes === 1 ? 'like' : 'likes'} · added ${day(rug.scrapedAt)}` : '';
 const v = (s: string | number | undefined): string => (s === undefined ? '' : String(s));
 // The product's OWN tags (owner, 2026-09-18) — there is no registry to offer any more.
-const ownTags = rug?.tags.filter((t) => t.trim()) ?? [];
+const allTags = rug?.tags.filter((t) => t.trim()) ?? [];
+/* Markers are not tags (owner, 2026-09-21). They are stored in the same cell — that is what the
+   buyer's corner badge reads — but on this form they are their own labelled control, and the tag
+   tokens below never show them. Two things that look alike in a text field are two things: one is
+   a claim about the rug that the buyer SEES, the other is the studio's own filing. */
+const isMarker = (tag: string): boolean =>
+  BADGE_TAG_NAMES.some((m) => m.toLowerCase() === tag.trim().toLowerCase());
+const ownTags = allTags.filter((t) => !isMarker(t));
 // The markers (owner, 2026-09-20): the two tags a buyer sees on the card, offered as toggle buttons
 // on both the add and the edit form. Not a registry coming back — they are ordinary tag strings, and
 // a product may carry neither, one or both. BADGE_TAG_NAMES is the one list, shared with the cards.
@@ -216,30 +223,37 @@ const methodOptions = termOptions(rug?.method, METHOD_OPTIONS);
       /* Owner, 2026-09-18: tags are plain strings on THIS product, not a registry to pick from. What is
         listed is what the product has; each carries an × that removes it, and the input adds one. */
     }
+    {
+      /* The markers, on their own (owner, 2026-09-21). Pressing one puts that claim on the rug and the
+         buyer sees it in the corner of the card and in the product popup; pressing it again takes it
+         off. They ride in the Tags cell in the sheet — `badgesFor()` reads them there — but they are
+         not filing, so they are not in the tag box. */
+    }
+    <div class="f wide">
+      <span class="f__legend">Markers</span>
+      <p class="hint">Shown to the customer on the card and in the product popup.</p>
+      <div class="tagpresets">
+        {
+          PRESET_TAGS.map((t) => (
+            <button
+              type="button"
+              class="chip tagpreset"
+              data-preset={t}
+              aria-pressed={
+                allTags.some((own) => own.trim().toLowerCase() === t.toLowerCase()) ? 'true' : 'false'
+              }
+            >
+              {t}
+            </button>
+          ))
+        }
+      </div>
+    </div>
+
     <div class="f wide">
       <span class="f__legend">Tags</span>
+      <p class="hint">The studio's own filing. Never shown to the customer.</p>
       <div class="tagrow">
-        {
-          /* The markers (owner, 2026-09-20). Pressing one adds that tag, pressing it again removes it;
-             anything else is still typed below. rug-form.ts keeps these in step with the tokens, so a
-             marker removed by its × comes un-pressed here too. */
-        }
-        <div class="tagpresets">
-          {
-            PRESET_TAGS.map((t) => (
-              <button
-                type="button"
-                class="chip tagpreset"
-                data-preset={t}
-                aria-pressed={
-                  ownTags.some((own) => own.trim().toLowerCase() === t.toLowerCase()) ? 'true' : 'false'
-                }
-              >
-                {t}
-              </button>
-            ))
-          }
-        </div>
         <div class="tagtokens" id="tagChips" role="list" aria-label="Tags on this product">
           {
             ownTags.map((t) => (
@@ -330,6 +344,7 @@ const methodOptions = termOptions(rug?.method, METHOD_OPTIONS);
         <option value="" selected={!rug?.supplier}>Owned / other</option>
         <option value="ecarpetgallery" selected={rug?.supplier === 'ecarpetgallery'}>ECG</option>
         <option value="karavanrug" selected={rug?.supplier === 'karavanrug'}>KV</option>
+        <option value="serioludere" selected={rug?.supplier === 'serioludere'}>Serio Ludere</option>
       </select>
     </div>
 

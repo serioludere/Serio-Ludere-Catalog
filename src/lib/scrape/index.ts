@@ -240,6 +240,9 @@ async function scrapeEcg(det: DetectedEcg, ctx: Ctx): Promise<Attempt> {
  * enough for a store we have no adapter for, and they rescue a product whose JSON payload is broken.
  */
 async function scrapeShopifyFirst(det: DetectedKaravan, ctx: Ctx): Promise<Attempt> {
+  // The shop that is actually answering: two Shopify hosts reach this now (owner, 2026-09-21), and a
+  // message naming the wrong one sends the studio looking at the wrong shop.
+  const host = new URL(det.sourceUrl).hostname;
   let js: FetchedText | undefined;
   let json: FetchedText | undefined;
   let lastError: Attempt | undefined;
@@ -259,7 +262,7 @@ async function scrapeShopifyFirst(det: DetectedKaravan, ctx: Ctx): Promise<Attem
       if (js && js.status >= 400)
         lastError = fail(
           js.status === 403 ? 'blocked' : 'fetch_failed',
-          `karavanrug.com answered HTTP ${js.status} for the .js endpoint`,
+          `${host} answered HTTP ${js.status} for the .js endpoint`,
           js.status,
         );
       if (ctx.signal.aborted && lastError) return lastError;
@@ -275,9 +278,14 @@ async function scrapeShopifyFirst(det: DetectedKaravan, ctx: Ctx): Promise<Attem
       if (!jsonOk && json && json.status >= 400) {
         // A hard block or a server error on both JSON endpoints is not something the HTML rungs
         // can rescue: the host is refusing us, not answering badly.
+        /* 401 is a Shopify storefront that is still behind its "coming soon" password. Worth
+           saying in as many words: the link is right, the shop is simply not open yet, and no
+           amount of retrying will change that until the password is lifted. */
         return fail(
           json.status === 403 ? 'blocked' : 'fetch_failed',
-          `karavanrug.com answered HTTP ${json.status}`,
+          json.status === 401
+            ? `${host} is password-protected (HTTP 401) — a storefront behind Shopify's password page cannot be read until it is open`
+            : `${host} answered HTTP ${json.status}`,
           json.status,
         );
       }
@@ -290,13 +298,12 @@ async function scrapeShopifyFirst(det: DetectedKaravan, ctx: Ctx): Promise<Attem
     try {
       const res = await fetchText(det.htmlUrl, 'impit', { ...ctx.fetchOpts, kind: 'html' });
       if (res.status < 400) html = res;
-      else
-        ctx.logger.warn('karavanrug.com product page unavailable; currency assumed', { status: res.status });
+      else ctx.logger.warn('product page unavailable; currency assumed', { host, status: res.status });
     } catch (e) {
       const err = toScrapeError(e);
       if (err.code === 'timeout' && ctx.signal.aborted)
         return { ok: false, code: 'timeout', message: err.message };
-      ctx.logger.warn('karavanrug.com product page fetch failed; currency assumed', { message: err.message });
+      ctx.logger.warn('product page fetch failed; currency assumed', { host, message: err.message });
     }
   }
 
@@ -310,7 +317,7 @@ async function scrapeShopifyFirst(det: DetectedKaravan, ctx: Ctx): Promise<Attem
   const via: ScrapeVia = (jsOk ? js?.via : jsonOk ? json?.via : html?.via) ?? 'impit';
 
   // Rung 4: the host's own adapter, the most specific reading of the page.
-  const refined = parseKaravan(det.handle, { js: jsBody, json: jsonBody, html: html?.body });
+  const refined = parseKaravan(det.handle, { js: jsBody, json: jsonBody, html: html?.body }, det.supplier);
   const data =
     refined ?? (rungs.length ? draftToRug(det.supplier, det.sourceUrl, merged, det.handle) : undefined);
   if (!data) return lastError ?? fail('parse_failed', 'the Shopify product payload could not be parsed');
@@ -340,7 +347,7 @@ export async function scrapeRug(input: string, opts: ScrapeOptions = {}): Promis
     const fallback = manualFallback(input);
     const message =
       det.error === 'unsupported_host'
-        ? 'only ecarpetgallery.com and karavanrug.com product links are supported'
+        ? 'only ecarpetgallery.com, karavanrug.com and serioludere.com product links are supported'
         : fallback
           ? 'that link has no product in it — open the rug on the supplier site and copy the link from its own page'
           : 'not a supported product link';

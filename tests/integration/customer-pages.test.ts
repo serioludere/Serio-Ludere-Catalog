@@ -52,7 +52,13 @@ vi.mock('../../src/lib/runtime.ts', async () => {
           rugs: [
             // SL-021 carries a texture photograph; SL-022 carries a marker tag and no texture, which
             // is the other half of the product popup's one either/or (owner, 2026-09-20).
-            row({ id: 'SL-021', texture: '1TeXtUrE0000000000000000000000000' }),
+            // Texture AND a marker: since 2026-09-21 they are not an either/or — the texture sits
+            // beside the hero, the markers stay in the facts column.
+            row({
+              id: 'SL-021',
+              texture: '1TeXtUrE0000000000000000000000000',
+              tags: 'Kilim|Denizli|Antique',
+            }),
             row({
               id: 'SL-022',
               name: 'Yellow',
@@ -206,11 +212,27 @@ describe('/{slug} — the signed-in catalog', () => {
     expect(withTexture).toContain('pv-modal__texture');
     expect(withTexture).toContain('1TeXtUrE0000000000000000000000000');
     expect(withTexture).toContain('the weave up close');
-    expect(withTexture).not.toContain('pv-modal__marker');
+    /* Side by side with the hero (owner, 2026-09-21), not under the title: both plates are in the
+       MEDIA column, inside one row that says it has a texture. It used to sit in the facts column
+       where it read as an afterthought to the price. */
+    const plates = withTexture.slice(
+      withTexture.indexOf('pv-modal__plates'),
+      withTexture.indexOf('pv-modal__info'),
+    );
+    expect(plates).toContain('has-texture');
+    expect(plates).toContain('pv-modal__photo');
+    expect(plates).toContain('pv-modal__texture');
+    // The hero comes first, so the rug is the subject and the weave the detail beside it.
+    expect(plates.indexOf('pv-modal__photo')).toBeLessThan(plates.indexOf('pv-modal__texture'));
 
     const withMarkers = templateFor('SL-022');
     expect(withMarkers).not.toContain('pv-modal__texture');
+    // A rug with no texture keeps a plain row — nothing shifts and no empty plate is drawn.
+    expect(withMarkers).toContain('pv-modal__plates');
+    expect(withMarkers).not.toContain('has-texture');
+    // The markers are the facts column's own, whether or not there is a texture (owner, 2026-09-21).
     expect(withMarkers).toContain('pv-modal__marker');
+    expect(withTexture).toContain('pv-modal__marker');
     // Capitalised again on 2026-09-20 (owner), from the one BADGE_TAG_NAMES list.
     expect(withMarkers).toContain('>Signed<');
   });

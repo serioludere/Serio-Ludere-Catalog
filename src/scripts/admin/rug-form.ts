@@ -223,28 +223,41 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     // Removing a tag with the × is an edit like any other, so the unsaved-work guard has to see it.
     onChange: () => {
       dirty = true;
-      syncPresetTags();
     },
   });
   const newTag = input('newTag');
   const btnNewTag = byId<HTMLButtonElement>('btnNewTag', doc);
   /**
-   * The marker buttons — signed / antique (owner, 2026-09-20). They are a shortcut onto the same list
-   * of plain strings the tokens show: pressing one adds that tag, pressing it again removes it. They
-   * follow the tokens too, so a marker removed by its × comes un-pressed here, and one typed by hand
-   * shows as pressed. `aria-pressed` IS the state — there is no separate variable to drift.
+   * The markers — Signed / Antique (owner, 2026-09-21), their own control rather than two of the tag
+   * tokens.
+   *
+   * They still travel in the Tags CELL, because that is where `badgesFor()` reads the buyer's corner
+   * badge from, but they are not filing and they no longer look like it: the tokens below never show
+   * them, and `aria-pressed` IS the state — there is no second variable to drift out of step.
+   *
+   * A marker typed into the tag box is still a marker: `addTag` presses the button instead of making
+   * a token, so the two cannot disagree about a rug that says "signed".
    */
-  const presetTags = [...doc.querySelectorAll<HTMLButtonElement>('button.tagpreset[data-preset]')];
-  function syncPresetTags(): void {
-    for (const b of presetTags)
-      b.setAttribute('aria-pressed', chips.has(b.dataset.preset ?? '') ? 'true' : 'false');
-  }
-  for (const b of presetTags) {
-    b.addEventListener('click', () => {
+  const markerButtons = [...doc.querySelectorAll<HTMLButtonElement>('button.tagpreset[data-preset]')];
+  const markerNames = markerButtons.map((b) => b.dataset.preset ?? '');
+  const sameTag = (a: string, b: string): boolean => a.trim().toLowerCase() === b.trim().toLowerCase();
+  const isMarker = (name: string): boolean => markerNames.some((m) => sameTag(m, name));
+  /** The markers currently on the rug, in the buttons' own order. */
+  const markersOn = (): string[] =>
+    markerButtons.filter((b) => b.getAttribute('aria-pressed') === 'true').map((b) => b.dataset.preset ?? '');
+  /** Presses exactly the markers `tags` mentions; everything else in `tags` is a tag. */
+  const setMarkers = (tags: readonly string[]): void => {
+    for (const b of markerButtons) {
       const name = b.dataset.preset ?? '';
-      if (b.getAttribute('aria-pressed') === 'true') chips.remove(name);
-      else addTag(name);
-      syncPresetTags();
+      b.setAttribute('aria-pressed', tags.some((t) => sameTag(t, name)) ? 'true' : 'false');
+    }
+  };
+  /** The tags a row carries, minus the markers — what the tokens show. */
+  const tagsOnly = (tags: readonly string[]): string[] => tags.filter((t) => !isMarker(t));
+  for (const b of markerButtons) {
+    b.addEventListener('click', () => {
+      b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+      dirty = true;
     });
   }
   const url = maybe<HTMLInputElement>('url', doc);
@@ -467,8 +480,8 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
         .map((n) => data.collections.find((c) => c.name.toLowerCase() === n.trim().toLowerCase())?.name)
         .filter((n): n is string => n !== undefined),
     );
-    chips.set(rug.tags);
-    syncPresetTags();
+    chips.set(tagsOnly(rug.tags));
+    setMarkers(rug.tags);
     f.width.value = rug.widthCm === undefined ? '' : String(rug.widthCm);
     f.length.value = rug.lengthCm === undefined ? '' : String(rug.lengthCm);
     setTerms(materialGroup, splitTerms(rug.material, MATERIAL_OPTIONS), MATERIAL_OPTIONS);
@@ -495,7 +508,8 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
       name: f.name.value.trim(),
       description: f.description.value.trim(),
       collections: multiSelectValues(collection),
-      tags: chips.values(),
+      // One cell in the sheet, two controls on the form: the tags as typed, then the markers.
+      tags: [...chips.values(), ...markersOn()],
       photos: ids,
       textureId: textureId(),
       widthCm: intOf(f.width.value),
@@ -590,6 +604,12 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
    * lives in this product's own cell and is written when the product is saved, like any other field.
    */
   const addTag = (name: string): boolean => {
+    // "Signed" typed into the tag box is the marker, not a tag that happens to be spelled like one.
+    if (isMarker(name)) {
+      setMarkers([...markersOn(), name]);
+      dirty = true;
+      return true;
+    }
     if (hasTag(name)) return true; // already on the product — nothing to do, and not an error
     return chips.add(name);
   };
@@ -926,7 +946,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     f.name.value = '';
     if (!keepCollection) setMultiSelect(collection, []);
     chips.set([]);
-    syncPresetTags();
+    setMarkers([]);
     for (const node of [
       f.id,
       f.slug,
@@ -1006,7 +1026,6 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     if (names.length === 0) return;
     for (const name of names) addTag(name);
     newTag.value = '';
-    syncPresetTags();
   };
   btnAdd?.addEventListener('click', () => void add());
   btnClear?.addEventListener('click', () => {

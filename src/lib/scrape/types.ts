@@ -5,7 +5,15 @@ import type { ScrapeCache } from './cache.ts';
 import type { RobotsCache } from './robots.ts';
 import type { HostThrottle } from './throttle.ts';
 
-export type Supplier = 'ecarpetgallery' | 'karavanrug';
+/**
+ * The shops a link may come from. `serioludere` is the studio's OWN Shopify store (owner,
+ * 2026-09-21) — the catalogue can be built from the storefront as readily as from a wholesaler, and
+ * it reads through exactly the same Shopify rungs as karavanrug.
+ */
+export type Supplier = 'ecarpetgallery' | 'karavanrug' | 'serioludere';
+
+/** The Shopify-shaped shops: one ladder, two hosts. */
+export type ShopifySupplier = Extract<Supplier, 'karavanrug' | 'serioludere'>;
 
 /** Which client produced the body: impit (supplier hosts), guarded undici (fallback / Jina). */
 export type ScrapeVia = 'impit' | 'undici' | 'jina';
@@ -138,7 +146,7 @@ export interface DetectedEcg {
 }
 
 export interface DetectedKaravan {
-  supplier: 'karavanrug';
+  supplier: ShopifySupplier;
   handle: string;
   supplierRef: string;
   sourceUrl: string;

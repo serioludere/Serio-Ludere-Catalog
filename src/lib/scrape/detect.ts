@@ -1,10 +1,23 @@
 // URL normalisation and supplier detection (docs/ADMIN_SPEC.md §4.2). The pasted string is never
 // fetched: the outbound URLs are rebuilt from `(supplier, urlKey | handle)` against constant hosts.
 import { hostnameProblem } from './guard.ts';
-import type { DetectError, Detected, ManualEntry, Supplier } from './types.ts';
+import type { DetectError, Detected, ManualEntry, ShopifySupplier, Supplier } from './types.ts';
 
 const ECG_HOSTS: readonly string[] = ['ecarpetgallery.com', 'www.ecarpetgallery.com'];
-const KV_HOSTS: readonly string[] = ['karavanrug.com', 'www.karavanrug.com'];
+/** The Shopify shops, each with the host its canonical product URL is rebuilt on. */
+const SHOPIFY_HOSTS: Readonly<Record<string, ShopifySupplier>> = {
+  'karavanrug.com': 'karavanrug',
+  'www.karavanrug.com': 'karavanrug',
+  // The studio's own storefront (owner, 2026-09-21).
+  'serioludere.com': 'serioludere',
+  'www.serioludere.com': 'serioludere',
+};
+
+/** Where each Shopify shop's canonical product URL lives. */
+export const SHOPIFY_BASE: Readonly<Record<ShopifySupplier, string>> = {
+  karavanrug: 'https://karavanrug.com/products/',
+  serioludere: 'https://serioludere.com/products/',
+};
 
 /*
  * WHY THE PATH IS PARSED AT ALL (owner asked, 2026-09-21: "why not accept any link from these two
@@ -41,13 +54,13 @@ function segmentsOf(path: string): string[] {
 }
 
 export const ECG_BASE = 'https://ecarpetgallery.com/us_en/';
-export const KV_BASE = 'https://karavanrug.com/products/';
+/** Kept as the historic name for KV's base; `SHOPIFY_BASE` is the one to read. */
+export const KV_BASE = SHOPIFY_BASE.karavanrug;
 
 export function supplierForHost(hostname: string): Supplier | undefined {
   const h = hostname.toLowerCase();
   if (ECG_HOSTS.includes(h)) return 'ecarpetgallery';
-  if (KV_HOSTS.includes(h)) return 'karavanrug';
-  return undefined;
+  return SHOPIFY_HOSTS[h];
 }
 
 /**
@@ -98,7 +111,7 @@ export function detectSupplier(input: string): Detected | DetectError {
   const next = at === -1 ? undefined : segments[at + 1];
   const handle = next && KV_HANDLE_RE.test(next) ? next : undefined;
   if (!handle) return { error: 'invalid_url' };
-  const sourceUrl = `${KV_BASE}${handle}`;
+  const sourceUrl = `${SHOPIFY_BASE[supplier]}${handle}`;
   return {
     supplier,
     handle,
@@ -124,11 +137,9 @@ export function manualFallback(input: string): ManualEntry | undefined {
     return undefined;
   }
   const host = url.hostname.toLowerCase();
-  const supplier = /(^|\.)ecarpetgallery\.com$/.test(host)
-    ? 'ecarpetgallery'
-    : /(^|\.)karavanrug\.com$/.test(host)
-      ? 'karavanrug'
-      : undefined;
+  // The same allow-list the detector uses, so a shop added there is offered here too rather than
+  // dead-ending on "Enter manually" with nothing pre-filled.
+  const supplier = supplierForHost(host) ?? supplierForHost(host.replace(/^www\./, ''));
   if (!supplier) return undefined;
   if (url.protocol === 'http:') url.protocol = 'https:';
   url.search = '';

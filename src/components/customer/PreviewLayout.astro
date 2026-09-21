@@ -6,6 +6,10 @@
 // preview is a different product with its own design, so it gets its own shell and its own
 // stylesheet, and neither can drift into the other.
 //
+// The link-preview (Open Graph) card lives here rather than on the gate component, because a link
+// into the realm can be pasted at any depth and every one of them resolves to the gate for a
+// visitor with no session. Its copy is src/lib/customer/share.ts.
+//
 // Shared with the public shell: the pre-paint step (the visitor's saved reactions and their
 // unit/currency choice are correct before first paint) and the rates JSON block that drives it. The
 // pre-paint script is the one inline script the hash-based CSP allows; its hash is registered in
@@ -18,6 +22,7 @@ import '../../styles/motion-spec.css';
 import '../../styles/preview.css';
 import prepaint from '../../scripts/prepaint.js?raw';
 import type { RateTable } from '../../lib/currency.ts';
+import { SHARE_DESCRIPTION, SHARE_SITE_NAME, SHARE_TITLE } from '../../lib/customer/share.ts';
 import { jsonForScript } from '../../lib/view.ts';
 
 interface Props {
@@ -37,6 +42,22 @@ const { title, rates, customer, mode = 'preview' } = Astro.props;
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex, nofollow" />
     <title>{title}</title>
+    {
+      /* The link-preview card (src/lib/customer/share.ts). Fixed copy on every page of the realm:
+        an unfurler carries no cookie, so it only ever sees the gate, and the card is read by
+        everyone in the thread the link was pasted into. It never names the buyer or a rug — not
+        even on the signed-in detail page, whose <title> does. `og:url` is deliberately absent:
+        it could only be rebuilt from the Host header behind the proxy, and a wrong canonical is
+        worse than none — every app falls back to the address it was given. */
+    }
+    <meta name="description" content={SHARE_DESCRIPTION} />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={SHARE_SITE_NAME} />
+    <meta property="og:title" content={SHARE_TITLE} />
+    <meta property="og:description" content={SHARE_DESCRIPTION} />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={SHARE_TITLE} />
+    <meta name="twitter:description" content={SHARE_DESCRIPTION} />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

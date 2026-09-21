@@ -5,7 +5,7 @@ import { t as renderScript } from "./motion-spec_CUaH0lGr.mjs";
 import { n as templateExit, t as templateEnter } from "./template-depth_DHN7yctw.mjs";
 import { Q as money, f as ratesFor, mt as driveImageUrl, t as baseCurrency, u as loadCatalogue } from "./runtime_DeI95MAO.mjs";
 import { a as noteVisit, i as findCustomer } from "./http_8ENQoy7e.mjs";
-import { a as $$PreviewFooter, i as $$PreviewHeader, n as $$Reactions, o as $$PreviewControls, r as $$PreviewLayout, t as $$SpecTable } from "./SpecTable_BraLjP1M.mjs";
+import { a as $$PreviewFooter, i as $$PreviewHeader, n as $$Reactions, o as $$PreviewControls, r as $$PreviewLayout, t as $$SpecTable } from "./SpecTable_bbx-vK5L.mjs";
 import { a as catalogueRugs, i as cardView, r as badgesFor, s as navTabs } from "./view_DWDnTEhK.mjs";
 import { n as visibleLikes } from "./likes_Bt2PBY3j.mjs";
 import { t as dims } from "./units_BFAJ7W-k.mjs";

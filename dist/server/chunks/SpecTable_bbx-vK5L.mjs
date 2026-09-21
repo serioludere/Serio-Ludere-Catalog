@@ -33,13 +33,21 @@ SERIO LUDERE
 </a> <span class="pv-spacer" aria-hidden="true" data-astro-cid-lgr6x3gv></span> ` })}`} </header>`;
 }, "/home/user/Serio-Ludere-Catalog/src/components/customer/PreviewHeader.astro", void 0);
 //#endregion
+//#region src/lib/customer/share.ts
+/** The card's headline. */
+var SHARE_TITLE = "Private catalogue preview";
+/** The line under it. */
+var SHARE_DESCRIPTION = "Serio Ludere catalogue collection preview";
+/** The brand line some apps show above the card. */
+var SHARE_SITE_NAME = "Serio Ludere";
+//#endregion
 //#region src/components/customer/PreviewLayout.astro
 createAstro("https://astro.build");
 var $$PreviewLayout = createComponent(($$result, $$props, $$slots) => {
 	const Astro = $$result.createAstro($$props, $$slots);
 	Astro.self = $$PreviewLayout;
 	const { title, rates, customer, mode = "preview" } = Astro.props;
-	return renderTemplate`<html lang="en"${addAttribute(mode, "data-mode")}${addAttribute(customer, "data-customer")}> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="robots" content="noindex, nofollow"><title>${title}</title><link rel="icon" type="image/png" href="/favicon.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet"><link rel="expect" href="#pv-ready" blocking="render"><script type="application/json" id="sl-rates">${unescapeHTML(jsonForScript(rates))}<\/script>${renderHead($$result)}</head> <body class="pv"> ${renderSlot($$result, $$slots["default"])} <script>${unescapeHTML(prepaint_default)}<\/script><span id="pv-ready" hidden></span> </body> </html>`;
+	return renderTemplate`<html lang="en"${addAttribute(mode, "data-mode")}${addAttribute(customer, "data-customer")}> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="robots" content="noindex, nofollow"><title>${title}</title><meta name="description"${addAttribute(SHARE_DESCRIPTION, "content")}><meta property="og:type" content="website"><meta property="og:site_name"${addAttribute(SHARE_SITE_NAME, "content")}><meta property="og:title"${addAttribute(SHARE_TITLE, "content")}><meta property="og:description"${addAttribute(SHARE_DESCRIPTION, "content")}><meta name="twitter:card" content="summary"><meta name="twitter:title"${addAttribute(SHARE_TITLE, "content")}><meta name="twitter:description"${addAttribute(SHARE_DESCRIPTION, "content")}><link rel="icon" type="image/png" href="/favicon.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet"><link rel="expect" href="#pv-ready" blocking="render"><script type="application/json" id="sl-rates">${unescapeHTML(jsonForScript(rates))}<\/script>${renderHead($$result)}</head> <body class="pv"> ${renderSlot($$result, $$slots["default"])} <script>${unescapeHTML(prepaint_default)}<\/script><span id="pv-ready" hidden></span> </body> </html>`;
 }, "/home/user/Serio-Ludere-Catalog/src/components/customer/PreviewLayout.astro", void 0);
 //#endregion
 //#region src/components/customer/Reactions.astro

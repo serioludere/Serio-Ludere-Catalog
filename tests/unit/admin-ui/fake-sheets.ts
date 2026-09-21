@@ -4,6 +4,7 @@
 // write sees what it wrote. Every call is recorded for assertions.
 import type { CellValue, SpreadsheetInfo, ValueRange } from '../../../src/lib/sheets/client.ts';
 import { HEADERS, PRODUCT_WIDTH, TABS } from '../../../src/lib/sheets/contract.ts';
+import { SheetsApiError } from '../../../src/lib/sheets/errors.ts';
 import { rugRow } from '../../helpers/ranges.ts';
 
 export const SHEET_IDS: Record<string, number> = {
@@ -44,6 +45,11 @@ export interface FakeTabs {
   rates?: CellValue[][];
   /** ReactionsArchive rows. Defaults to a blank tab (no header), as a sheet that was never compacted. */
   archive?: CellValue[][];
+  /**
+   * Products grid WIDTH. Defaults to the contract; a smaller number is a sheet from before a column
+   * was appended, which refuses a full-width write exactly as Sheets does.
+   */
+  columns?: number;
   /** Header row of Products; pass [] to simulate a tab the owner has not initialised. */
   rugsHeader?: CellValue[];
 }
@@ -151,6 +157,13 @@ export function fakeSheet(init: FakeTabs = {}): FakeSheet {
     ['Rates', [[...HEADERS.Rates], ...(init.rates ?? [['USD', 1, '$', '']])]],
   ]);
   const rowCount = new Map<string, number>([...tabs.keys()].map((t) => [t, 1000]));
+  /* Grid WIDTH, modelled because Sheets enforces it: a write past the last column is refused, and the
+     whole batch with it. That is what broke every product save on 2026-09-20, when `Texture Image`
+     made the row 43 cells against a 42-column sheet — so the fake reproduces that rather than letting
+     an over-wide write pass silently (src/lib/admin/write.ts ensureProductWidth). */
+  const columnCount = new Map<string, number>(
+    [...tabs.keys()].map((t) => [t, t === TABS.products ? (init.columns ?? PRODUCT_WIDTH) : 26]),
+  );
   const reads: string[][] = [];
   const writes: unknown[][] = [];
 
@@ -198,9 +211,10 @@ export function fakeSheet(init: FakeTabs = {}): FakeSheet {
         for (const raw of requests) {
           const req = raw as Record<string, unknown>;
           if (req.appendDimension) {
-            const a = req.appendDimension as { sheetId: number; length: number };
+            const a = req.appendDimension as { sheetId: number; length: number; dimension?: string };
             const t = titleOf(a.sheetId);
-            rowCount.set(t, (rowCount.get(t) ?? 0) + a.length);
+            if (a.dimension === 'COLUMNS') columnCount.set(t, (columnCount.get(t) ?? 0) + a.length);
+            else rowCount.set(t, (rowCount.get(t) ?? 0) + a.length);
           } else if (req.insertDimension) {
             const ins = req.insertDimension as {
               range: { sheetId: number; startIndex: number; endIndex: number };
@@ -226,6 +240,15 @@ export function fakeSheet(init: FakeTabs = {}): FakeSheet {
             };
             const t = titleOf(u.start.sheetId);
             const g = grid(t);
+            const widest = Math.max(0, ...u.rows.map((r) => r.values.length));
+            const last = (columnCount.get(t) ?? 26) - 1;
+            if (u.start.columnIndex + widest - 1 > last) {
+              // Google's own wording, so a failure here reads like the message the studio saw.
+              throw new SheetsApiError(
+                400,
+                `Invalid requests[0].updateCells: Attempting to write column: ${u.start.columnIndex + widest - 1}, beyond the last requested column of: ${last}`,
+              );
+            }
             u.rows.forEach((r, i) => {
               const rowIdx = u.start.rowIndex + i;
               while (g.length <= rowIdx) g.push([]);
@@ -259,7 +282,7 @@ export function fakeSheet(init: FakeTabs = {}): FakeSheet {
                  would make every product write carry a repair batch it does not need. */
               gridProperties: {
                 rowCount: rowCount.get(title) ?? 1000,
-                columnCount: title === TABS.products ? PRODUCT_WIDTH : 26,
+                columnCount: columnCount.get(title) ?? 26,
               },
             },
           })),

@@ -453,6 +453,44 @@ async function ensureProductWidth(client: Client, logger?: Logger): Promise<void
   productWidthChecked = true;
 }
 
+/**
+ * Google's wording when a row is wider than the grid it is being written into — the exact failure
+ * `ensureProductWidth` exists to prevent ("Attempting to write column: 42, beyond the last requested
+ * column of: 41"). Matched on the phrase rather than the numbers, which name whichever column ran off.
+ */
+const GRID_TOO_NARROW = /beyond the last (?:requested|known) column/i;
+
+/**
+ * One Products batch, with the narrow-grid failure survivable rather than fatal.
+ *
+ * `ensureProductWidth` reads the grid properties once per process and is right almost always. Almost:
+ * the check is cached, so a studio that deletes columns in the spreadsheet UI while the server is up
+ * would hit exactly the failure the check was added for, and every save would go on failing until
+ * someone restarted the server. So the error itself is also a trigger — forget the cached answer,
+ * measure again, widen, and replay the batch once.
+ *
+ * Safe to replay: the batch is `updateCells` at fixed addresses plus the audit insert, and Sheets is
+ * atomic per call — the rejected attempt wrote nothing at all, so nothing is duplicated.
+ */
+async function commitProductBatch(client: Client, requests: unknown[], logger?: Logger): Promise<void> {
+  try {
+    await client.batchUpdate(requests);
+    return;
+  } catch (e) {
+    if (!(e instanceof SheetsApiError) || !GRID_TOO_NARROW.test(e.message)) onSheetIdError(client, e);
+    logger?.error('Products write was wider than the grid; widening and retrying once', {
+      error: serializeError(e),
+    });
+  }
+  forgetProductWidth();
+  await ensureProductWidth(client, logger);
+  try {
+    await client.batchUpdate(requests);
+  } catch (e) {
+    onSheetIdError(client, e);
+  }
+}
+
 async function rugsRowCount(client: Client): Promise<number> {
   const info = await client.getSpreadsheet('sheets.properties');
   const rugs = (info.sheets ?? []).find((s) => s.properties.title === TABS.products);
@@ -528,11 +566,7 @@ export async function updateRug(
       auditLog: await client.sheetIdByTitle(TABS.auditLog),
     };
     const requests = buildRugUpdateRequests(ids, args.row, args.cells, args.audit);
-    try {
-      await client.batchUpdate(requests);
-    } catch (e) {
-      onSheetIdError(client, e);
-    }
+    await commitProductBatch(client, requests, args.logger);
     const verified = await verifyRug(client, args.row, args.id, args.audit, args.logger);
     return { row: args.row, audit: { row: TOP_ROW, action: args.audit.action }, verified };
   });
@@ -568,11 +602,7 @@ export async function insertRug(
       auditLog: await client.sheetIdByTitle(TABS.auditLog),
     };
     const requests = buildRugInsertRequests(ids, targetRow, rowCount, args.cells, args.audit);
-    try {
-      await client.batchUpdate(requests);
-    } catch (e) {
-      onSheetIdError(client, e);
-    }
+    await commitProductBatch(client, requests, args.logger);
     const verified = await verifyRug(client, targetRow, id, args.audit, args.logger);
     return { row: targetRow, audit: { row: TOP_ROW, action: args.audit.action }, verified };
   });

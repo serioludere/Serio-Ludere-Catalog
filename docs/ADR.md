@@ -1336,6 +1336,51 @@ keep failing until a restart.
 
 Gates: **1092 tests**, 0 typecheck errors, lint clean, build with no warnings, 15/15 live geometry.
 
+### D30 — Adding a column to a live contract, and the write that broke every save (2026-09-20)
+
+**Decision.** `Texture Image` (Products AQ) holds the Drive id of the close-up the buyer's product
+popup shows. It is appended at the END of the header, never inserted: `assertHeaders` compares
+POSITIONALLY, so a column placed next to `Image Src` where it belongs would have shifted eighteen
+columns and invalidated every existing sheet at once.
+
+**A trailing column may be absent.** `PRODUCT_OPTIONAL_TRAILING` lets the newest column(s) be missing
+from a sheet's row 1 (a blank cell counts as missing). Without it, appending to the contract takes
+every deployed catalogue down with a `SheetContractError` — a 503 on the buyer's page — until someone
+runs `sheet:init`. The tolerance is the TAIL only, and only where the cell is blank: a wrong label
+anywhere still fails loudly, which is the whole point of a contract check.
+
+**The half that was missed, and what it cost.** Reads were made forgiving; writes were not. A product
+write is FULL-WIDTH, so against a still-42-column grid Sheets refused the batch outright —
+
+> Invalid requests[0].updateCells: Attempting to write column: 42, beyond the last requested column of: 41
+
+— and, because the rug cells and the audit row travel in one atomic batch, **nothing could be saved at
+all**, texture or not. The catalogue kept serving, which is exactly why the fault was invisible until
+the studio pressed Save. The lesson is the general one: a tolerance is not a decision about the read
+path, it is a decision about the contract, and every path that touches the contract has to implement
+it.
+
+**The repair lives at the write, not in a runbook.** `ensureProductWidth` (src/lib/admin/write.ts)
+measures the grid once per process before the first product write and, when it is too narrow, appends
+the missing columns and labels the new trailing header — additively, never over a cell that already
+has text, because rewriting row 1 is `sheet:init --force-headers`, a decision a human makes. A healthy
+sheet costs one properties read and no write. `sheet:init` does the same repair (and now widens the
+grid BEFORE writing row 1, or the header write itself lands past the last column), but a studio
+hitting Save should not have to know that.
+
+**And the refusal is itself a trigger.** The measurement is cached, so a column deleted in the
+spreadsheet UI while the server is up would reproduce the same dead end until a restart.
+`commitProductBatch` catches that one named error, forgets the cached answer, widens, and replays the
+batch once — safe precisely because Sheets is atomic per call, so the refused attempt wrote nothing.
+
+**Guarded.** `tests/unit/admin-ui/fake-sheets.ts` now models grid WIDTH and refuses an over-wide
+`updateCells` with Google's own wording, so the studio's failure is reproducible in the suite: six
+tests cover the widen, the untouched header, an unmeasurable grid, the narrowed-mid-flight replay, a
+refusal for any other reason (never replayed), and the whole thing end to end through
+`POST /api/admin/rugs`. All six fail with the repair removed.
+
+Gates: **1142 tests**, 0 typecheck errors, lint clean, build with no warnings.
+
 ## 5. Sheet contract (created/validated by `scripts/init-sheet.ts`)
 
 Column headers are the contract; Zod validates the header row on every read (D5.2 governs what happens on mismatch).

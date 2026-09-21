@@ -22,7 +22,8 @@ vi.mock('../../../src/lib/runtime.ts', () => ({
 
 import { newSession } from '../../../src/lib/admin/auth.ts';
 import { rugVersion } from '../../../src/lib/admin/read.ts';
-import { PRODUCT_COLS } from '../../../src/lib/sheets/contract.ts';
+import { forgetProductWidth } from '../../../src/lib/admin/write.ts';
+import { HEADERS, PRODUCT_COLS, PRODUCT_WIDTH } from '../../../src/lib/sheets/contract.ts';
 import {
   GET as listGet,
   POST as createPost,
@@ -35,8 +36,10 @@ import { POST as deletePost } from '../../../src/pages/api/admin/rugs/[id]/delet
 const session = newSession('owner', Date.now());
 const PHOTO = '1U8FwNPCdm-n8RUvSNRcJLBA_27u-Pjkb';
 
-function seed(): FakeSheet {
+/** `over` lets one test seed a narrower grid, or a header row from before a column was added. */
+function seed(over: Parameters<typeof fakeSheet>[0] = {}): FakeSheet {
   const sheet = fakeSheet({
+    ...over,
     rugs: [
       adminRugRow({ id: 'SL-021' }, ['https://karavanrug.com/products/winks', 'karavanrug', '1389', '']),
       adminRugRow({ id: 'SL-029', name: 'Yellow', slug: 'yellow' }),
@@ -158,6 +161,61 @@ describe('POST /api/admin/rugs (rug.create)', () => {
     });
     expect(audit[7]).toMatch(/^[a-f0-9]{32}$/);
     expect(cache.busts).toBe(1);
+  });
+
+  /**
+   * The studio's own failure, end to end (2026-09-20).
+   *
+   * Their Products tab was created before `Texture Image` existed, so its grid is 42 columns wide
+   * while a product write is 43 cells — and Sheets refuses the whole batch, rug and audit row alike:
+   *
+   *   Invalid requests[0].updateCells: Attempting to write column: 42, beyond the last requested
+   *   column of: 41
+   *
+   * Nothing could be saved at all until someone re-ran `sheet:init`. The fake enforces grid width
+   * exactly as Sheets does, so this test fails against a server without `ensureProductWidth`.
+   */
+  it('saves against a sheet from before the texture column, widening it first', async () => {
+    forgetProductWidth();
+    sheet = seed({ columns: PRODUCT_WIDTH - 1, rugsHeader: [...HEADERS.Products].slice(0, -1) });
+    state.sheet = sheet;
+
+    const res = await createPost(ctx({ path: '/api/admin/rugs', method: 'POST', body: baseInput }));
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.rug).toMatchObject({ id: 'SL-030', name: 'Khal Mohammadi' });
+
+    // The repair came first and is only ever additive: the column, and the label for it.
+    expect(sheet.writes).toHaveLength(2);
+    const repair = sheet.writes[0] as Array<Record<string, unknown>>;
+    expect(repair[0]).toMatchObject({ appendDimension: { dimension: 'COLUMNS', length: 1 } });
+    expect(sheet.row('Products', 1)).toEqual([...HEADERS.Products.slice(0, -1), 'Texture Image']);
+
+    // And the row itself landed whole, texture cell included.
+    const written = sheet.row('Products', 5);
+    expect(written).toHaveLength(PRODUCT_WIDTH);
+    expect(written[PRODUCT_COLS.textureImage]).toBe('');
+    expect(written[PRODUCT_COLS.productId]).toBe('SL-030');
+  });
+
+  it('saves the chosen texture photograph onto the row', async () => {
+    const res = await createPost(
+      ctx({ path: '/api/admin/rugs', method: 'POST', body: { ...baseInput, textureId: PHOTO } }),
+    );
+    expect(res.status).toBe(201);
+    expect(sheet.row('Products', 5)[PRODUCT_COLS.textureImage]).toBe(PHOTO);
+    // …and a save that names none clears the cell rather than leaving the last choice behind.
+    const body = await res.json();
+    const cleared = await updatePost(
+      ctx({
+        path: `/api/admin/rugs/${body.rug.id}`,
+        method: 'POST',
+        params: { id: body.rug.id },
+        body: { ...baseInput, textureId: '', version: body.rug.version },
+      }),
+    );
+    expect(cleared.status).toBe(200);
+    expect(sheet.row('Products', 5)[PRODUCT_COLS.textureImage]).toBe('');
   });
   it('honours a typed id / slug, refuses duplicates (409) and a number below the sequence (422)', async () => {
     const dup = await createPost(

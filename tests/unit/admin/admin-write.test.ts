@@ -21,6 +21,7 @@ import {
   type RugFields,
 } from '../../../src/lib/admin/write.ts';
 import type { CellValue, SpreadsheetInfo, ValueRange } from '../../../src/lib/sheets/client.ts';
+import { SheetsApiError } from '../../../src/lib/sheets/errors.ts';
 import { HEADERS, PRODUCT_COLS, PRODUCT_WIDTH, TABS } from '../../../src/lib/sheets/contract.ts';
 import { buildInsertRows, cellOrClear } from '../../../src/lib/sheets/write.ts';
 import { rugRow } from '../../helpers/ranges.ts';
@@ -105,8 +106,14 @@ interface Fake {
 }
 
 function fake(opts: {
-  /** Products grid width; below PRODUCT_WIDTH the write path has to widen it before it writes. */
-  columns?: number;
+  /**
+   * Products grid width; below PRODUCT_WIDTH the write path has to widen it before it writes.
+   * A function is read afresh on every properties call, which is how a sheet someone narrows while
+   * the server is running is modelled.
+   */
+  columns?: number | (() => number);
+  /** A tab whose grid properties the API does not report — the write proceeds unmeasured. */
+  noGrid?: boolean;
   rows?: Record<string, CellValue[]>; // "Products!A31:Z31" → cells
   colA?: Record<string, number>; // tab → number of data rows in A2:A
   rowCount?: Record<string, number>;
@@ -143,11 +150,20 @@ function fake(opts: {
           sheetId,
           title,
           // Products as wide as the contract, like a provisioned sheet; `columns` narrows it for the
-          // one test that exercises the repair in write.ts ensureProductWidth().
-          gridProperties: {
-            rowCount: opts.rowCount?.[title] ?? 1000,
-            columnCount: title === TABS.products ? (opts.columns ?? PRODUCT_WIDTH) : 26,
-          },
+          // tests that exercise the repair in write.ts ensureProductWidth().
+          ...(opts.noGrid && title === TABS.products
+            ? {}
+            : {
+                gridProperties: {
+                  rowCount: opts.rowCount?.[title] ?? 1000,
+                  columnCount:
+                    title === TABS.products
+                      ? typeof opts.columns === 'function'
+                        ? opts.columns()
+                        : (opts.columns ?? PRODUCT_WIDTH)
+                      : 26,
+                },
+              }),
         },
       })),
     }),
@@ -321,6 +337,72 @@ describe('updateRug', () => {
     const again = fake({ columns: PRODUCT_WIDTH - 1, rows: { 'Products!A31:AQ31': current } });
     await updateRug(again.client, { row: 31, id: 'SL-021', version, cells, audit });
     expect(again.writes).toHaveLength(1);
+  });
+
+  it('leaves a header cell that already has text alone, and only adds the columns', async () => {
+    // A narrow grid whose row 1 nonetheless names the column: widen, and touch nothing else. Row 1 is
+    // the studio's, and rewriting it is `sheet:init --force-headers` — a decision a human makes.
+    const header: CellValue[] = [...HEADERS.Products];
+    const f = fake({
+      columns: PRODUCT_WIDTH - 1,
+      rows: { 'Products!A31:AQ31': current, 'Products!A1:AQ1': header },
+    });
+    await updateRug(f.client, { row: 31, id: 'SL-021', version, cells, audit });
+    expect(f.writes[0]).toEqual([
+      { appendDimension: { sheetId: IDS.Products, dimension: 'COLUMNS', length: 1 } },
+    ]);
+  });
+
+  it('writes as it always did when the API reports no grid properties at all', async () => {
+    // Nothing to measure is not a reason to refuse a save: the write itself is then the source of
+    // truth, exactly as it was before this check existed.
+    const f = fake({ noGrid: true, rows: { 'Products!A31:AQ31': current } });
+    const result = await updateRug(f.client, { row: 31, id: 'SL-021', version, cells, audit });
+    expect(result.verified).toBe(true);
+    expect(f.writes).toHaveLength(1);
+  });
+
+  it('survives a grid narrowed after the check, by widening and replaying the batch once', async () => {
+    /* The cached check is right almost always — almost. A studio deleting columns in the spreadsheet
+       UI while the server is up would hit the very failure the check prevents, and every save would
+       go on failing until someone restarted the server. So Google's refusal is itself a trigger.
+
+       Replaying is safe because Sheets is atomic per call: the refused attempt wrote nothing. */
+    let measured = 0;
+    let refused = false;
+    const f = fake({
+      // Wide when first measured; narrow from then on, as if a column had just been deleted.
+      columns: () => (measured++ === 0 ? PRODUCT_WIDTH : PRODUCT_WIDTH - 1),
+      rows: { 'Products!A31:AQ31': current },
+      fail: (reqs) => {
+        const isRug = reqs.some((r) => (r as Req).updateCells?.start.sheetId === IDS.Products);
+        if (!isRug || refused) return undefined;
+        refused = true;
+        return new SheetsApiError(
+          400,
+          'Invalid requests[0].updateCells: Attempting to write column: 42, beyond the last requested column of: 41',
+        );
+      },
+    });
+    const result = await updateRug(f.client, { row: 31, id: 'SL-021', version, cells, audit });
+    expect(result.verified).toBe(true);
+    // The refused batch wrote nothing; what landed is the repair, then the same batch again.
+    expect(f.writes).toHaveLength(2);
+    expect(f.writes[0]?.[0]).toMatchObject({ appendDimension: { dimension: 'COLUMNS', length: 1 } });
+    expect(f.writes[1]?.some((r) => (r as Req).updateCells?.start.sheetId === IDS.AuditLog)).toBe(true);
+  });
+
+  it('does not replay a batch refused for any other reason', async () => {
+    // The replay is for one named failure. Anything else — a bad range, a permission problem — must
+    // surface as itself rather than being quietly attempted twice.
+    const f = fake({
+      rows: { 'Products!A31:AQ31': current },
+      fail: () => new SheetsApiError(403, 'The caller does not have permission'),
+    });
+    await expect(updateRug(f.client, { row: 31, id: 'SL-021', version, cells, audit })).rejects.toThrow(
+      /does not have permission/,
+    );
+    expect(f.writes).toHaveLength(0);
   });
 
   it('re-reads the row, checks id + version, sends ONE batchUpdate with the audit row, then verifies', async () => {

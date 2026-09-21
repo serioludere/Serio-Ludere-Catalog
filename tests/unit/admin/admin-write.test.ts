@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, type Mock } from 'vitest';
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { buildAuditRow, type AuditRow } from '../../../src/lib/admin/audit.ts';
 import { rowVersion, rugVersion } from '../../../src/lib/admin/read.ts';
 import {
@@ -10,6 +10,7 @@ import {
   assertRugRequestsSafe,
   buildRugInsertRequests,
   buildRugUpdateRequests,
+  forgetProductWidth,
   insertRowAtBottom,
   insertRug,
   insertTopRow,
@@ -20,7 +21,7 @@ import {
   type RugFields,
 } from '../../../src/lib/admin/write.ts';
 import type { CellValue, SpreadsheetInfo, ValueRange } from '../../../src/lib/sheets/client.ts';
-import { HEADERS, PRODUCT_COLS, PRODUCT_WIDTH } from '../../../src/lib/sheets/contract.ts';
+import { HEADERS, PRODUCT_COLS, PRODUCT_WIDTH, TABS } from '../../../src/lib/sheets/contract.ts';
 import { buildInsertRows, cellOrClear } from '../../../src/lib/sheets/write.ts';
 import { rugRow } from '../../helpers/ranges.ts';
 
@@ -104,6 +105,8 @@ interface Fake {
 }
 
 function fake(opts: {
+  /** Products grid width; below PRODUCT_WIDTH the write path has to widen it before it writes. */
+  columns?: number;
   rows?: Record<string, CellValue[]>; // "Products!A31:Z31" → cells
   colA?: Record<string, number>; // tab → number of data rows in A2:A
   rowCount?: Record<string, number>;
@@ -139,7 +142,12 @@ function fake(opts: {
         properties: {
           sheetId,
           title,
-          gridProperties: { rowCount: opts.rowCount?.[title] ?? 1000, columnCount: 26 },
+          // Products as wide as the contract, like a provisioned sheet; `columns` narrows it for the
+          // one test that exercises the repair in write.ts ensureProductWidth().
+          gridProperties: {
+            rowCount: opts.rowCount?.[title] ?? 1000,
+            columnCount: title === TABS.products ? (opts.columns ?? PRODUCT_WIDTH) : 26,
+          },
         },
       })),
     }),
@@ -272,6 +280,48 @@ describe('request builders and the safety walker (ADMIN_SPEC §3.4)', () => {
 describe('updateRug', () => {
   const version = rugVersion(current);
   const cells = { all: productFieldsToCells(fields, 'SL-021') };
+  // The width check runs once per process; each test here gets to make it again.
+  beforeEach(forgetProductWidth);
+
+  /**
+   * A sheet narrower than the contract is widened before the row is written.
+   *
+   * `Texture Image` was appended to Products on 2026-09-20, and a product write is FULL-WIDTH — so
+   * on a sheet still 42 columns wide Sheets rejected the whole batch, rug and audit row together:
+   *
+   *   Invalid requests[0].updateCells: Attempting to write column: 42, beyond the last requested
+   *   column of: 41
+   *
+   * Nothing could be saved at all, texture or not, until someone re-ran `sheet:init`. The read path
+   * was already forgiving about the missing column; this is the write half of that promise.
+   */
+  it('widens a sheet that predates the newest column, and labels it, before writing the row', async () => {
+    const f = fake({ columns: PRODUCT_WIDTH - 1, rows: { 'Products!A31:AQ31': current } });
+    const result = await updateRug(f.client, { row: 31, id: 'SL-021', version, cells, audit });
+    expect(result.verified).toBe(true);
+
+    // The repair comes first, in its own batch, and the rug + audit batch is still atomic.
+    expect(f.writes).toHaveLength(2);
+    const repair = f.writes[0]! as Array<Record<string, unknown>>;
+    expect(repair[0]).toEqual({
+      appendDimension: { sheetId: IDS.Products, dimension: 'COLUMNS', length: 1 },
+    });
+    // …and the new column gets its contract label, since a sheet being widened never had one.
+    const header = repair[1] as Req;
+    expect(header.updateCells?.start).toEqual({
+      sheetId: IDS.Products,
+      rowIndex: 0,
+      columnIndex: PRODUCT_WIDTH - 1,
+    });
+    expect(header.updateCells?.rows[0]?.values).toEqual([
+      { userEnteredValue: { stringValue: 'Texture Image' } },
+    ]);
+
+    // Second save in the same process: checked once, so no second repair.
+    const again = fake({ columns: PRODUCT_WIDTH - 1, rows: { 'Products!A31:AQ31': current } });
+    await updateRug(again.client, { row: 31, id: 'SL-021', version, cells, audit });
+    expect(again.writes).toHaveLength(1);
+  });
 
   it('re-reads the row, checks id + version, sends ONE batchUpdate with the audit row, then verifies', async () => {
     const f = fake({ rows: { 'Products!A31:AQ31': current } });

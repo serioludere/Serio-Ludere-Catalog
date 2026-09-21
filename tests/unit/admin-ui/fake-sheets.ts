@@ -3,7 +3,7 @@
 // updateCells / insertDimension / appendDimension in order, so a handler's read-back after its
 // write sees what it wrote. Every call is recorded for assertions.
 import type { CellValue, SpreadsheetInfo, ValueRange } from '../../../src/lib/sheets/client.ts';
-import { HEADERS } from '../../../src/lib/sheets/contract.ts';
+import { HEADERS, PRODUCT_WIDTH, TABS } from '../../../src/lib/sheets/contract.ts';
 import { rugRow } from '../../helpers/ranges.ts';
 
 export const SHEET_IDS: Record<string, number> = {
@@ -254,7 +254,13 @@ export function fakeSheet(init: FakeTabs = {}): FakeSheet {
             properties: {
               sheetId: SHEET_IDS[title]!,
               title,
-              gridProperties: { rowCount: rowCount.get(title) ?? 1000, columnCount: 26 },
+              /* Products is as wide as the contract, like a provisioned sheet: the write path widens
+                 a narrow grid (write.ts ensureProductWidth), and a fake that under-reports its width
+                 would make every product write carry a repair batch it does not need. */
+              gridProperties: {
+                rowCount: rowCount.get(title) ?? 1000,
+                columnCount: title === TABS.products ? PRODUCT_WIDTH : 26,
+              },
             },
           })),
         };

@@ -13,7 +13,9 @@ import type { CellValue, SheetsClient } from '../sheets/client.ts';
 import {
   HEADERS,
   PRODUCT_COLS,
+  PRODUCT_HEADER_LABELS,
   PRODUCT_LAST_COL,
+  PRODUCT_OPTIONAL_TRAILING,
   PRODUCT_STATUS_CELL,
   PRODUCT_WIDTH,
   TABS,
@@ -381,6 +383,76 @@ function onSheetIdError(client: Client, e: unknown): never {
   throw e;
 }
 
+/**
+ * The Products grid is at least PRODUCT_WIDTH columns wide, and row 1 names the trailing ones.
+ *
+ * A product write is FULL-WIDTH, so the day `Texture Image` was appended to the contract
+ * (2026-09-20) every save against a sheet that still had 42 columns failed outright:
+ *
+ *   Invalid requests[0].updateCells: Attempting to write column: 42, beyond the last requested
+ *   column of: 41
+ *
+ * — and not only texture saves: the whole batch is rejected, so nothing could be edited at all. The
+ * READ path was already forgiving (contract.ts PRODUCT_OPTIONAL_TRAILING), which is what kept the
+ * buyer's catalogue serving; this is the write half of the same promise. `sheet:init` does the same
+ * repair, but a studio hitting Save should not have to know that.
+ *
+ * Only ever ADDS, and only to a grid that is genuinely too narrow: the columns it lacks, plus a
+ * label in the trailing header cells that are BLANK (a sheet being widened is by definition a sheet
+ * that never had them). A header cell with the wrong text is left alone and still fails the contract
+ * check loudly — overwriting row 1 is `sheet:init --force-headers`, a decision a human makes.
+ *
+ * Runs once per process, and a wide-enough sheet — every healthy one — costs a single properties
+ * read and no write at all.
+ */
+let productWidthChecked = false;
+
+/** Tests (and a recreated tab) start the check again. */
+export function forgetProductWidth(): void {
+  productWidthChecked = false;
+}
+
+async function ensureProductWidth(client: Client, logger?: Logger): Promise<void> {
+  if (productWidthChecked) return;
+  const info = await client.getSpreadsheet('sheets.properties');
+  const sheet = (info.sheets ?? []).find((s) => s.properties.title === TABS.products);
+  const columns = sheet?.properties.gridProperties?.columnCount;
+  // No grid properties to read: let the write itself be the source of truth, as it was before this.
+  if (!sheet || typeof columns !== 'number') {
+    productWidthChecked = true;
+    return;
+  }
+  // Wide enough already — the overwhelmingly common case, and the end of it.
+  if (columns >= PRODUCT_WIDTH) {
+    productWidthChecked = true;
+    return;
+  }
+  const requests: unknown[] = [
+    {
+      appendDimension: {
+        sheetId: sheet.properties.sheetId,
+        dimension: 'COLUMNS',
+        length: PRODUCT_WIDTH - columns,
+      },
+    },
+  ];
+  const [headerRange] = await client.batchGet([`${TABS.products}!A1:${PRODUCT_LAST_COL}1`]);
+  const header = headerRange?.values?.[0] ?? [];
+  /* The optional window only, and only its blank SUFFIX: `buildRowUpdate` writes `userEnteredValue`
+     for every cell it is given, so a run that included a filled cell would rewrite it — and an
+     `undefined` in the middle would CLEAR it (cellOrClear). Writing the tail and nothing else is the
+     only shape that can add a label without touching one. */
+  const from: number = PRODUCT_WIDTH - PRODUCT_OPTIONAL_TRAILING;
+  let start: number = PRODUCT_WIDTH;
+  for (let c = PRODUCT_WIDTH - 1; c >= from && cellText(header[c]) === ''; c--) start = c;
+  const labels: Cells = start < PRODUCT_WIDTH ? PRODUCT_HEADER_LABELS.slice(start).map(String) : [];
+  // One batch, in order: Sheets adds the columns before the header write lands in the last of them.
+  if (labels.length) requests.push(buildRowUpdate(sheet.properties.sheetId, 1, start, labels));
+  await client.batchUpdate(requests);
+  logger?.info('widened Products to the contract', { columns, width: PRODUCT_WIDTH, headers: labels });
+  productWidthChecked = true;
+}
+
 async function rugsRowCount(client: Client): Promise<number> {
   const info = await client.getSpreadsheet('sheets.properties');
   const rugs = (info.sheets ?? []).find((s) => s.properties.title === TABS.products);
@@ -441,6 +513,9 @@ export async function updateRug(
   },
 ): Promise<CommitResult> {
   return withAdminLock(async () => {
+    // Before anything else: a 42-column sheet cannot take a 43-cell row, and the whole batch — the
+    // rug AND its audit entry — would be rejected together.
+    await ensureProductWidth(client, args.logger);
     const fresh = await readRugRow(client, args.row);
     if (cellText(fresh[PRODUCT_COLS.productId]) !== args.id) {
       throw new VersionMismatchError(TABS.products, args.row, fresh, `expected id "${args.id}"`);
@@ -481,6 +556,7 @@ export async function insertRug(
   const id = cellText(args.cells.all[0]);
   if (!id) throw new UnsafeRequestError('insertRug: the Product ID (column A) is required');
   return withAdminLock(async () => {
+    await ensureProductWidth(client, args.logger);
     const [targetRow, rowCount] = await Promise.all([nextRowOf(client, TABS.products), rugsRowCount(client)]);
     if (targetRow <= rowCount) {
       const existing = await readRugRow(client, targetRow);

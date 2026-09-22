@@ -150,13 +150,20 @@ select:not(.input--select) {
 [data-mode='admin-dark'] select:not(.input--select) {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none'%3E%3Cpath d='M4 6.5L8 10.5L12 6.5' stroke='%23d8d6cc' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
-/* Owner, 2026-09-17: a field on the login screen (its only `.input` today) reads a step lighter than
-   the black page, and the typed password's dots read pure white rather than the mode's own cream ink
-   — both literal, not token-derived, on the owner's instruction. */
+/* The login field is CREAM on the black page (owner, 2026-09-22), where it used to be #202020 — a
+   step lighter than the ground, which on a black screen read as a smudge rather than as somewhere to
+   type. A filled field is the one thing on this page you are meant to act on, so it is the one thing
+   that carries the light.
+
+   The ink turns over with it: cream dots on a cream field would be invisible, so the typed password
+   and its placeholder take the panel's dark ink. Literal tokens, not the mode's semantic ones —
+   "--ink" IS the cream here, and this field is deliberately the exception to the mode. */
 [data-mode='admin-dark'] .input {
-  background: #202020;
-  /* Cream, not pure white (owner, 2026-09-20): every light text in the panel is #fffff5. */
-  color: var(--ink-cream);
+  background: var(--field-bg);
+  color: var(--field-ink);
+}
+[data-mode='admin-dark'] .input::placeholder {
+  color: var(--field-ink-muted);
 }
 /* Disabled and readonly repaint the field, so the chevron's ground has to follow or it sits on a
    white patch inside a grey control. */

@@ -9,14 +9,29 @@ import { orderPair, parseFeetInchesSide, parseSize } from './size.ts';
 import { resolvePhotos } from './photos.ts';
 import type { FieldStatusMap, HeaderReader, ScrapedPhoto, ScrapedRug } from './types.ts';
 
-/** The block page (`Attention Required! | Cloudflare`, ~5.5 KB, 403) or the JS challenge interstitial. */
-const CHALLENGE_TITLE_RE = /<title>[^<]*(?:Attention Required!\s*\|\s*Cloudflare|Just a moment)/i;
+/**
+ * The block page (`Attention Required! | Cloudflare`, ~5.5 KB, 403), Cloudflare's JS challenge, or
+ * the bot-manager interstitial ECG began serving on 2026-09-22.
+ *
+ * That last one is why this list grew. It answers **HTTP 200** with a 13 KB page titled "One moment,
+ * please..." — a spinner, a beacon script and `window.location.reload()` after five seconds — so
+ * nothing in the status said anything was wrong, the parser simply found no price, and the studio
+ * was told "no price found on the product page" about a page that plainly has one. A challenge that
+ * lies about its status has to be recognised by what it is.
+ */
+const CHALLENGE_TITLE_RE =
+  /<title>[^<]*(?:Attention Required!\s*\|\s*Cloudflare|Just a moment|One moment, please)/i;
 const CHALLENGE_MARKER_RE = /id="cf-error-details"|window\._cf_chl_opt|data-translate="block_headline"/;
+/** The interstitial's own tell, in case it is ever retitled: a tiny page that reloads itself. */
+const RELOAD_INTERSTITIAL_RE = /setTimeout\(\s*function\s*\(\)\s*\{\s*window\.location\.reload\(\)/;
 
 export function isCloudflareChallenge(status: number, body: string, headers?: HeaderReader): boolean {
   if (headers?.get('cf-mitigated') === 'challenge') return true;
   const head = body.slice(0, 20_000);
   if (CHALLENGE_TITLE_RE.test(head)) return true;
+  // A page this small that reloads itself is an interstitial whatever it is called. The size bound
+  // keeps it away from real pages: an ECG product page is over a megabyte.
+  if (body.length < 40_000 && RELOAD_INTERSTITIAL_RE.test(head)) return true;
   return (status === 403 || status === 503) && CHALLENGE_MARKER_RE.test(head);
 }
 
@@ -86,7 +101,7 @@ export function ecgSpecRows(html: string): Map<string, string> {
 }
 
 /** Builds the ScrapedRug for an ECG product page (the caller has already ruled out challenge pages). */
-export function parseEcg(det: { sku: string; urlKey: string }, html: string): ScrapedRug {
+export function parseEcg(det: { sku: string; urlKey: string; sourceUrl?: string }, html: string): ScrapedRug {
   const $ = loadHtml(html);
   const g = extractGeneric($);
   const warnings: string[] = [];
@@ -162,7 +177,10 @@ export function parseEcg(det: { sku: string; urlKey: string }, html: string): Sc
   return {
     supplier: 'ecarpetgallery',
     supplierRef: ecgSku(html, det.sku),
-    sourceUrl: `${ECG_BASE}${det.urlKey}`,
+    /* The URL this reading came from — normally the canonical us_en one, but the store the link was
+       pasted from when us_en had no such product (index.ts). The rug keeps the link that WORKS, or
+       the studio cannot follow it back from the sheet. */
+    sourceUrl: det.sourceUrl || `${ECG_BASE}${det.urlKey}`,
     supplierTitle,
     description,
     widthCm,

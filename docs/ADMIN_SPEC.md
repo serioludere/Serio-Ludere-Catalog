@@ -504,6 +504,15 @@ karavanrug.com, www.karavanrug.com, serioludere.com, www.serioludere.com }`; any
    `https://karavanrug.com/products/<handle>` (HTML, for JSON-LD).
 5. The outbound URL is **rebuilt** from `(supplier, urlKey|handle)` on that shop's own host; the pasted string
    is never fetched as is.
+   5a. **ECG store fallback** (owner, 2026-09-22): every ECG link is canonicalised onto `us_en` for the USD price, but
+   the catalogues differ by store — a rug listed on `ca_en` can answer **404** there. `DetectedEcg.pastedUrl` keeps
+   the same key on the store the link came from, the ladder retries it on a 404, and the rug then stores the URL that
+   worked.
+   5b. **The impit profile is a knob** (owner, 2026-09-22). ECG's bot manager fingerprints the TLS handshake and began
+   flagging impit's **chrome** profile, answering HTTP 200 with a 13 KB "One moment, please..." interstitial —
+   verified across four products on two stores, with **firefox** returning the full page every time. So
+   `isCloudflareChallenge()` recognises that page (title, or a sub-40 KB body that reloads itself), and a challenge
+   is retried once on the firefox profile before the Jina fallback.
 6. **Any tail is accepted** (owner, 2026-09-21): store codes, category trails, locale prefixes, `.html`, tracking
    query, a missing scheme. The path is not a permission check — the host allow-list is, and §4.3 re-validates every
    redirect hop against it — so the only thing the path is read for is the identifier, and it is found wherever it

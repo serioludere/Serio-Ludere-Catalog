@@ -124,6 +124,12 @@ const EXPECTED: Record<string, [preview: string, admin: string, dark: string]> =
   '--inset-home-indicator': ['34px', '34px', '34px'],
   '--inset-tab-bar-y': ['10px', '10px', '10px'],
   '--inset-tab-bar-bottom': ['20px', '20px', '20px'],
+  /* The password field, which deliberately departs from its mode (owner, 2026-09-22): on the black
+     login screens it is CREAM with dark ink, where it used to be #202020 with cream ink. In the
+     light modes there is nothing to depart from, so it resolves to the ordinary control colours. */
+  '--field-bg': ['#fffff5', '#fffff5', '#fffff5'],
+  '--field-ink': ['#000000', '#000000', '#000000'],
+  '--field-ink-muted': ['#73726c', '#73726c', '#73726c'],
   // shape — the storefront is square-cornered in every mode
   '--radius': ['0', '0', '0'],
   '--radius-pill': ['9999px', '9999px', '9999px'],

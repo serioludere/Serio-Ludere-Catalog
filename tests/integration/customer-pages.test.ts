@@ -1,6 +1,7 @@
 // The private preview rendered through Astro's container (brief §7, §10): the password gate for a
 // buyer without a session, their catalog with it, a 404 for a slug that is not an active customer,
 // and the asymmetric reactions (card = like only, detail = like and dislike, `source` recorded).
+import { readFileSync } from 'node:fs';
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { describe, expect, it, vi } from 'vitest';
 import { hashPassword } from '../../src/lib/admin/auth.ts';
@@ -235,6 +236,36 @@ describe('/{slug} — the signed-in catalog', () => {
     expect(withTexture).toContain('pv-modal__marker');
     // Capitalised again on 2026-09-20 (owner), from the one BADGE_TAG_NAMES list.
     expect(withMarkers).toContain('>Signed<');
+  });
+
+  it('asks for the password in sentence case, on a cream field', async () => {
+    /* Owner, 2026-09-22. Two changes to the same control: the placeholder was "PASSWORD", the last
+       shouted capitals on the buyer's side; and the field was #202020 on the black gate, which read
+       as a smudge rather than as somewhere to type. Cream on cream cannot be read, so the ink turns
+       over with the ground — see --field-* in modes.css. */
+    const { html } = await render(CustomerCatalog, '/hala', { slug: 'hala' });
+    expect(html).toContain('placeholder="Password"');
+    expect(html).not.toContain('placeholder="PASSWORD"');
+    const css = readFileSync('src/styles/preview.css', 'utf8');
+    const dark = css.slice(css.indexOf("[data-mode='preview-dark'] .pv-input {"));
+    expect(dark).toContain('background: var(--field-bg)');
+    expect(dark).toContain('color: var(--field-ink)');
+    // The old literal survives only in the comment explaining what it was; no rule paints it.
+    expect(css).not.toMatch(/background:\s*#202020/);
+  });
+
+  it('gives the like heart a shadow, so a cream heart is visible on a cream rug', () => {
+    /* Owner, 2026-09-22: "add a nice shadow behind it so it appears when the bg is the same colour
+       as its". The control is drawn without a background and must not grow one — it sits ON the
+       photograph — so the separation is a shadow under the stroke itself: a filter on the svg, not
+       a box-shadow on the button, which would box a circle that has no box. */
+    const reactions = readFileSync('src/components/customer/Reactions.astro', 'utf8');
+    expect(reactions).toMatch(/\.pv-glyph svg\s*\{[^}]*filter:\s*var\(--shadow-glyph\)/);
+    expect(reactions).not.toMatch(/\.pv-circle\s*\{[^}]*box-shadow/);
+    // …and the token is a drop-shadow pair: a tight pass for the outline, a softer one for the lift.
+    const tokens = readFileSync('src/styles/tokens.css', 'utf8');
+    const value = /--shadow-glyph:([^;]+);/.exec(tokens)?.[1] ?? '';
+    expect(value.match(/drop-shadow\(/g) ?? []).toHaveLength(2);
   });
 
   it('never ships a like count below the threshold — not even in an attribute', async () => {

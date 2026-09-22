@@ -1,6 +1,6 @@
 import { F as maybeRenderHead, H as unescapeHTML, I as renderHead, L as addAttribute, O as renderComponent, P as renderTemplate, W as createAstro, j as renderSlot, k as Fragment } from "./runtime_skv-YCY6.mjs";
 import { t as createComponent } from "./compiler_CXPqD_v7.mjs";
-import { t as renderScript } from "./motion-spec_CUaH0lGr.mjs";
+import { t as renderScript } from "./motion-spec_BvvdUsTx.mjs";
 import { Z as SUPPORTED_CURRENCIES } from "./runtime_BSzjHQXl.mjs";
 import { c as STUDIO_SITE, d as STUDIO_WHATSAPP_2, i as STUDIO_INSTAGRAM_LABEL, l as STUDIO_SITE_LABEL, n as STUDIO_EMAIL, o as STUDIO_PHONE_LABEL, r as STUDIO_INSTAGRAM, s as STUDIO_PHONE_LABEL_2, t as prepaint_default, u as STUDIO_WHATSAPP } from "./prepaint_BGi0CqOi.mjs";
 import { o as jsonForScript } from "./view_CMarAg1H.mjs";

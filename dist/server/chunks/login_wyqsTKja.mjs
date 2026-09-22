@@ -5,9 +5,9 @@ import { a as newSession, c as verifyPassword, s as setSessionCookie } from "./a
 import { a as adminRuntime, u as recordAuditEvent } from "./http_CvlaKNqx.mjs";
 import { c as requestIpHash, u as socketAddressOf } from "./api_BVj6xXfj.mjs";
 import { t as $$AdminLogo } from "./AdminLogo_C8kWy55S.mjs";
-import { t as $$AdminLayout } from "./AdminLayout_DwEWQHde.mjs";
-import { t as $$Button } from "./Button_tGQG9sds.mjs";
-import { t as $$Input } from "./Input_CjyaXYk_.mjs";
+import { t as $$AdminLayout } from "./AdminLayout_D0uOZ6fo.mjs";
+import { t as $$Button } from "./Button_fKkBf3B1.mjs";
+import { t as $$Input } from "./Input_Be4hbiSh.mjs";
 //#region src/lib/admin/login.ts
 /** Only `/admin`, `/admin/...` with url-safe segments may be a post-login destination. */
 var NEXT_RE = /^\/admin(\/[A-Za-z0-9_\-/]*)?$/;
@@ -79,7 +79,7 @@ var $$Login = createComponent(async ($$result, $$props, $$slots) => {
 		"name": "password",
 		"label": "Password",
 		"hideLabel": true,
-		"placeholder": "PASSWORD",
+		"placeholder": "Password",
 		"autocomplete": "current-password",
 		"required": true,
 		"error": message || void 0,

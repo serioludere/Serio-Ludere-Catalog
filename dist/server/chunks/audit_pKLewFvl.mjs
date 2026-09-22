@@ -1,10 +1,10 @@
 import { t as __exportAll } from "./rolldown-runtime_BBjsoOtd.mjs";
 import { F as maybeRenderHead, L as addAttribute, O as renderComponent, P as renderTemplate } from "./runtime_skv-YCY6.mjs";
 import { t as createComponent } from "./compiler_CXPqD_v7.mjs";
-import { t as renderScript } from "./motion-spec_CUaH0lGr.mjs";
+import { t as renderScript } from "./motion-spec_BvvdUsTx.mjs";
 import { i as getClient, vt as consoleLogger, yt as serializeError } from "./runtime_BSzjHQXl.mjs";
 import { R as AUDIT_ACTIONS, i as fetchAdminSnapshot } from "./read_3DJW8o0r.mjs";
-import { t as $$AdminLayout } from "./AdminLayout_DwEWQHde.mjs";
+import { t as $$AdminLayout } from "./AdminLayout_D0uOZ6fo.mjs";
 //#region src/lib/admin/audit-labels.ts
 var AUDIT_LABELS = {
 	"rug.create": "Product added",

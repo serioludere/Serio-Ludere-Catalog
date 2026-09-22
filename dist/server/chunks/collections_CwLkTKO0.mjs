@@ -1,14 +1,14 @@
 import { t as __exportAll } from "./rolldown-runtime_BBjsoOtd.mjs";
 import { F as maybeRenderHead, H as unescapeHTML, L as addAttribute, O as renderComponent, P as renderTemplate, k as Fragment } from "./runtime_skv-YCY6.mjs";
 import { t as createComponent } from "./compiler_CXPqD_v7.mjs";
-import { t as renderScript } from "./motion-spec_CUaH0lGr.mjs";
+import { t as renderScript } from "./motion-spec_BvvdUsTx.mjs";
 import { i as getClient, vt as consoleLogger, yt as serializeError } from "./runtime_BSzjHQXl.mjs";
 import { S as COLLECTION_DESCRIPTION_MAX, i as fetchAdminSnapshot, u as syncLabel } from "./read_3DJW8o0r.mjs";
 import { o as jsonForScript } from "./view_CMarAg1H.mjs";
-import { t as $$AdminLayout } from "./AdminLayout_DwEWQHde.mjs";
-import { t as $$Button } from "./Button_tGQG9sds.mjs";
-import { n as $$Modal, t as $$EmptyState } from "./EmptyState_CZUIISsq.mjs";
-import { t as $$Input } from "./Input_CjyaXYk_.mjs";
+import { t as $$AdminLayout } from "./AdminLayout_D0uOZ6fo.mjs";
+import { t as $$Button } from "./Button_fKkBf3B1.mjs";
+import { n as $$Modal, t as $$EmptyState } from "./EmptyState_CDRjAjO9.mjs";
+import { t as $$Input } from "./Input_Be4hbiSh.mjs";
 //#region src/pages/admin/collections.astro
 var collections_exports = /* @__PURE__ */ __exportAll({
 	default: () => $$Collections,

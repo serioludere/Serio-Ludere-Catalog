@@ -30,6 +30,7 @@ import { HostThrottle, defaultHostThrottle } from './throttle.ts';
 import {
   ScrapeError,
   type DetectedEcg,
+  type ImpitBrowser,
   type DetectedKaravan,
   type FetchedText,
   type ScrapeFail,
@@ -208,13 +209,44 @@ function attemptEcg(det: DetectedEcg, res: FetchedText, ctx: Ctx): Attempt {
   return { ok: true, data, via: res.via };
 }
 
-async function scrapeEcg(det: DetectedEcg, ctx: Ctx): Promise<Attempt> {
-  let first: Attempt;
+/** One ECG page read, on a named impit profile. */
+async function readEcg(url: string, det: DetectedEcg, ctx: Ctx, browser?: ImpitBrowser): Promise<Attempt> {
   try {
-    first = attemptEcg(det, await fetchText(det.htmlUrl, 'impit', { ...ctx.fetchOpts, kind: 'html' }), ctx);
+    return attemptEcg(det, await fetchText(url, 'impit', { ...ctx.fetchOpts, kind: 'html', browser }), ctx);
   } catch (e) {
-    first = fromError(e);
+    return fromError(e);
   }
+}
+
+async function scrapeEcg(det: DetectedEcg, ctx: Ctx): Promise<Attempt> {
+  let first = await readEcg(det.htmlUrl, det, ctx);
+
+  /* The product exists, just not on the store we rebuilt it on (owner, 2026-09-22: "404 — knowing
+     that the page is working"). Every ECG link is canonicalised onto us_en so the price is in USD,
+     but the catalogues differ by store: a rug the studio found on ca_en may simply not be listed on
+     us_en, and forcing it there turned a working link into "product page not found". So a 404 falls
+     back to the store the link actually came from, and the rug keeps THAT url as its source. */
+  if (!first.ok && first.code === 'not_found' && det.pastedUrl && det.pastedUrl !== det.htmlUrl) {
+    ctx.logger.info('not on the us_en store; retrying on the store the link came from', {
+      url: det.pastedUrl,
+    });
+    const onItsOwnStore = await readEcg(det.pastedUrl, { ...det, sourceUrl: det.pastedUrl }, ctx);
+    if (onItsOwnStore.ok) return onItsOwnStore;
+  }
+
+  /* ECG's bot manager fingerprints the TLS handshake, and on 2026-09-22 it began flagging impit's
+     Chrome profile: every product page came back as the 13 KB "One moment, please..." interstitial,
+     HTTP 200, while the same request on the Firefox profile returned the full page. Verified across
+     four products on two store codes. So a challenge is worth one more try under a different
+     fingerprint before the Jina fallback, which is a round trip through someone else's server. */
+  if (!first.ok && first.code === 'blocked' && !ctx.signal.aborted) {
+    ctx.logger.info('challenged; retrying with the firefox profile', { url: det.htmlUrl });
+    const asFirefox = await readEcg(det.htmlUrl, det, ctx, 'firefox');
+    if (asFirefox.ok) return asFirefox;
+    // Keep whichever attempt got further: a parse failure with data beats a bare block.
+    if (!asFirefox.ok && asFirefox.data && !first.data) first = asFirefox;
+  }
+
   if (first.ok || first.code === 'not_found' || !ctx.jina || ctx.signal.aborted) return first;
   // §4.3: 403 / challenge / network error / no price → keyless Jina Reader, same parsers.
   ctx.logger.info('trying the Jina Reader fallback', { url: det.htmlUrl, reason: first.code });

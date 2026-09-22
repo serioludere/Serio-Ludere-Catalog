@@ -1,6 +1,6 @@
 import { F as maybeRenderHead, H as unescapeHTML, I as renderHead, L as addAttribute, O as renderComponent, P as renderTemplate, W as createAstro, j as renderSlot, k as Fragment } from "./runtime_skv-YCY6.mjs";
 import { t as createComponent } from "./compiler_CXPqD_v7.mjs";
-import { t as renderScript } from "./motion-spec_CUaH0lGr.mjs";
+import { t as renderScript } from "./motion-spec_BvvdUsTx.mjs";
 import { Q as money, Z as SUPPORTED_CURRENCIES, t as baseCurrency } from "./runtime_BSzjHQXl.mjs";
 import { a as STUDIO_NAME, n as STUDIO_EMAIL, t as prepaint_default } from "./prepaint_BGi0CqOi.mjs";
 import { o as jsonForScript, r as badgesFor } from "./view_CMarAg1H.mjs";

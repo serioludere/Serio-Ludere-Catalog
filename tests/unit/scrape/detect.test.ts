@@ -12,7 +12,7 @@ describe('detectSupplier (ADMIN_SPEC §4.2)', () => {
       '  https://ECARPETGALLERY.com/ca_en/RED-5x8-andelz-area-rugs-380114  ',
     ]) {
       const det = detectSupplier(input);
-      expect(det).toEqual({
+      expect(det).toMatchObject({
         supplier: 'ecarpetgallery',
         sku: '380114',
         urlKey: 'red-5x8-andelz-area-rugs-380114',
@@ -20,6 +20,31 @@ describe('detectSupplier (ADMIN_SPEC §4.2)', () => {
         sourceUrl: 'https://ecarpetgallery.com/us_en/red-5x8-andelz-area-rugs-380114',
         htmlUrl: 'https://ecarpetgallery.com/us_en/red-5x8-andelz-area-rugs-380114',
       });
+    }
+  });
+
+  it('remembers the store the link came from, and only when it is not us_en', () => {
+    /* Owner, 2026-09-22: "404 — knowing that the page is working". Every ECG link is canonicalised
+       onto us_en so the price is in USD, but the catalogues differ by store, and a rug listed on
+       ca_en may not exist on us_en at all. So the store the link came from is kept — rebuilt from the
+       key, not taken as pasted — and the ladder falls back to it on a 404. */
+    expect(
+      detectSupplier('https://ecarpetgallery.com/ca_en/a/b/red-5x8-andelz-area-rugs-380114'),
+    ).toMatchObject({
+      sourceUrl: 'https://ecarpetgallery.com/us_en/red-5x8-andelz-area-rugs-380114',
+      pastedUrl: 'https://ecarpetgallery.com/ca_en/red-5x8-andelz-area-rugs-380114',
+    });
+    expect(detectSupplier('https://ecarpetgallery.com/ca_fr/red-5x8-andelz-area-rugs-380114')).toMatchObject({
+      pastedUrl: 'https://ecarpetgallery.com/ca_fr/red-5x8-andelz-area-rugs-380114',
+    });
+    // us_en IS the canonical store, so there is no second URL to try; nor is there for a link with
+    // no store code at all.
+    for (const input of [
+      'https://ecarpetgallery.com/us_en/red-5x8-andelz-area-rugs-380114',
+      'https://ecarpetgallery.com/red-5x8-andelz-area-rugs-380114',
+      'https://ecarpetgallery.com/shop-by-shape/red-5x8-andelz-area-rugs-380114',
+    ]) {
+      expect(detectSupplier(input), input).toMatchObject({ pastedUrl: undefined });
     }
   });
 

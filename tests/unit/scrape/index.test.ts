@@ -19,6 +19,7 @@ import {
 
 const ecgPage = fixture('ecg-380114.html');
 const challenge = fixture('cf-challenge.html');
+const interstitial = fixture('ecg-interstitial.html');
 const kvBase = `https://karavanrug.com/products/${KV_OUSHAK_HANDLE}`;
 const kvJs = fixture(`kv-${KV_OUSHAK_HANDLE}.js.json`);
 const kvJson = fixture(`kv-${KV_OUSHAK_HANDLE}.json`);
@@ -151,9 +152,82 @@ describe('scrapeRug: ecarpetgallery.com', () => {
     });
     expect(r).toMatchObject({ ok: true, via: 'jina', cached: false });
     if (r.ok) expect(r.data.seenPrice).toBe(700);
-    expect(calls.map((c) => c.client)).toEqual(['impit', 'undici']);
-    expect(calls[1]?.headers['X-Return-Format']).toBe('html');
+    /* impit twice, then Jina: a challenge is worth one more try under a different TLS fingerprint
+       before a round trip through someone else's server (owner, 2026-09-22). The retry is a second
+       request to the SAME url on the firefox profile. */
+    expect(calls.map((c) => c.client)).toEqual(['impit', 'impit', 'undici']);
+    expect(calls.map((c) => c.browser)).toEqual([undefined, 'firefox', undefined]);
+    expect(calls[2]?.headers['X-Return-Format']).toBe('html');
     expect(lines.some((l) => l.startsWith('warn supplier answered 403'))).toBe(true);
+  });
+
+  it('treats the 200-OK bot interstitial as a block, and gets through on the firefox profile', async () => {
+    /* Owner, 2026-09-22: every ecarpetgallery.com fetch was failing. ECG's bot manager began
+       fingerprinting the TLS handshake and flagging impit's CHROME profile, answering HTTP 200 with
+       a 13 KB "One moment, please..." page — so nothing in the status was wrong, the parser found no
+       price, and the studio was told "no price found on the product page" about a page that has one.
+
+       The fixture is that exact page, captured from the live site. The same request on the FIREFOX
+       profile returned the full 1.2 MB product page, which is what this now does. */
+    const calls: FakeCall[] = [];
+    let served = 0;
+    const r = await scrapeRug(ECG_380114_URL, {
+      fetchImpl: fakeTransport(
+        { [ECG_380114_URL]: () => (served++ === 0 ? { body: interstitial } : { body: ecgPage }) },
+        calls,
+      ),
+      cache: new ScrapeCache(),
+      ...guards(),
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.data.seenPrice).toBe(700);
+    // The retry is the same URL under a different fingerprint — not a different URL, not Jina.
+    expect(calls.map((c) => c.browser)).toEqual([undefined, 'firefox']);
+  });
+
+  it('reports the interstitial as a block when even firefox is challenged', async () => {
+    // It must never read as "no price found on the product page": that sends the studio to look at
+    // a product page that is fine, when the truth is that we were not allowed to see it.
+    const r = await scrapeRug(ECG_380114_URL, {
+      fetchImpl: fakeTransport({
+        [ECG_380114_URL]: { body: interstitial },
+        [jinaUrl(ECG_380114_URL)]: { status: 403, body: '' },
+      }),
+      cache: new ScrapeCache(),
+      ...guards(),
+    });
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.code).toBe('blocked');
+    expect(r.message).toContain('refused the request');
+    expect(r.manual?.supplierRef).toBe('380114');
+  });
+
+  it('falls back to the store the link came from when us_en has no such product', async () => {
+    /* Owner, 2026-09-22: "404 — knowing that the page is working". ECG's catalogues differ by store,
+       and every link is canonicalised onto us_en for the USD price, so a rug listed on ca_en could
+       answer 404 on a link the studio had just been reading. */
+    const caUrl = 'https://ecarpetgallery.com/ca_en/red-5x8-andelz-area-rugs-380114';
+    const calls: FakeCall[] = [];
+    const r = await scrapeRug(
+      'https://ecarpetgallery.com/ca_en/shop-by-shape/rectangle-rugs/red-5x8-andelz-area-rugs-380114',
+      {
+        fetchImpl: fakeTransport(
+          { [ECG_380114_URL]: { status: 404, body: 'not found' }, [caUrl]: { body: ecgPage } },
+          calls,
+        ),
+        cache: new ScrapeCache(),
+        ...guards(),
+      },
+    );
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.data.seenPrice).toBe(700);
+    // us_en first — the canonical store is still preferred — then the studio's own store.
+    expect(calls.map((c) => c.url)).toEqual([ECG_380114_URL, caUrl]);
+    // …and the rug remembers the link that actually worked, or the studio could not follow it back.
+    expect(r.data.sourceUrl).toBe(caUrl);
   });
 
   it('reports blocked with manual entry when the fallback is off or also fails', async () => {

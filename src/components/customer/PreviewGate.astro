@@ -13,7 +13,8 @@
 // Two things are in the code that are not drawn in Figma, both necessary:
 //   - an error line under the button, because a wrong password has to say so somewhere;
 //   - a real <label>, kept for assistive tech but visually hidden (owner, 2026-09-18): the field
-//     carries a "PASSWORD" placeholder instead, matching the admin login.
+//     carries a "Password" placeholder instead, matching the admin login (sentence case and a cream
+//     field since 2026-09-22 — the shouted capitals were the last of them on the buyer's side).
 //     A label is the right element for this anyway — a placeholder is not an accessible name, and it
 //     disappears the moment the buyer starts typing.
 // The eye control IS drawn, and it reveals the password rather than decorating the field.
@@ -52,7 +53,7 @@ const { slug } = Astro.props;
             spellcheck="false"
             required
             maxlength="200"
-            placeholder="PASSWORD"
+            placeholder="Password"
           />
           <button type="button" class="pv-eye" data-gate-reveal aria-pressed="false">
             <svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true" focusable="false">
@@ -154,6 +155,11 @@ const { slug } = Astro.props;
        left only 7.2. Written as the sum rather than the total so the three tokens stay legible. */
     padding-right: calc(var(--input-x) + var(--size-icon) + var(--tight));
     text-align: left;
+  }
+  /* On the cream field (2026-09-22) the mode's own --ink-soft is a light grey, which would put this
+     control somewhere between invisible and a smudge; it takes the field's ink instead. */
+  :global([data-mode='preview-dark']) .pv-eye {
+    color: var(--field-ink-muted);
   }
   .pv-eye {
     position: absolute;

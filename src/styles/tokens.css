@@ -21,6 +21,11 @@
   --shadow-plate: 0 10px 22px rgba(0, 0, 0, 0.18); /* the reference's drop-shadow, now named */
   --shadow-pill: 0 1px 2px rgba(0, 0, 0, 0.06), 0 6px 16px rgba(0, 0, 0, 0.06);
   --shadow-contact: radial-gradient(50% 50% at 50% 50%, rgba(0, 0, 0, 0.16), transparent 70%);
+  /* The lift under a bare glyph that sits on a photograph (owner, 2026-09-22: the heart "disappears
+     when the bg is the same colour as its"). Two shadows, not one: the tight 1px pass draws the
+     outline away from whatever is behind it, and the 3px pass is the lift that makes it a control
+     you could press. A filter, so it follows the heart's shape rather than boxing it. */
+  --shadow-glyph: drop-shadow(0 0 1px rgba(0, 0, 0, 0.55)) drop-shadow(0 1px 3px rgba(0, 0, 0, 0.35));
 
   /* easing */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);

@@ -3,7 +3,7 @@ import { H as TABS, h as warmRates, i as getClient, n as getAdminDeps, vt as con
 import { a as adminRuntime, i as adminPost, l as methodNotAllowed, o as auditBase, u as recordAuditEvent } from "./http_CvlaKNqx.mjs";
 import { o as noStore } from "./api_BVj6xXfj.mjs";
 import { F as ScrapeRequest, d as markupFor, m as roundStepOf, p as parseSettings } from "./read_3DJW8o0r.mjs";
-import { n as detectSupplier, t as scrapeRug } from "./scrape__S7yTpQ7.mjs";
+import { n as detectSupplier, t as scrapeRug } from "./scrape_Dj783YnG.mjs";
 //#region src/pages/api/admin/scrape.ts
 var scrape_exports = /* @__PURE__ */ __exportAll({
 	ALL: () => ALL,

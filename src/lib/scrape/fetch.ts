@@ -12,6 +12,7 @@ import type { HostThrottle } from './throttle.ts';
 import {
   ScrapeError,
   type FetchedText,
+  type ImpitBrowser,
   type ScrapeVia,
   type Transport,
   type TransportClient,
@@ -45,6 +46,8 @@ const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
 export interface FetchTextOptions {
   kind: 'html' | 'json';
+  /** Which browser impit impersonates for this request (see ImpitBrowser). Default 'chrome'. */
+  browser?: ImpitBrowser;
   /** Test hook: replaces impit / undici. */
   transport?: Transport;
   /** Outer (whole-scrape) deadline. */
@@ -62,13 +65,15 @@ export interface FetchTextOptions {
   logger?: Logger;
 }
 
-let impitPromise: Promise<ImpitClient | null> | undefined;
+/** One client per impersonated browser, each built once. */
+const impitClients = new Map<ImpitBrowser, Promise<ImpitClient | null>>();
 
-/** Loads impit once; null when the native binding is missing (KV still works through undici). */
-function loadImpit(logger: Logger): Promise<ImpitClient | null> {
-  impitPromise ??= import('impit').then(
-    (mod) =>
-      new mod.Impit({ browser: 'chrome', timeout: 15_000, followRedirects: false, vanillaFallback: true }),
+/** Loads impit once per profile; null when the native binding is missing (KV still works on undici). */
+function loadImpit(logger: Logger, browser: ImpitBrowser = 'chrome'): Promise<ImpitClient | null> {
+  const existing = impitClients.get(browser);
+  if (existing) return existing;
+  const loading = import('impit').then(
+    (mod) => new mod.Impit({ browser, timeout: 15_000, followRedirects: false, vanillaFallback: true }),
     (e: unknown) => {
       logger.warn('impit failed to load; supplier fetches fall back to the guarded undici client', {
         error: serializeError(e),
@@ -76,18 +81,19 @@ function loadImpit(logger: Logger): Promise<ImpitClient | null> {
       return null;
     },
   );
-  return impitPromise;
+  impitClients.set(browser, loading);
+  return loading;
 }
 
 /** Test hook. */
 export function resetImpitForTests(): void {
-  impitPromise = undefined;
+  impitClients.clear();
 }
 
 /** The real transport: impit for `client: 'impit'` (when it loads), guarded undici otherwise. */
 export const defaultTransport: Transport = async (url, init) => {
   if (init.client === 'impit') {
-    const impit = await loadImpit(init.logger ?? silentLogger);
+    const impit = await loadImpit(init.logger ?? silentLogger, init.browser);
     if (impit) {
       const r = await impit.fetch(url, { headers: init.headers, signal: init.signal, redirect: 'manual' });
       return { status: r.status, headers: r.headers, body: r.body, via: 'impit', abort: () => r.abort() };
@@ -213,7 +219,7 @@ export async function fetchText(
     }
     let res: TransportResponse;
     try {
-      res = await transport(current, { headers, signal, client, logger });
+      res = await transport(current, { headers, signal, client, browser: opts.browser, logger });
     } catch (e) {
       throw toScrapeError(e, current);
     }

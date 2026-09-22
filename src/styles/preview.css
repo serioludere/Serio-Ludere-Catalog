@@ -165,17 +165,17 @@
   transition: border-color var(--motion-quick) var(--motion-ease);
 }
 
-/* Owner, 2026-09-17: same treatment as the admin login's field (admin.css) — a step lighter than the
-   black page, and the typed password's dots pure white rather than the mode's own cream ink. Both
-   literal, not token-derived, on the owner's instruction. */
+/* Same treatment as the admin login's field (admin.css): CREAM on the black gate since 2026-09-22,
+   with the typed password and the placeholder in dark ink, because cream on cream cannot be read.
+   Literal tokens, not the mode's semantic ones — in this mode `--ink` is the cream, and the field is
+   deliberately the exception to it. */
 [data-mode='preview-dark'] .pv-input {
-  background: #202020;
-  /* Cream, not pure white (owner, 2026-09-20). */
-  color: var(--ink-cream);
+  background: var(--field-bg);
+  color: var(--field-ink);
 }
-
-/* The gate's field carries no placeholder since 2026-09-17 — a visible "PASSWORD" label replaced it
-   — and `.pv-input` is that one field, so there is no ::placeholder rule here any more. */
+[data-mode='preview-dark'] .pv-input::placeholder {
+  color: var(--field-ink-muted);
+}
 
 .pv-input:hover {
   border-color: var(--border-strong);
@@ -192,13 +192,14 @@
   outline-offset: calc(-1 * var(--rule-width));
 }
 
-/* White on the black gate (owner, 2026-09-17), not the brand red above: red on #202020 is 3.1:1 and
-   reads as an error next to a field that is merely focused. Literal white, like the dots and the
-   field's own ground — the same instruction. Only the two colours change, so the inset-outline
-   construction (and the forced-colors behaviour it exists for) is untouched. */
+/* The focus ring follows the field. It was white because the field was #202020 and the brand red on
+   that ground is 3.1:1 and reads as an error; on the cream field of 2026-09-22 white would vanish
+   altogether, so the ring is the same dark ink the typing is — neutral, and unmistakably a ring.
+   Only the two colours change: the inset-outline construction (and the forced-colors behaviour it
+   exists for) is untouched. */
 [data-mode='preview-dark'] .pv-input:focus-visible {
-  border-color: var(--ink-cream);
-  outline-color: var(--ink-cream);
+  border-color: var(--field-ink);
+  outline-color: var(--field-ink);
 }
 
 /* Button: Inter 700 / 12 / uppercase / square. Hover is the storefront's own primary hover, the

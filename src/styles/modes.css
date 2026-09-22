@@ -215,6 +215,15 @@
   --ink-cream: var(--color-neutral-0);
   --text-on-brand: var(--color-neutral-0); /* text on the brand red, exactly as scheme-4 sets it */
 
+  /* ---- the field you type a password into ----
+     Its own three tokens because the two login screens deliberately depart from their mode: on the
+     black gates the field is CREAM (owner, 2026-09-22), which is the one thing on those pages you
+     are meant to act on, and the ink has to turn over with it. On the light modes there is nothing
+     to depart from, so these resolve to the ordinary control colours and any field may read them. */
+  --field-bg: var(--surface);
+  --field-ink: var(--ink);
+  --field-ink-muted: var(--ink-muted);
+
   /* ---- action ---- */
   --action-primary: var(--color-neutral-950);
   --action-primary-hover: var(--color-brand-red); /* the storefront's real hover */
@@ -397,6 +406,14 @@
    screen at this mode without re-checking those backgrounds.
    ─────────────────────────────────────────────────────────────────────────────────────────────── */
 [data-mode='admin-dark'] {
+  /* The login field, cream on the black page (owner, 2026-09-22). It used to be #202020 — a step
+     lighter than the ground — which read as a smudge rather than as somewhere to type. Cream on
+     cream cannot be read, so the typing and the placeholder take a dark ink here, against the
+     mode's own light one. */
+  --field-bg: var(--color-static-ivory);
+  --field-ink: var(--color-neutral-950);
+  --field-ink-muted: var(--color-neutral-550);
+
   /* Literal black, not a softened neutral-900/800: the owner asked for black specifically. */
   --canvas: var(--color-static-black);
   --surface: var(--color-static-black);
@@ -471,6 +488,14 @@
    catalogue keeps [data-mode='preview'] — only the signed-out gate uses this one.
    ─────────────────────────────────────────────────────────────────────────────────────────────── */
 [data-mode='preview-dark'] {
+  /* The login field, cream on the black page (owner, 2026-09-22). It used to be #202020 — a step
+     lighter than the ground — which read as a smudge rather than as somewhere to type. Cream on
+     cream cannot be read, so the typing and the placeholder take a dark ink here, against the
+     mode's own light one. */
+  --field-bg: var(--color-static-ivory);
+  --field-ink: var(--color-neutral-950);
+  --field-ink-muted: var(--color-neutral-550);
+
   --canvas: var(--color-static-black);
   --surface: var(--color-static-black);
   --surface-raised: var(--color-neutral-700);

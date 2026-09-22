@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { ALLOW_ALL, RobotsCache } from '../../../src/lib/scrape/robots.ts';
 import { HostThrottle } from '../../../src/lib/scrape/throttle.ts';
 import type {
+  ImpitBrowser,
   ScrapeOptions,
   Transport,
   TransportClient,
@@ -65,6 +66,8 @@ export interface FakeRoute {
 export interface FakeCall {
   url: string;
   client: TransportClient;
+  /** Which browser impit was asked to impersonate, when the caller named one. */
+  browser?: ImpitBrowser;
   headers: Record<string, string>;
 }
 
@@ -77,7 +80,7 @@ export function fakeTransport(
   calls: FakeCall[] = [],
 ): Transport {
   return async (url, init) => {
-    calls.push({ url, client: init.client, headers: init.headers });
+    calls.push({ url, client: init.client, browser: init.browser, headers: init.headers });
     const entry = routes[url];
     if (!entry) throw new Error(`fakeTransport: no route for ${url}`);
     const route = typeof entry === 'function' ? entry(url) : entry;

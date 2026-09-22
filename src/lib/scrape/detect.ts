@@ -40,6 +40,9 @@ export const SHOPIFY_BASE: Readonly<Record<ShopifySupplier, string>> = {
  * page happened to show first. That refusal now says so in as many words (see scrape/index.ts).
  */
 
+/** ECG's store codes, which lead a product path when the link was copied from one of those stores. */
+export const ECG_STORES: readonly string[] = ['us_en', 'ca_en', 'eu_en', 'ca_fr'];
+
 /** The ECG url key, wherever it sits: the last path segment ending in a 4+ digit sku. */
 export const ECG_KEY_RE = /^([a-z0-9-]+?-(\d{4,}))(?:\.html)?$/;
 /** The Shopify handle: whatever follows a `products` segment, wherever that segment sits. */
@@ -103,7 +106,15 @@ export function detectSupplier(input: string): Detected | DetectError {
     }
     if (!urlKey || !sku) return { error: 'invalid_url' };
     const sourceUrl = `${ECG_BASE}${urlKey}`;
-    return { supplier, urlKey, sku, supplierRef: sku, sourceUrl, htmlUrl: sourceUrl };
+    /* The store code the link came from, kept so the ladder can fall back to it when the canonical
+       us_en page 404s (owner, 2026-09-22). Rebuilt from the key, never taken as pasted: the category
+       trail and any query are still dropped, so this is the same URL policy on a different store. */
+    const store = segments[0];
+    const pastedUrl =
+      store && ECG_STORES.includes(store) && store !== 'us_en'
+        ? `https://ecarpetgallery.com/${store}/${urlKey}`
+        : undefined;
+    return { supplier, urlKey, sku, supplierRef: sku, sourceUrl, htmlUrl: sourceUrl, pastedUrl };
   }
   // Shopify always spells a product `/products/<handle>`; what precedes it (a collection, a locale
   // prefix like /en-ca) is Shopify's own routing and never changes which product it is.

@@ -63,6 +63,13 @@ var SHOPIFY_BASE = {
 	karavanrug: "https://karavanrug.com/products/",
 	serioludere: "https://serioludere.com/products/"
 };
+/** ECG's store codes, which lead a product path when the link was copied from one of those stores. */
+var ECG_STORES = [
+	"us_en",
+	"ca_en",
+	"eu_en",
+	"ca_fr"
+];
 /** The ECG url key, wherever it sits: the last path segment ending in a 4+ digit sku. */
 var ECG_KEY_RE = /^([a-z0-9-]+?-(\d{4,}))(?:\.html)?$/;
 /** The Shopify handle: whatever follows a `products` segment, wherever that segment sits. */
@@ -111,13 +118,16 @@ function detectSupplier(input) {
 		}
 		if (!urlKey || !sku) return { error: "invalid_url" };
 		const sourceUrl = `${ECG_BASE}${urlKey}`;
+		const store = segments[0];
+		const pastedUrl = store && ECG_STORES.includes(store) && store !== "us_en" ? `https://ecarpetgallery.com/${store}/${urlKey}` : void 0;
 		return {
 			supplier,
 			urlKey,
 			sku,
 			supplierRef: sku,
 			sourceUrl,
-			htmlUrl: sourceUrl
+			htmlUrl: sourceUrl,
+			pastedUrl
 		};
 	}
 	const at = segments.lastIndexOf("products");
@@ -551,13 +561,25 @@ function primaryImageOf(photos) {
 }
 //#endregion
 //#region src/lib/scrape/ecg.ts
-/** The block page (`Attention Required! | Cloudflare`, ~5.5 KB, 403) or the JS challenge interstitial. */
-var CHALLENGE_TITLE_RE = /<title>[^<]*(?:Attention Required!\s*\|\s*Cloudflare|Just a moment)/i;
+/**
+* The block page (`Attention Required! | Cloudflare`, ~5.5 KB, 403), Cloudflare's JS challenge, or
+* the bot-manager interstitial ECG began serving on 2026-09-22.
+*
+* That last one is why this list grew. It answers **HTTP 200** with a 13 KB page titled "One moment,
+* please..." — a spinner, a beacon script and `window.location.reload()` after five seconds — so
+* nothing in the status said anything was wrong, the parser simply found no price, and the studio
+* was told "no price found on the product page" about a page that plainly has one. A challenge that
+* lies about its status has to be recognised by what it is.
+*/
+var CHALLENGE_TITLE_RE = /<title>[^<]*(?:Attention Required!\s*\|\s*Cloudflare|Just a moment|One moment, please)/i;
 var CHALLENGE_MARKER_RE = /id="cf-error-details"|window\._cf_chl_opt|data-translate="block_headline"/;
+/** The interstitial's own tell, in case it is ever retitled: a tiny page that reloads itself. */
+var RELOAD_INTERSTITIAL_RE = /setTimeout\(\s*function\s*\(\)\s*\{\s*window\.location\.reload\(\)/;
 function isCloudflareChallenge(status, body, headers) {
 	if (headers?.get("cf-mitigated") === "challenge") return true;
 	const head = body.slice(0, 2e4);
 	if (CHALLENGE_TITLE_RE.test(head)) return true;
+	if (body.length < 4e4 && RELOAD_INTERSTITIAL_RE.test(head)) return true;
 	return (status === 403 || status === 503) && CHALLENGE_MARKER_RE.test(head);
 }
 /** The gallery component's inline JSON: `images: [{ thumb, img, full, caption, … }, …]`. */
@@ -687,7 +709,7 @@ function parseEcg(det, html) {
 	return {
 		supplier: "ecarpetgallery",
 		supplierRef: ecgSku(html, det.sku),
-		sourceUrl: `${ECG_BASE}${det.urlKey}`,
+		sourceUrl: det.sourceUrl || `https://ecarpetgallery.com/us_en/${det.urlKey}`,
 		supplierTitle,
 		description,
 		widthCm,
@@ -728,11 +750,14 @@ var REDIRECT_STATUSES = /* @__PURE__ */ new Set([
 	307,
 	308
 ]);
-var impitPromise;
-/** Loads impit once; null when the native binding is missing (KV still works through undici). */
-function loadImpit(logger) {
-	impitPromise ??= import("impit").then((mod) => new mod.Impit({
-		browser: "chrome",
+/** One client per impersonated browser, each built once. */
+var impitClients = /* @__PURE__ */ new Map();
+/** Loads impit once per profile; null when the native binding is missing (KV still works on undici). */
+function loadImpit(logger, browser = "chrome") {
+	const existing = impitClients.get(browser);
+	if (existing) return existing;
+	const loading = import("impit").then((mod) => new mod.Impit({
+		browser,
 		timeout: 15e3,
 		followRedirects: false,
 		vanillaFallback: true
@@ -740,12 +765,13 @@ function loadImpit(logger) {
 		logger.warn("impit failed to load; supplier fetches fall back to the guarded undici client", { error: serializeError(e) });
 		return null;
 	});
-	return impitPromise;
+	impitClients.set(browser, loading);
+	return loading;
 }
 /** The real transport: impit for `client: 'impit'` (when it loads), guarded undici otherwise. */
 var defaultTransport = async (url, init) => {
 	if (init.client === "impit") {
-		const impit = await loadImpit(init.logger ?? silentLogger);
+		const impit = await loadImpit(init.logger ?? silentLogger, init.browser);
 		if (impit) {
 			const r = await impit.fetch(url, {
 				headers: init.headers,
@@ -866,6 +892,7 @@ async function fetchText(url, client, opts) {
 				headers,
 				signal,
 				client,
+				browser: opts.browser,
 				logger
 			});
 		} catch (e) {
@@ -1869,15 +1896,33 @@ function attemptEcg(det, res, ctx) {
 		via: res.via
 	};
 }
-async function scrapeEcg(det, ctx) {
-	let first;
+/** One ECG page read, on a named impit profile. */
+async function readEcg(url, det, ctx, browser) {
 	try {
-		first = attemptEcg(det, await fetchText(det.htmlUrl, "impit", {
+		return attemptEcg(det, await fetchText(url, "impit", {
 			...ctx.fetchOpts,
-			kind: "html"
+			kind: "html",
+			browser
 		}), ctx);
 	} catch (e) {
-		first = fromError(e);
+		return fromError(e);
+	}
+}
+async function scrapeEcg(det, ctx) {
+	let first = await readEcg(det.htmlUrl, det, ctx);
+	if (!first.ok && first.code === "not_found" && det.pastedUrl && det.pastedUrl !== det.htmlUrl) {
+		ctx.logger.info("not on the us_en store; retrying on the store the link came from", { url: det.pastedUrl });
+		const onItsOwnStore = await readEcg(det.pastedUrl, {
+			...det,
+			sourceUrl: det.pastedUrl
+		}, ctx);
+		if (onItsOwnStore.ok) return onItsOwnStore;
+	}
+	if (!first.ok && first.code === "blocked" && !ctx.signal.aborted) {
+		ctx.logger.info("challenged; retrying with the firefox profile", { url: det.htmlUrl });
+		const asFirefox = await readEcg(det.htmlUrl, det, ctx, "firefox");
+		if (asFirefox.ok) return asFirefox;
+		if (!asFirefox.ok && asFirefox.data && !first.data) first = asFirefox;
 	}
 	if (first.ok || first.code === "not_found" || !ctx.jina || ctx.signal.aborted) return first;
 	ctx.logger.info("trying the Jina Reader fallback", {

@@ -143,6 +143,15 @@ export interface DetectedEcg {
   supplierRef: string;
   sourceUrl: string;
   htmlUrl: string;
+  /**
+   * The same product on the store code the link was pasted from, when that was not us_en.
+   *
+   * Every ECG link is canonicalised onto us_en so the price is in USD, but the catalogues differ by
+   * store: a rug listed on ca_en may not be on us_en at all, and forcing it there answers 404 for a
+   * link that works. The ladder falls back to this one (index.ts), so the studio's own link is the
+   * last word on whether a product exists.
+   */
+  pastedUrl?: string;
 }
 
 export interface DetectedKaravan {
@@ -187,6 +196,17 @@ export type ScrapeResult = ScrapeOk | ScrapeFail;
 
 export type TransportClient = 'impit' | 'undici';
 
+/**
+ * Which browser impit impersonates (owner-visible symptom, 2026-09-22: every ecarpetgallery.com
+ * fetch came back as "One moment, please…").
+ *
+ * ECG's bot manager fingerprints the TLS handshake, and it now flags impit's Chrome profile while
+ * letting its Firefox profile through — verified against four products on two store codes, Chrome
+ * getting the 13 KB interstitial every time and Firefox the full 1.2 MB page. So the profile is a
+ * knob the ladder can turn rather than a constant.
+ */
+export type ImpitBrowser = 'chrome' | 'firefox';
+
 /** The only part of a response the fetch layer needs from either client. */
 export interface HeaderReader {
   get(name: string): string | null;
@@ -196,6 +216,8 @@ export interface TransportInit {
   headers: Record<string, string>;
   signal: AbortSignal;
   client: TransportClient;
+  /** Which impit profile to impersonate; ignored by the undici client. Default 'chrome'. */
+  browser?: ImpitBrowser;
   logger?: Logger;
 }
 

@@ -98,6 +98,14 @@ const { rugId, mode = 'card' } = Astro.props;
     stroke: var(--brand);
   }
 
+  /* A cream heart on a cream rug is no heart at all (owner, 2026-09-22). The drawn control has no
+     background and should not grow one — it sits ON the photograph, and a filled circle behind it
+     would be a different control — so the separation is a shadow under the STROKE itself, which is
+     what `drop-shadow` on the svg gives and `box-shadow` on the button could not. */
+  .pv-glyph svg {
+    filter: var(--shadow-glyph);
+  }
+
   /* The glyph box is 36 with the 32px artwork at its top-left: the drawn 18/16 geometry, doubled. */
   .pv-glyph {
     position: relative;

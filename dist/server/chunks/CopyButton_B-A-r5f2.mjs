@@ -1,6 +1,6 @@
 import { F as maybeRenderHead, L as addAttribute, O as renderComponent, P as renderTemplate, W as createAstro } from "./runtime_skv-YCY6.mjs";
 import { t as createComponent } from "./compiler_CXPqD_v7.mjs";
-import { n as $$Icon } from "./AdminLayout_DwEWQHde.mjs";
+import { n as $$Icon } from "./AdminLayout_D0uOZ6fo.mjs";
 //#region src/components/ui/CopyButton.astro
 createAstro("https://astro.build");
 var $$CopyButton = createComponent(($$result, $$props, $$slots) => {

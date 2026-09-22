@@ -165,18 +165,6 @@
   transition: border-color var(--motion-quick) var(--motion-ease);
 }
 
-/* Same treatment as the admin login's field (admin.css): CREAM on the black gate since 2026-09-22,
-   with the typed password and the placeholder in dark ink, because cream on cream cannot be read.
-   Literal tokens, not the mode's semantic ones — in this mode `--ink` is the cream, and the field is
-   deliberately the exception to it. */
-[data-mode='preview-dark'] .pv-input {
-  background: var(--field-bg);
-  color: var(--field-ink);
-}
-[data-mode='preview-dark'] .pv-input::placeholder {
-  color: var(--field-ink-muted);
-}
-
 .pv-input:hover {
   border-color: var(--border-strong);
 }
@@ -190,16 +178,6 @@
   border-color: var(--brand);
   outline: var(--rule-width) solid var(--brand);
   outline-offset: calc(-1 * var(--rule-width));
-}
-
-/* The focus ring follows the field. It was white because the field was #202020 and the brand red on
-   that ground is 3.1:1 and reads as an error; on the cream field of 2026-09-22 white would vanish
-   altogether, so the ring is the same dark ink the typing is — neutral, and unmistakably a ring.
-   Only the two colours change: the inset-outline construction (and the forced-colors behaviour it
-   exists for) is untouched. */
-[data-mode='preview-dark'] .pv-input:focus-visible {
-  border-color: var(--field-ink);
-  outline-color: var(--field-ink);
 }
 
 /* Button: Inter 700 / 12 / uppercase / square. Hover is the storefront's own primary hover, the

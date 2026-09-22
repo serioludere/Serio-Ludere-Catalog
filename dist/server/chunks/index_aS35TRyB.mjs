@@ -1,11 +1,11 @@
 import { t as __exportAll } from "./rolldown-runtime_BBjsoOtd.mjs";
 import { F as maybeRenderHead, L as addAttribute, O as renderComponent, P as renderTemplate, W as createAstro, k as Fragment } from "./runtime_skv-YCY6.mjs";
 import { t as createComponent } from "./compiler_CXPqD_v7.mjs";
-import { t as renderScript } from "./motion-spec_BvvdUsTx.mjs";
+import { t as renderScript } from "./motion-spec_BUAFLNaU.mjs";
 import { n as templateExit, t as templateEnter } from "./template-depth_DHN7yctw.mjs";
 import { Q as money, f as ratesFor, mt as driveImageUrl, t as baseCurrency, u as loadCatalogue } from "./runtime_BSzjHQXl.mjs";
 import { a as noteVisit, i as findCustomer } from "./http_BaxLaokF.mjs";
-import { a as $$PreviewFooter, i as $$PreviewHeader, n as $$Reactions, o as $$PreviewControls, r as $$PreviewLayout, t as $$SpecTable } from "./SpecTable_DrSB-SWp.mjs";
+import { a as $$PreviewFooter, i as $$PreviewHeader, n as $$Reactions, o as $$PreviewControls, r as $$PreviewLayout, t as $$SpecTable } from "./SpecTable_De_eGQo1.mjs";
 import { a as catalogueRugs, i as cardView, r as badgesFor, s as navTabs } from "./view_CMarAg1H.mjs";
 import { n as visibleLikes } from "./likes_Bt2PBY3j.mjs";
 import { t as dims } from "./units_BFAJ7W-k.mjs";
@@ -139,7 +139,6 @@ var $$Index = createComponent(async ($$result, $$props, $$slots) => {
 		"title": "Serio Ludere",
 		"rates": rates,
 		"customer": signedIn ? slug : void 0,
-		"mode": !error && Boolean(customer) && !signedIn ? "preview-dark" : "preview",
 		"data-astro-cid-z2nrcivh": true
 	}, { "default": ($$result) => renderTemplate`${error && renderTemplate`${maybeRenderHead($$result)}<main class="pv-state" data-astro-cid-z2nrcivh> <p class="pv-h3" data-astro-cid-z2nrcivh>Could not load the catalogue.</p> <p class="pv-lede" data-astro-cid-z2nrcivh> <a${addAttribute(`/${slug}`, "href")} data-astro-cid-z2nrcivh>Try again</a> </p> </main>`}${!error && !customer && renderTemplate`<main class="pv-state" data-astro-cid-z2nrcivh> <p class="pv-h3" data-astro-cid-z2nrcivh>This preview link is not active.</p> <p class="pv-lede" data-astro-cid-z2nrcivh>Ask the studio for a new one.</p> </main>`}${!error && customer && !signedIn && renderTemplate`${renderComponent($$result, "PreviewGate", $$PreviewGate, {
 		"slug": slug,

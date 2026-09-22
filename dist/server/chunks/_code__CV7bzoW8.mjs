@@ -1,13 +1,13 @@
 import { t as __exportAll } from "./rolldown-runtime_BBjsoOtd.mjs";
 import { F as maybeRenderHead, L as addAttribute, O as renderComponent, P as renderTemplate, W as createAstro, j as renderSlot } from "./runtime_skv-YCY6.mjs";
 import { t as createComponent } from "./compiler_CXPqD_v7.mjs";
-import { t as renderScript } from "./motion-spec_BvvdUsTx.mjs";
+import { t as renderScript } from "./motion-spec_BUAFLNaU.mjs";
 import { H as TABS, g as assertHeaders, i as getClient, mt as driveImageUrl, vt as consoleLogger, yt as serializeError } from "./runtime_BSzjHQXl.mjs";
 import { a as adminRuntime } from "./http_CvlaKNqx.mjs";
 import { h as clientLink, s as parseAdminSnapshot, t as ADMIN_READ_RANGES, x as CLIENT_CODE_RE } from "./read_3DJW8o0r.mjs";
 import { t as dims } from "./units_BFAJ7W-k.mjs";
-import { t as $$AdminLayout } from "./AdminLayout_D0uOZ6fo.mjs";
-import { t as $$CopyButton } from "./CopyButton_B-A-r5f2.mjs";
+import { t as $$AdminLayout } from "./AdminLayout_4LOaUeJu.mjs";
+import { t as $$CopyButton } from "./CopyButton_R2a6usqL.mjs";
 import { n as buildSavesReport, t as SAVES_READ_RANGE } from "./saves_BmDpQFWd.mjs";
 //#region src/components/ui/Badge.astro
 createAstro("https://astro.build");

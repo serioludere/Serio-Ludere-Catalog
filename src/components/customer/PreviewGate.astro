@@ -20,10 +20,13 @@
 // The eye control IS drawn, and it reveals the password rather than decorating the field.
 //
 // Owner, 2026-09-17: the brand block is now the same logo mark the admin login uses, in place of the
-// "Serio Ludere" text and its "A private preview, prepared for you" line, and the whole screen runs
-// on the same black theme as the admin login (data-mode="preview-dark", set by the parent page — see
-// [data-mode='preview-dark'] in src/styles/modes.css). The consent note below the form ("The rugs
-// you like are shared…") is gone too.
+// "Serio Ludere" text and its "A private preview, prepared for you" line. The consent note below the
+// form ("The rugs you like are shared…") is gone too.
+//
+// Owner, 2026-09-22: back on the cream ground, with dark ink. The screen ran on its own black theme
+// for five days (`preview-dark`, now removed from modes.css); it is the ordinary preview mode again,
+// the same ground as the catalogue the password opens, so the logo, the field and the button all
+// take the realm's own colours with no overrides here.
 import AdminLogo from '../admin/AdminLogo.astro';
 
 interface Props {
@@ -99,20 +102,6 @@ const { slug } = Astro.props;
     max-width: 100%;
     text-align: center;
   }
-  /* A bordered container, added for the black theme only (owner, 2026-09-17): same border colour and
-     padding as the admin login's card (.alogin, src/pages/admin/login.astro) — --rule and --stack-lg
-     resolve to the same values in both [data-mode='admin-dark'] and this mode, so the two match
-     exactly. --stack-lg (16px, mode-invariant), not --section-gap: that token is still the preview
-     realm's own roomy 64px here, which would not match the admin card at all.
-
-     `:global()` on the [data-mode] part, not just on a class: that attribute sits on <html>, which
-     PreviewLayout.astro renders, not this component, so Astro's scoping hash never reaches it and an
-     unscoped ancestor selector here silently matches nothing — the same problem
-     `.alogin__brand :global(.admin-logo)` solves on the child side, mirrored on the ancestor side. */
-  :global([data-mode='preview-dark']) .pv-gate-col {
-    padding: var(--stack-lg);
-    background: var(--surface);
-  }
   .pv-gate-brand {
     display: flex;
     flex-direction: column;
@@ -155,11 +144,6 @@ const { slug } = Astro.props;
        left only 7.2. Written as the sum rather than the total so the three tokens stay legible. */
     padding-right: calc(var(--input-x) + var(--size-icon) + var(--tight));
     text-align: left;
-  }
-  /* On the cream field (2026-09-22) the mode's own --ink-soft is a light grey, which would put this
-     control somewhere between invisible and a smudge; it takes the field's ink instead. */
-  :global([data-mode='preview-dark']) .pv-eye {
-    color: var(--field-ink-muted);
   }
   .pv-eye {
     position: absolute;

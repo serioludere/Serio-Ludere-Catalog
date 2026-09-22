@@ -3,7 +3,7 @@ import { F as maybeRenderHead, L as addAttribute, O as renderComponent, P as ren
 import { t as createComponent } from "./compiler_CXPqD_v7.mjs";
 import { f as ratesFor, u as loadCatalogue } from "./runtime_BSzjHQXl.mjs";
 import { a as catalogueRugs, i as cardView, l as rugsWithTag, n as SLUG_PARAM_RE } from "./view_CMarAg1H.mjs";
-import { i as $$Header, o as $$Footer, r as $$Layout, t as $$RugCard } from "./RugCard_CXO2cTrF.mjs";
+import { i as $$Header, o as $$Footer, r as $$Layout, t as $$RugCard } from "./RugCard_XpkzBrbR.mjs";
 //#region src/components/RugGrid.astro
 createAstro("https://astro.build");
 var $$RugGrid = createComponent(($$result, $$props, $$slots) => {

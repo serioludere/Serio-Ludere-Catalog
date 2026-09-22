@@ -126,11 +126,13 @@ describe('/{slug} — the gate', () => {
     // into an identification, and the studio already has the name in the admin.
     expect(html).not.toContain('Welcome, Hala.');
     expect(html).not.toContain('Hala');
-    // Owner, 2026-09-17: the brand block is the logo mark, not a text title or a standfirst line,
-    // and the gate runs on the same black theme as the admin login.
+    // Owner, 2026-09-17: the brand block is the logo mark, not a text title or a standfirst line.
     expect(html).not.toContain('A private preview, prepared for you');
     expect(html).toContain('aria-label="Serio Ludere"');
-    expect(html).toContain('data-mode="preview-dark"');
+    // Owner, 2026-09-22: the gate is back on the cream ground with dark ink — the ordinary preview
+    // mode, the same one the catalogue behind it runs on — after five days on a black theme.
+    expect(html).toContain('data-mode="preview"');
+    expect(html).not.toContain('preview-dark');
     expect(html).toContain('Enter');
     expect(html).not.toContain('View the catalogue');
     expect(html).toContain('action="/api/customers/hala/login"');
@@ -238,20 +240,21 @@ describe('/{slug} — the signed-in catalog', () => {
     expect(withMarkers).toContain('>Signed<');
   });
 
-  it('asks for the password in sentence case, on a cream field', async () => {
-    /* Owner, 2026-09-22. Two changes to the same control: the placeholder was "PASSWORD", the last
-       shouted capitals on the buyer's side; and the field was #202020 on the black gate, which read
-       as a smudge rather than as somewhere to type. Cream on cream cannot be read, so the ink turns
-       over with the ground — see --field-* in modes.css. */
+  it('asks for the password in sentence case, on the realm’s own cream ground', async () => {
+    /* Owner, 2026-09-22: the placeholder was "PASSWORD", the last shouted capitals on the buyer's
+       side. And the gate is light again: its black theme is gone from modes.css, so the field is the
+       ordinary control — the surface with a control edge, typed in the realm's ink — with no
+       gate-only overrides left anywhere to drift. */
     const { html } = await render(CustomerCatalog, '/hala', { slug: 'hala' });
     expect(html).toContain('placeholder="Password"');
     expect(html).not.toContain('placeholder="PASSWORD"');
-    const css = readFileSync('src/styles/preview.css', 'utf8');
-    const dark = css.slice(css.indexOf("[data-mode='preview-dark'] .pv-input {"));
-    expect(dark).toContain('background: var(--field-bg)');
-    expect(dark).toContain('color: var(--field-ink)');
-    // The old literal survives only in the comment explaining what it was; no rule paints it.
-    expect(css).not.toMatch(/background:\s*#202020/);
+    for (const file of [
+      'src/styles/preview.css',
+      'src/styles/modes.css',
+      'src/components/customer/PreviewGate.astro',
+    ]) {
+      expect(readFileSync(file, 'utf8'), file).not.toContain("[data-mode='preview-dark']");
+    }
   });
 
   it('gives the like heart a shadow, so a cream heart is visible on a cream rug', () => {

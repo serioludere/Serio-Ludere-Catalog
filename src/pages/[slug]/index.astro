@@ -61,17 +61,11 @@ const collections = navTabs(rugs, catalogue).filter((t) => t.count > 0);
 // browser history, and is what a screen-share shows before anything else.
 const title = 'Serio Ludere';
 
-// Black background on the gate itself only (owner, 2026-09-17): once signed in, the buyer sees the
-// ordinary light catalogue.
-const showGate = !error && Boolean(customer) && !signedIn;
+// The gate is on the same cream ground as the catalogue behind it (owner, 2026-09-22, reverting the
+// black gate of 2026-09-17): one theme for the whole realm, from the password to the last rug.
 ---
 
-<PreviewLayout
-  title={title}
-  rates={rates}
-  customer={signedIn ? slug : undefined}
-  mode={showGate ? 'preview-dark' : 'preview'}
->
+<PreviewLayout title={title} rates={rates} customer={signedIn ? slug : undefined}>
   {
     error && (
       <main class="pv-state">

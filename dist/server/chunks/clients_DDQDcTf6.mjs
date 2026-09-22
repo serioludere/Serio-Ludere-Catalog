@@ -1,16 +1,16 @@
 import { t as __exportAll } from "./rolldown-runtime_BBjsoOtd.mjs";
 import { F as maybeRenderHead, H as unescapeHTML, L as addAttribute, O as renderComponent, P as renderTemplate, W as createAstro } from "./runtime_skv-YCY6.mjs";
 import { t as createComponent } from "./compiler_CXPqD_v7.mjs";
-import { t as renderScript } from "./motion-spec_BvvdUsTx.mjs";
+import { t as renderScript } from "./motion-spec_BUAFLNaU.mjs";
 import { n as templateExit, t as templateEnter } from "./template-depth_DHN7yctw.mjs";
 import { i as getClient, vt as consoleLogger, yt as serializeError } from "./runtime_BSzjHQXl.mjs";
 import { a as adminRuntime } from "./http_CvlaKNqx.mjs";
 import { h as clientLink, i as fetchAdminSnapshot, u as syncLabel, y as withoutSecrets } from "./read_3DJW8o0r.mjs";
 import { o as jsonForScript } from "./view_CMarAg1H.mjs";
-import { n as $$Icon, t as $$AdminLayout } from "./AdminLayout_D0uOZ6fo.mjs";
-import { t as $$CopyButton } from "./CopyButton_B-A-r5f2.mjs";
-import { t as $$Button } from "./Button_fKkBf3B1.mjs";
-import { n as $$Modal, t as $$EmptyState } from "./EmptyState_CDRjAjO9.mjs";
+import { n as $$Icon, t as $$AdminLayout } from "./AdminLayout_4LOaUeJu.mjs";
+import { t as $$CopyButton } from "./CopyButton_R2a6usqL.mjs";
+import { t as $$Button } from "./Button_D7csSVX1.mjs";
+import { n as $$Modal, t as $$EmptyState } from "./EmptyState_CMPkBFH5.mjs";
 //#region src/components/ui/CredentialPanel.astro
 createAstro("https://astro.build");
 var $$CredentialPanel = createComponent(($$result, $$props, $$slots) => {

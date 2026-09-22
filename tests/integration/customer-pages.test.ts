@@ -271,6 +271,21 @@ describe('/{slug} — the signed-in catalog', () => {
     expect(value.match(/drop-shadow\(/g) ?? []).toHaveLength(2);
   });
 
+  it('keeps the shadow on the card heart and drops it in the product popup', () => {
+    /* Owner, 2026-09-22: the shadow is for the CARD, where a cream heart sits on a photograph that
+       may be cream too. In the popup the heart is ink on the cream panel — already unmistakable — so
+       the popup switches it off.
+
+       The popup rule must WIN, not merely exist: written without `.pv-circle` it compiled to the same
+       specificity as the card's rule (0,3,1 each), so which one applied depended on stylesheet load
+       order. The extra class makes it 0,4,1 and the outcome independent of order. */
+    const dialog = readFileSync('src/components/customer/ProductDialog.astro', 'utf8');
+    expect(dialog).toMatch(/\.pv-modal__react :global\(\.pv-circle \.pv-glyph svg\)\s*\{[^}]*filter:\s*none/);
+    // The card's own shadow is untouched: it lives in Reactions.astro, which the popup reuses.
+    const reactions = readFileSync('src/components/customer/Reactions.astro', 'utf8');
+    expect(reactions).toMatch(/\.pv-glyph svg\s*\{[^}]*filter:\s*var\(--shadow-glyph\)/);
+  });
+
   it('never ships a like count below the threshold — not even in an attribute', async () => {
     // Owner requirement 2026-09-13: the count is visible only at >= 5. The fixture rug sits at 3
     // (tests/helpers/ranges.ts), so this is non-vacuous: until 2026-09-14 the page served

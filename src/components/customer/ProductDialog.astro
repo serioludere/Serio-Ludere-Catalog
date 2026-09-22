@@ -297,6 +297,16 @@ const specRowsOf = (card: CardView): Array<{ key: string; value: string }> => [
   .pv-modal__react :global(.pv-circle) {
     color: var(--ink);
   }
+  /* …and so it needs no shadow (owner, 2026-09-22). The shadow exists for the CARD, where a cream
+     heart sits on a photograph that may be cream too; here it is ink on the cream panel, already
+     unmistakable, and a shadow only smudges its edge.
+
+     `.pv-circle` is in the selector on purpose: without it this compiles to the same specificity as
+     the card's own rule in Reactions.astro (0,3,1 each), and which one won would depend on the order
+     the two stylesheets happened to load in. With it, this rule wins outright. */
+  .pv-modal__react :global(.pv-circle .pv-glyph svg) {
+    filter: none;
+  }
   .pv-modal__react-label {
     font-family: var(--body);
     font-size: var(--text-sm);

@@ -2,12 +2,22 @@
 // converted with Math.round((ft * 12 + in) * 2.54); KV's `4.3 x 11.9 feet` is feet.inches, never
 // decimal feet (130 cm = 4'3").
 
-/** `202 x 315 cm`, `4.3 x 11.9 feet / 130 x 360 cm`, `65 x 362 cm`, `82x300 cm`. */
-export const CM_PAIR_RE = /(\d{2,3}(?:[.,]\d)?)\s*[x×]\s*(\d{2,3}(?:[.,]\d)?)\s*cm\b/i;
+/**
+ * `202 x 315 cm`, `4.3 x 11.9 feet / 130 x 360 cm`, `65 x 362 cm`, `82x300 cm` — and the unit on both
+ * sides, `170 cm x 259 cm` / `170 cm by 259 cm`, as serioludere.com and ECG's own copy print it.
+ */
+export const CM_PAIR_RE = /(\d{2,3}(?:[.,]\d)?)\s*(?:cm\s*)?(?:[x×]|by)\s*(\d{2,3}(?:[.,]\d)?)\s*cm\b/i;
 
 /** `4'3" x 7'5"`, `6'8" x 10'4"`, `10'0" × 12'1"` (straight or curly quotes, inches optional). */
 export const FT_IN_PAIR_RE =
   /(\d{1,2})\s*['’′]\s*(\d{1,2}(?:\.\d)?)?\s*(?:"|''|”|″)?\s*[x×]\s*(\d{1,2})\s*['’′]\s*(\d{1,2}(?:\.\d)?)?\s*(?:"|''|”|″)?/;
+
+/**
+ * Feet and inches spelled out, as ECG's copy (and the studio's store, which reuses it) writes them:
+ * `5-Feet 7-Inch by 8-Feet 6-Inch`, `6 ft 1 in x 8 ft 11 in`, `9-Feet by 12-Feet`.
+ */
+export const FT_IN_WORDS_PAIR_RE =
+  /(\d{1,2})\s*-?\s*(?:feet|foot|ft)\.?(?:\s*-?\s*(\d{1,2})\s*-?\s*(?:inch(?:es)?|in)\b\.?)?\s*(?:[x×]|by)\s*(\d{1,2})\s*-?\s*(?:feet|foot|ft)\.?(?:\s*-?\s*(\d{1,2})\s*-?\s*(?:inch(?:es)?|in)\b\.?)?/i;
 
 /** KV's `4.3 x 11.9 feet` / `10.0 x 12.1 ft`: the fraction is inches (last resort, flagged). */
 export const FEET_DOT_INCHES_PAIR_RE =
@@ -78,7 +88,7 @@ export function parseSize(text: string | undefined): ParsedSize | undefined {
       };
     }
   }
-  const ft = FT_IN_PAIR_RE.exec(text);
+  const ft = FT_IN_PAIR_RE.exec(text) ?? FT_IN_WORDS_PAIR_RE.exec(text);
   if (ft?.[1] && ft[3]) {
     const f1 = Number(ft[1]);
     const i1 = num(ft[2]);

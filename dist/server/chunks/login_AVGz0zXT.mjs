@@ -1,0 +1,74 @@
+import { t as __exportAll } from "./rolldown-runtime_BBjsoOtd.mjs";
+import { u as loadCatalogue } from "./runtime_xH1UDnXO.mjs";
+import { c as verifyPassword } from "./auth_BsQZppy5.mjs";
+import { o as noStore, s as rejectCrossSite } from "./api_BA4CntA9.mjs";
+import { a as makeCustomerToken, i as isReservedSlug, n as SLUG_RE, o as newCustomerSession, r as customerCookieName } from "./auth_BwU9HN3t.mjs";
+import { i as findCustomer, r as customerRuntime } from "./http_CJrD9zrA.mjs";
+import * as z from "zod";
+//#region src/pages/api/customers/[slug]/login.ts
+var login_exports = /* @__PURE__ */ __exportAll({
+	ALL: () => ALL,
+	POST: () => POST,
+	prerender: () => false
+});
+var Body = z.object({ password: z.string().min(1).max(200) });
+var POST = async (context) => {
+	const { request, cookies, params } = context;
+	const rejected = rejectCrossSite(request);
+	if (rejected) return rejected;
+	if (!customerRuntime.configured) return noStore({
+		ok: false,
+		error: "not found"
+	}, 404);
+	const slug = (params.slug ?? "").toLowerCase();
+	if (!SLUG_RE.test(slug) || isReservedSlug(slug)) return noStore({
+		ok: false,
+		error: "not found"
+	}, 404);
+	let raw;
+	try {
+		raw = await request.json();
+	} catch {
+		return noStore({
+			ok: false,
+			error: "bad request"
+		}, 400);
+	}
+	const parsed = Body.safeParse(raw);
+	if (!parsed.success) return noStore({
+		ok: false,
+		error: "bad request"
+	}, 400);
+	const { snapshot } = await loadCatalogue();
+	if (!snapshot) return noStore({
+		ok: false,
+		error: "unavailable"
+	}, 503, { "retry-after": "30" });
+	const customer = findCustomer(snapshot.catalogue.customers, slug);
+	if (!(verifyPassword("scrypt.131072.8.1._g1oMyCXpynil-UjMkRV6A.kDE0E3MbOAELEnV1TaVusK2eaqPCuAuUDNDNelCU-_0pt7QrRp6WrxyL9Tcb55vZ9xuy0gKNz_Q3-xQIqdtBGw", parsed.data.password) && Boolean(customer))) return noStore({
+		ok: false,
+		error: "invalid credentials"
+	}, 401);
+	const now = Date.now();
+	const session = newCustomerSession(slug, now);
+	cookies.set(customerCookieName(slug, customerRuntime.isSecureSite), makeCustomerToken(session, customerRuntime.secret), {
+		httpOnly: true,
+		secure: customerRuntime.isSecureSite,
+		sameSite: "lax",
+		path: "/",
+		maxAge: Math.max(1, Math.floor((session.exp - now) / 1e3))
+	});
+	return noStore({
+		ok: true,
+		redirect: `/${slug}`
+	});
+};
+var ALL = () => noStore({
+	ok: false,
+	error: "method not allowed"
+}, 405, { allow: "POST" });
+//#endregion
+//#region \0virtual:astro:page:src/pages/api/customers/[slug]/login@_@ts
+var page = () => login_exports;
+//#endregion
+export { page };

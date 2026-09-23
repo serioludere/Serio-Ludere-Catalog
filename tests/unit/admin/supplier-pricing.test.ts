@@ -73,6 +73,15 @@ describe('supplierRetail', () => {
     expect(supplierRetail('karavanrug', 600, undefined)).toBe(990); // 840 + 150, already a multiple of 5
   });
 
+  it('carries the studio’s own store price over as the retail price, never marked up again', () => {
+    // serioludere.com already sells at retail (owner, 2026-09-23): 1315 there is 1315 here.
+    expect(supplierRetail('serioludere', 1315, 1.6, 5)).toBe(1315);
+    expect(supplierRetail('serioludere', 1315, undefined, 5)).toBe(1315);
+    // Only the rounding step still applies, exactly as it does to every other rule.
+    expect(supplierRetail('serioludere', 1312.5, 1.6, 5)).toBe(1315);
+    expect(supplierRetail('serioludere', 0, 1.6)).toBeUndefined();
+  });
+
   it('falls back to the plain multiplier for owned stock and anything unrecognised', () => {
     expect(supplierRetail('', 700, 1.6, 5)).toBe(1120);
     expect(supplierRetail('somewhere-else', 700, 2, 5)).toBe(1400);
@@ -95,6 +104,7 @@ describe('pricingRuleName', () => {
   it('names the rule for each supplier that has one, so the form can show what was applied', () => {
     expect(pricingRuleName('karavanrug')).toContain('0.7');
     expect(pricingRuleName('ecarpetgallery')).toContain('1.5');
+    expect(pricingRuleName('serioludere')).toBe("serioludere: the store's own price");
   });
 
   it('names nothing for a supplier priced by the plain multiplier', () => {

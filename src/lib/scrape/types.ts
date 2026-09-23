@@ -51,6 +51,8 @@ export const SCRAPED_FIELDS = [
   'method',
   'age',
   'origin',
+  'pile',
+  'shape',
   'seenPrice',
   'seenCurrency',
   'priceUsd',
@@ -83,6 +85,10 @@ export interface ScrapedRug {
   method?: string;
   age?: string;
   origin?: string;
+  /** `Thick Pile`, `No Pile` — the Products sheet's Pile column; shown to the buyer in the popup. */
+  pile?: string;
+  /** `Rectangular`, `Round`, `Runner` — the Products sheet's Shape column. */
+  shape?: string;
   seenPrice?: number;
   seenCurrency?: string;
   currencyAssumed?: boolean;

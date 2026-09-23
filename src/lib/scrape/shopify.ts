@@ -31,6 +31,12 @@ export interface ShopifyProduct {
   variantSku?: string;
   images: string[];
   media: Array<{ src: string; width?: number; height?: number }>;
+  /** Shopify's Vendor — on the studio's own store, the shop the rug was bought from ("ECG", "KV"). */
+  vendor?: string;
+  /** Shopify's product type ("Carpets", "Textile Art"). */
+  productType?: string;
+  /** False when the store shows the rug as sold out; undefined when the payload does not say. */
+  available?: boolean;
   source: 'js' | 'json' | 'html';
 }
 
@@ -47,6 +53,9 @@ function num(v: unknown): number | undefined {
     return Number.isFinite(n) ? n : undefined;
   }
   return undefined;
+}
+function bool(v: unknown): boolean | undefined {
+  return typeof v === 'boolean' ? v : undefined;
 }
 function tagList(v: unknown): string[] {
   if (Array.isArray(v)) return v.filter((t): t is string => typeof t === 'string');
@@ -122,6 +131,9 @@ export function parseShopifyProduct(js?: string, json?: string): ShopifyProduct 
           variantSku: variant ? str(variant.sku) : undefined,
           images: tagList(p.images).map(absolute),
           media: imageEntries(p.media),
+          vendor: str(p.vendor)?.trim() || undefined,
+          productType: str(p.type)?.trim() || undefined,
+          available: bool(p.available) ?? (variant ? bool(variant.available) : undefined),
           source: 'js',
         };
       }
@@ -144,6 +156,9 @@ export function parseShopifyProduct(js?: string, json?: string): ShopifyProduct 
           variantSku: variant ? str(variant.sku) : undefined,
           images: imageEntries(p.images).map((i) => i.src),
           media: imageEntries(p.images),
+          vendor: str(p.vendor)?.trim() || undefined,
+          productType: str(p.product_type)?.trim() || undefined,
+          available: variant ? bool(variant.available) : undefined,
           source: 'json',
         };
       }

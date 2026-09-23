@@ -82,3 +82,35 @@ describe('parseFeetInchesSide (ECG Width / Length rows)', () => {
     expect(ftInToCm(2, 11)).toBe(89);
   });
 });
+
+describe('parseSize: the studio store’s formats (owner, 2026-09-23)', () => {
+  it('reads a cm pair with the unit on both sides, and "by" for "x"', () => {
+    expect(parseSize('Size: 170 cm x 259 cm')).toMatchObject({ widthCm: 170, lengthCm: 259, source: 'cm' });
+    expect(parseSize('92 cm x 107 cm')).toMatchObject({ widthCm: 92, lengthCm: 107 });
+    expect(parseSize('170 cm by 259 cm')).toMatchObject({ widthCm: 170, lengthCm: 259 });
+  });
+  it('prefers the cm pair ECG prints in brackets after its spelled-out feet', () => {
+    expect(parseSize('5-Feet 7-Inch by 8-Feet 6-Inch (170 cm x 259 cm)')).toMatchObject({
+      widthCm: 170,
+      lengthCm: 259,
+      sizeRaw: '170 cm x 259 cm',
+      source: 'cm',
+    });
+  });
+  it('converts spelled-out feet and inches when there is no cm', () => {
+    // The store's own cm for this rug is 185 x 272, which is what the conversion gives.
+    expect(parseSize('6-Feet 1-Inch by 8-Feet 11-Inch')).toMatchObject({
+      widthCm: 185,
+      lengthCm: 272,
+      source: 'ftin',
+    });
+    expect(parseSize('9-Feet by 12-Feet')).toMatchObject({ widthCm: 274, lengthCm: 366 });
+    expect(parseSize('6 ft 1 in x 8 ft 11 in')).toMatchObject({ widthCm: 185, lengthCm: 272 });
+  });
+  it('still ignores what only looks like a size', () => {
+    expect(parseSize('x')).toBeUndefined();
+    expect(parseSize('Medium')).toBeUndefined();
+    expect(parseSize('Made in 1960 by 12 weavers')).toBeUndefined();
+    expect(parseSize('3 feet by the door')).toBeUndefined();
+  });
+});

@@ -419,6 +419,35 @@ describe('add mode', () => {
     expect(val('f_price')).toBe('1335');
   });
 
+  it('fills Pile and Shape from a scrape of the studio’s own store, and names the price rule', () => {
+    // Owner, 2026-09-23: serioludere.com prints Pile and Shape, and its price is already retail.
+    form = mount(() => ({ status: 500, body: {} }));
+    form.applyScrape({
+      ...scraped,
+      supplier: 'serioludere',
+      supplierRef: '349281',
+      sourceUrl: 'https://serioludere.com/products/nepal-silk-touch-rug',
+      pile: 'Thick Pile',
+      shape: 'Rectangular',
+      seenPrice: 1315,
+      priceUsd: 1315,
+      suggestedRetailUsd: 1315,
+      markupApplied: undefined,
+      pricingRule: "serioludere: the store's own price",
+    });
+    expect(val('f_pile')).toBe('Thick Pile');
+    expect(val('f_shape')).toBe('Rectangular');
+    expect(val('f_price')).toBe('1315');
+    expect(val('f_supplier')).toBe('serioludere');
+    // Not "set retail_markup in Settings": a supplier with its own rule ignores that setting.
+    expect(text('priceHint')).toBe("Supplier price $1,315 → serioludere: the store's own price → $1,315");
+    expect(form.collect()).toMatchObject({ pile: 'Thick Pile', shape: 'Rectangular' });
+    // A scrape that says nothing about them clears what the last one filled.
+    form.applyScrape(scraped);
+    expect(val('f_pile')).toBe('');
+    expect(form.collect()).toMatchObject({ pile: '', shape: '' });
+  });
+
   it('keeps the markers out of the tags, and sends both in the one cell', () => {
     /* Owner, 2026-09-21: Signed and Antique are MARKERS, not tags. They are what the buyer sees in
        the corner of the card, the tags are the studio's own filing, and putting them in one box made
@@ -687,6 +716,16 @@ describe('edit mode', () => {
     expect(val('f_version')).toBe('c'.repeat(16));
     expect(cls('m2')).toBe('msg on ok');
     expect(text('m2')).toContain('Saved name');
+  });
+
+  it('loads Pile and Shape from the row and sends them back, so a save no longer blanks them', async () => {
+    const form = mount(() => ({ status: 200, body: { ok: true, rug, changed: ['name'] } }));
+    form.fill({ ...rug, pile: 'No Pile', shape: 'Round' });
+    expect(val('f_pile')).toBe('No Pile');
+    expect(val('f_shape')).toBe('Round');
+    set('f_name', 'Winks II');
+    await form.save();
+    expect(calls[0]?.body).toMatchObject({ name: 'Winks II', pile: 'No Pile', shape: 'Round' });
   });
 
   it('ticks the material and method the row carries, and keeps an unlisted one', async () => {

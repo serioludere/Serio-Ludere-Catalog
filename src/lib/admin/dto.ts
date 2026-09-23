@@ -89,6 +89,13 @@ export const RugInput = z.object({
   method: Text(80),
   age: Text(80),
   origin: Text(80),
+  /**
+   * The Pile and Shape columns (owner, 2026-09-23). Both were in the sheet and Pile is shown to the
+   * buyer in the product popup, but the form never sent them — so every save wrote them blank. Now
+   * the scrape fills them and the form carries them.
+   */
+  pile: Text(80),
+  shape: Text(80),
   priceUsd: z.number().min(0).max(1_000_000).multipleOf(0.01).optional(),
   rotate: z.enum(['force', 'true', 'false']).default('false'),
   featured: z.boolean().default(false),

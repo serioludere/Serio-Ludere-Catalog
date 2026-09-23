@@ -167,8 +167,8 @@ export function inferredHints(map: Partial<FieldStatusMap> | undefined): Partial
 /**
  * Resolves every derivation a `ScrapedProduct` carries and completes its `fieldStatus`: the Size
  * Label and Size Band from `src/lib/size.ts`, the primary image, and `found` / `inferred` / `missing`
- * for all 20 fields. A hint can only mark a present field as `inferred` — a status is never claimed
- * for a value that is not there. Pure and idempotent; the input is not mutated.
+ * for every field in SCRAPED_FIELDS. A hint can only mark a present field as `inferred` — a status
+ * is never claimed for a value that is not there. Pure and idempotent; the input is not mutated.
  */
 export function finaliseScraped(rug: ScrapedRug, hints: Partial<FieldStatusMap> = {}): ScrapedProduct {
   const out: ScrapedProduct = {

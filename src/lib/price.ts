@@ -79,16 +79,27 @@ export function ecarpetgalleryRetail(priceUsd: number): number {
   return priceUsd * 1.5 + 150;
 }
 
+/**
+ * serioludere.com is the studio's OWN store (owner, 2026-09-23): the price there is already the retail
+ * price a buyer pays, so it carries over as it is. The Settings multiplier would mark the studio's own
+ * price up a second time — a $1,315 rug suggested at $2,105.
+ */
+export function serioludereRetail(storePriceUsd: number): number {
+  return storePriceUsd;
+}
+
 /** Suppliers that carry an owner-supplied formula; anything else falls back to the Settings markup. */
 export const SUPPLIER_FORMULAS: Readonly<Record<string, (priceUsd: number) => number>> = {
   karavanrug: karavanRetail,
   ecarpetgallery: ecarpetgalleryRetail,
+  serioludere: serioludereRetail,
 };
 
 /** A human-readable name for the rule applied, shown next to the suggested price in the admin form. */
 export function pricingRuleName(supplier: string): string | undefined {
   if (supplier === 'karavanrug') return 'karavanrug: base × 0.7 × 2 + band';
   if (supplier === 'ecarpetgallery') return 'ecarpetgallery: USD × 1.5 + 150';
+  if (supplier === 'serioludere') return "serioludere: the store's own price";
   return undefined;
 }
 

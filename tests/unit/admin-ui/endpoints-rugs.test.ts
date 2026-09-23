@@ -217,6 +217,43 @@ describe('POST /api/admin/rugs (rug.create)', () => {
     expect(cleared.status).toBe(200);
     expect(sheet.row('Products', 5)[PRODUCT_COLS.textureImage]).toBe('');
   });
+  it('writes Pile and Shape, and an edit that sends them back keeps them (owner, 2026-09-23)', async () => {
+    // Both columns were always in the sheet, but the form never sent them, so every save blanked them.
+    const res = await createPost(
+      ctx({
+        path: '/api/admin/rugs',
+        method: 'POST',
+        body: { ...baseInput, pile: 'Thick Pile', shape: 'Rectangular' },
+      }),
+    );
+    expect(res.status).toBe(201);
+    const created = (await res.json()).rug;
+    expect(created).toMatchObject({ pile: 'Thick Pile', shape: 'Rectangular' });
+    expect(sheet.row('Products', 5)[PRODUCT_COLS.pile]).toBe('Thick Pile');
+    expect(sheet.row('Products', 5)[PRODUCT_COLS.shape]).toBe('Rectangular');
+
+    const edited = await updatePost(
+      ctx({
+        path: `/api/admin/rugs/${created.id}`,
+        method: 'POST',
+        params: { id: created.id },
+        body: {
+          ...baseInput,
+          pile: created.pile,
+          shape: created.shape,
+          name: 'Renamed',
+          version: created.version,
+        },
+      }),
+    );
+    expect(edited.status).toBe(200);
+    const out = await edited.json();
+    expect(out.changed).toContain('name');
+    expect(out.changed).not.toContain('pile');
+    expect(sheet.row('Products', 5)[PRODUCT_COLS.pile]).toBe('Thick Pile');
+    expect(sheet.row('Products', 5)[PRODUCT_COLS.shape]).toBe('Rectangular');
+  });
+
   it('honours a typed id / slug, refuses duplicates (409) and a number below the sequence (422)', async () => {
     const dup = await createPost(
       ctx({ path: '/api/admin/rugs', method: 'POST', body: { ...baseInput, id: 'sl-021' } }),

@@ -1,7 +1,8 @@
 // Saves a supplier product page / Shopify payload through the scraper's own fetch layer into
 // tests/fixtures/scrape/ (docs/ADMIN_SPEC.md Phase 9). Usage:
 //   node scripts/scrape-fixture.ts <product url> [--jina] [--out <dir>]
-// ECG → <out>/ecg-<sku>.html; KV → <out>/kv-<handle>.js.json, .json and .html.
+// ECG → <out>/ecg-<sku>.html; KV → <out>/kv-<handle>.js.json, .json and .html; the studio's own
+// store (serioludere.com) → the same three files under sl-<handle>.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { detectSupplier } from '../src/lib/scrape/detect.ts';
@@ -45,9 +46,14 @@ async function main(): Promise<void> {
     save(dir, `ecg-${det.sku}.html`, res);
     return;
   }
-  save(dir, `kv-${det.handle}.js.json`, await fetchText(det.jsUrl, 'impit', { ...opts, kind: 'json' }));
-  save(dir, `kv-${det.handle}.json`, await fetchText(det.jsonUrl, 'impit', { ...opts, kind: 'json' }));
-  save(dir, `kv-${det.handle}.html`, await fetchText(det.htmlUrl, 'impit', { ...opts, kind: 'html' }));
+  const prefix = det.supplier === 'serioludere' ? 'sl' : 'kv';
+  save(
+    dir,
+    `${prefix}-${det.handle}.js.json`,
+    await fetchText(det.jsUrl, 'impit', { ...opts, kind: 'json' }),
+  );
+  save(dir, `${prefix}-${det.handle}.json`, await fetchText(det.jsonUrl, 'impit', { ...opts, kind: 'json' }));
+  save(dir, `${prefix}-${det.handle}.html`, await fetchText(det.htmlUrl, 'impit', { ...opts, kind: 'html' }));
 }
 
 main().catch((e: unknown) => {

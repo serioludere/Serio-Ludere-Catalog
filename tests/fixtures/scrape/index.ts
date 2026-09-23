@@ -28,6 +28,8 @@ export const SUPPLIER_TEST_HOSTS: readonly string[] = [
   'www.ecarpetgallery.com',
   'karavanrug.com',
   'www.karavanrug.com',
+  'serioludere.com',
+  'www.serioludere.com',
   'r.jina.ai',
 ];
 

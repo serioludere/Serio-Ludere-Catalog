@@ -10,7 +10,7 @@
 // and where it is filed, then what it is, then what it cost:
 //
 //   photos · name + collections · tags · description · supplier link · size · material + method ·
-//   age + origin · price + supplier · notes · what the supplier said · Save
+//   age + origin · pile + shape · price + supplier · notes · what the supplier said · Save
 //
 // The supplier's own measurement and price sit at the BOTTOM with the scrape warnings: they are
 // provenance for a number already in the form above, not a field to fill in.
@@ -125,7 +125,7 @@ const methodOptions = termOptions(rug?.method, METHOD_OPTIONS);
             <div class="grow">
               <input
                 id="url"
-                placeholder="ecarpetgallery.com or karavanrug.com"
+                placeholder="ecarpetgallery.com, karavanrug.com or serioludere.com"
                 inputmode="url"
                 autocomplete="off"
               />
@@ -329,6 +329,19 @@ const methodOptions = termOptions(rug?.method, METHOD_OPTIONS);
     <div class="f">
       <label for="f_origin">Origin</label>
       <input id="f_origin" value={rug?.origin ?? ''} />
+    </div>
+
+    {
+      /* Owner, 2026-09-23: the sheet always had Pile and Shape, and the buyer's popup shows Pile, but
+        nothing on this form set them — every save wrote both blank. The scrape fills them now. */
+    }
+    <div class="f">
+      <label for="f_pile">Pile</label>
+      <input id="f_pile" value={rug?.pile ?? ''} placeholder="Thick Pile, No Pile…" />
+    </div>
+    <div class="f">
+      <label for="f_shape">Shape</label>
+      <input id="f_shape" value={rug?.shape ?? ''} placeholder="Rectangular, Round…" />
     </div>
 
     <div class="f">

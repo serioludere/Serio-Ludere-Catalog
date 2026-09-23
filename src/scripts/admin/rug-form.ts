@@ -43,6 +43,9 @@ export interface RugLike {
   material: string;
   age: string;
   origin: string;
+  /** The Pile and Shape columns (owner, 2026-09-23); optional so older fixtures still type. */
+  pile?: string;
+  shape?: string;
   method: string;
   priceUsd?: number;
   rotate: 'force' | 'true' | 'false';
@@ -81,11 +84,15 @@ export interface ScrapedLike {
   method?: string;
   age?: string;
   origin?: string;
+  pile?: string;
+  shape?: string;
   seenPrice?: number;
   seenCurrency?: string;
   priceUsd?: number;
   suggestedRetailUsd?: number;
   markupApplied?: number;
+  /** The supplier's own retail rule when one applied, e.g. "serioludere: the store's own price". */
+  pricingRule?: string;
   roundStep?: number;
   retailEstimate?: string;
   tagsSuggested: string[];
@@ -115,6 +122,8 @@ export interface RugBody {
   method: string;
   age: string;
   origin: string;
+  pile: string;
+  shape: string;
   priceUsd?: number;
   rotate: string;
   featured: boolean;
@@ -273,6 +282,8 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     length: input('f_length'),
     age: input('f_age'),
     origin: input('f_origin'),
+    pile: input('f_pile'),
+    shape: input('f_shape'),
     price: input('f_price'),
     rotate: byId<HTMLSelectElement>('f_rotate', doc),
     featured: input('f_featured'),
@@ -488,6 +499,8 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     setTerms(methodGroup, splitTerms(rug.method, METHOD_OPTIONS), METHOD_OPTIONS);
     f.age.value = rug.age;
     f.origin.value = rug.origin;
+    f.pile.value = rug.pile ?? '';
+    f.shape.value = rug.shape ?? '';
     f.price.value = rug.priceUsd === undefined ? '' : String(rug.priceUsd);
     f.rotate.value = rug.rotate;
     f.featured.checked = rug.featured;
@@ -518,6 +531,8 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
       method: termValue(methodGroup, METHOD_OPTIONS),
       age: f.age.value.trim(),
       origin: f.origin.value.trim(),
+      pile: f.pile.value.trim(),
+      shape: f.shape.value.trim(),
       priceUsd: parsePrice(f.price.value),
       rotate: f.rotate.value,
       featured: f.featured.checked,
@@ -568,6 +583,8 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     );
     f.age.value = d.age ?? '';
     f.origin.value = d.origin ?? '';
+    f.pile.value = d.pile ?? '';
+    f.shape.value = d.shape ?? '';
     f.price.value = d.suggestedRetailUsd === undefined ? '' : String(d.suggestedRetailUsd);
     f.sourceUrl.value = d.sourceUrl ?? '';
     f.supplier.value = d.supplier ?? '';
@@ -583,6 +600,10 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
           priceHint,
           `Supplier price ${seen} → ×${d.markupApplied} → ${money(d.priceUsd * d.markupApplied)} → rounded ${money(d.suggestedRetailUsd)}`,
         );
+      } else if (d.suggestedRetailUsd !== undefined && d.pricingRule) {
+        /* A supplier with its own rule ignores the Settings markup (price.ts), so telling the studio to
+           set one was wrong for every scrape that had a rule — now it says which rule was used. */
+        setHint(priceHint, `Supplier price ${seen} → ${d.pricingRule} → ${money(d.suggestedRetailUsd)}`);
       } else {
         setHint(priceHint, `Supplier price ${seen} — set retail_markup in Settings to derive retail prices`);
       }
@@ -955,6 +976,8 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
       f.length,
       f.age,
       f.origin,
+      f.pile,
+      f.shape,
       f.price,
       f.sourceUrl,
       f.supplierRef,

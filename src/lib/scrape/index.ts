@@ -26,6 +26,7 @@ import { priceToUsd } from './money.ts';
 import { pricingRuleName, supplierRetail } from '../price.ts';
 import { RobotsCache, defaultRobotsCache, isPathAllowed, robotsAllows, type RobotsRules } from './robots.ts';
 import { looksLikeJson, parseShopifyProduct, shopifyRung, shouldProbeShopify } from './shopify.ts';
+import { NO_STORE_PRICE } from './storefront.ts';
 import { HostThrottle, defaultHostThrottle } from './throttle.ts';
 import {
   ScrapeError,
@@ -354,7 +355,15 @@ async function scrapeShopifyFirst(det: DetectedKaravan, ctx: Ctx): Promise<Attem
     refined ?? (rungs.length ? draftToRug(det.supplier, det.sourceUrl, merged, det.handle) : undefined);
   if (!data) return lastError ?? fail('parse_failed', 'the Shopify product payload could not be parsed');
   if (refined) fillBlanks(data, merged.values);
-  if (data.seenPrice === undefined)
+  // The generic rungs read the same 0.00 the adapter set aside; on the studio's store it is no price.
+  if (det.supplier === 'serioludere' && data.seenPrice !== undefined && !(data.seenPrice > 0)) {
+    data.seenPrice = undefined;
+    if (!data.warnings.includes(NO_STORE_PRICE)) data.warnings.push(NO_STORE_PRICE);
+  }
+  /* A supplier page without a price is broken — the retail figure is derived from it. The studio's
+     own store is different (owner, 2026-09-23): an unpriced rug there is simply not priced yet, and
+     everything else on the page is still worth having, so the form fills and asks for the price. */
+  if (data.seenPrice === undefined && det.supplier !== 'serioludere')
     return fail('parse_failed', 'no price in the Shopify product payload', undefined, data);
   return { ok: true, data, via };
 }

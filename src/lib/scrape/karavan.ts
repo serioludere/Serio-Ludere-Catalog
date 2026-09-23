@@ -25,6 +25,13 @@ import {
   type ShopifyProduct,
 } from './shopify.ts';
 import { parseSize } from './size.ts';
+import {
+  NO_STORE_PRICE,
+  proseFacts,
+  storefrontSpecs,
+  type ProseFacts,
+  type StorefrontSpecs,
+} from './storefront.ts';
 import type { FieldStatusMap, ScrapedRug, ShopifySupplier } from './types.ts';
 
 export { withWidth };
@@ -139,6 +146,12 @@ export function parseKaravan(
   if (!product) return undefined;
   const warnings: string[] = [];
   const { text, specs } = parseKaravanSpecs(product.descriptionHtml);
+  /* The studio's own store (owner, 2026-09-23) prints its facts in the theme, from metafields, and
+     writes its descriptions in ECG's words — see storefront.ts. Read for that shop only, so a KV page
+     is parsed exactly as it always was. */
+  const own = supplier === 'serioludere';
+  const store: StorefrontSpecs = own ? storefrontSpecs(src.html) : { colors: [], styles: [] };
+  const prose: ProseFacts = own ? proseFacts(text) : { colors: [], styles: [] };
 
   // brief §11 field status: anything KV did not print as a labelled spec is marked `inferred`.
   const fieldStatus: Partial<FieldStatusMap> = {};
@@ -165,14 +178,23 @@ export function parseKaravan(
   }
   seenCurrency = normaliseCurrency(seenCurrency) ?? 'USD';
 
-  const seenPrice = shopifyPrice(product) ?? ldPrice;
+  let seenPrice = shopifyPrice(product) ?? ldPrice;
+  /* A rug the studio has not priced yet shows 0.00 on its own store. That is "no price", not a price
+     of nothing: left blank for the studio to type, and not a reason to fail the scrape. */
+  if (own && seenPrice !== undefined && !(seenPrice > 0)) {
+    seenPrice = undefined;
+    warnings.push(NO_STORE_PRICE);
+  }
 
   const stockCode = specs.get('stock code');
-  const supplierRef = stockCode ?? product.variantSku ?? ldSku ?? handle;
+  const sku = product.variantSku?.trim() || ldSku?.trim() || '';
+  /* On the studio's own store the variant SKU IS the reference, and a rug without one simply has none:
+     the handle is not a SKU, and on the add form the reference becomes the product id. */
+  const supplierRef = own ? sku : (stockCode ?? product.variantSku ?? ldSku ?? handle);
   // No Stock Code on the page: the variant sku, the JSON-LD sku or the handle stands in for it.
-  if (!stockCode) fieldStatus.supplierRef = 'inferred';
+  if (!own && !stockCode) fieldStatus.supplierRef = 'inferred';
 
-  const sizeText = specs.get('size');
+  const sizeText = store.dimensions ?? specs.get('size');
   const sizeFromSpec = parseSize(sizeText);
   const size = sizeFromSpec ?? parseSize(product.title) ?? parseSize(text);
   if (size && (!sizeFromSpec || size.source !== 'cm')) {
@@ -183,11 +205,33 @@ export function parseKaravan(
   }
   if (size?.note) warnings.push(size.note);
 
-  const material = specs.get('material');
-  const technique = specs.get('technique');
+  // The page's own labelled fact first; what the description only says in passing is `inferred`.
+  const stated = (
+    fact: string | undefined,
+    fromProse: string | undefined,
+    field: 'material' | 'age' | 'origin' | 'pile',
+  ): string | undefined => {
+    if (fact) return fact;
+    if (fromProse) fieldStatus[field] = 'inferred';
+    return fromProse;
+  };
+  const material = stated(specs.get('material') ?? store.material, prose.material, 'material');
+  const technique = specs.get('technique') ?? store.method;
   const method = technique ?? firstKeyword(`${product.title}\n${text}`, KV_METHOD_KEYWORDS) ?? undefined;
   // Guessed from a keyword in the title/description rather than read from the Technique row.
   if (!technique && method) fieldStatus.method = 'inferred';
+  const age = stated(specs.get('age') ?? store.age, prose.age, 'age');
+  const origin = stated(specs.get('origin') ?? store.origin, prose.origin, 'origin');
+  const pile = stated(store.pile, prose.pile, 'pile');
+
+  if (own) {
+    const listing = [
+      product.vendor && `vendor ${product.vendor}`,
+      product.productType && `type ${product.productType}`,
+    ].filter(Boolean);
+    if (listing.length) warnings.push(`On the store: ${listing.join(', ')}`);
+    if (product.available === false) warnings.push('the store shows this rug as sold out');
+  }
 
   for (const key of ['dyes', 'condition'] as const) {
     const v = specs.get(key);
@@ -198,6 +242,8 @@ export function parseKaravan(
     [
       ...splitList(specs.get('colors') ?? specs.get('colours')),
       ...splitList(specs.get('style')),
+      ...(store.colors.length ? store.colors : prose.colors),
+      ...(store.styles.length ? store.styles : prose.styles),
       ...product.tags,
     ]
       .map(tidyTag)
@@ -226,8 +272,10 @@ export function parseKaravan(
     sizeRaw: sizeText ?? size?.sizeRaw,
     material,
     method,
-    age: specs.get('age'),
-    origin: specs.get('origin'),
+    age,
+    origin,
+    pile,
+    shape: store.shape,
     seenPrice,
     seenCurrency,
     currencyAssumed,

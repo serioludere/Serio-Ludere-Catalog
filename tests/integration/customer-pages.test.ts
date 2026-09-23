@@ -315,6 +315,41 @@ describe('/{slug} — the signed-in catalog', () => {
     expect(html).toMatch(/data-card[^>]*data-collections="[^"]*kilims/);
   });
 
+  it('puts a second, id-less copy of the unit/currency controls in the header for phones', async () => {
+    state.down = false;
+    const { html } = await render(CustomerCatalog, '/hala', { slug: 'hala' }, { customer: 'hala' });
+    // Owner, 2026-09-23: on a phone the controls sit on the wordmark's row.
+    const header = html.match(/<header[^>]*class="[^"]*pv-header[^"]*"[\s\S]*?<\/header>/)?.[0] ?? '';
+    expect(header).toMatch(/class="[^"]*pv-header--controls/);
+    expect(header).toMatch(/class="[^"]*pv-controls--header/);
+    expect(header).toMatch(/<div[^>]*data-unit-toggle[^>]*aria-label="Units"/);
+    expect(header).toMatch(/<select[^>]*data-cur[^>]*aria-label="Currency"/);
+    // The page copy keeps the ids; the header copy has none, so no id is ever duplicated.
+    expect(header).not.toMatch(/id="(unitTog|cur|sortBy)"/);
+    expect(html.match(/id="cur"/g)).toHaveLength(1);
+    expect(html.match(/id="unitTog"/g)).toHaveLength(1);
+  });
+
+  it('prints the Canada/US WhatsApp line ending 5157, on the catalog and on a not-found page', async () => {
+    state.down = false;
+    const catalog = await render(CustomerCatalog, '/hala', { slug: 'hala' }, { customer: 'hala' });
+    const missing = await render(CustomerCatalog, '/nobody', { slug: 'nobody' });
+    const missingRug = await render(
+      CustomerDetail,
+      '/hala/SL-999',
+      { slug: 'hala', productId: 'SL-999' },
+      { customer: 'hala' },
+    );
+    expect(missing.status).toBe(404);
+    expect(missingRug.status).toBe(404);
+    for (const { html } of [catalog, missing, missingRug]) {
+      expect(html).toContain('href="https://wa.me/16475615157"');
+      expect(html).toContain('+1 647 561 5157');
+      expect(html).not.toContain('5615156');
+      expect(html).not.toContain('561 5156');
+    }
+  });
+
   it('carries each collection’s description on its tab, for the intro line under the strip', async () => {
     state.down = false;
     const { html } = await render(CustomerCatalog, '/hala', { slug: 'hala' }, { customer: 'hala' });

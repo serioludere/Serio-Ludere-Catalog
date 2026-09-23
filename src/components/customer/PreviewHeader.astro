@@ -35,9 +35,12 @@ interface Props {
   back?: { href: string; label: string; shortLabel?: string };
 }
 const { home, back } = Astro.props;
+// Owner, 2026-09-23: on a phone the catalog's unit/currency controls sit on the wordmark's row. The
+// catalog passes its header copy of PreviewControls as the default slot; it shows only below 768.
+const controls = Astro.slots.has('default');
 ---
 
-<header class:list={['pv-header', back && 'pv-header--detail']}>
+<header class:list={['pv-header', back && 'pv-header--detail', controls && 'pv-header--controls']}>
   {
     back ? (
       <>
@@ -65,6 +68,7 @@ const { home, back } = Astro.props;
           SERIO LUDERE
         </a>
         <span class="pv-spacer" aria-hidden="true" />
+        <slot />
       </>
     )
   }
@@ -94,6 +98,18 @@ const { home, back } = Astro.props;
     }
     .pv-back-short {
       display: inline;
+    }
+    /* The controls are 36 tall against the wordmark's ~19, so the row sheds half its padding and
+       stays the 52 it was: 8 + 36 + 8. The gaps tighten and the spacer gives up its minimum so the
+       row still fits a 320 phone inside its gutters; anything narrower wraps the controls under the
+       wordmark rather than pushing them past the edge. */
+    .pv-header--controls {
+      padding-block: var(--stack-sm);
+      gap: var(--stack-sm);
+      flex-wrap: wrap;
+    }
+    .pv-header--controls .pv-spacer {
+      min-width: 0;
     }
   }
 </style>

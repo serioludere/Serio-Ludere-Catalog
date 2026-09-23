@@ -91,7 +91,11 @@ const title = 'Serio Ludere';
   {
     !error && customer && signedIn && (
       <>
-        <PreviewHeader home={`/${slug}`} />
+        {/* On a phone the unit/currency controls sit on the wordmark's row (owner, 2026-09-23); the
+            copy in the title row below serves every wider screen. */}
+        <PreviewHeader home={`/${slug}`}>
+          <PreviewControls rates={rates} placement="header" />
+        </PreviewHeader>
         <main class="pv-main">
           <section class="pv-wrap pv-title">
             <div class="pv-title-row">
@@ -202,7 +206,11 @@ const title = 'Serio Ludere';
        small step inside a large one is what makes the rhythm read as deliberate. */
     margin-top: var(--stack-xl);
     max-width: none;
-    font-size: var(--text-base);
+    /* Owner, 2026-09-23: twice the size — the description is the collection's introduction, not a
+       caption under the tabs. */
+    font-size: calc(var(--text-base) * 2);
+    /* The body's 1.65 is a small-text leading; at this size it opens the lines into stripes. */
+    line-height: 1.4;
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 3;
@@ -248,16 +256,15 @@ const title = 'Serio Ludere';
       grid-template-columns: 1fr;
       row-gap: var(--stack-xl);
     }
-    /* The collection tabs and the unit/currency controls share this row (owner, 2026-09-17). Neither
-       can shrink below its content — a tab label and "ft"/a currency code all refuse to break — so
-       the row wraps rather than scrolling the whole page sideways. The spacer has no base width, so
-       it only takes up slack on the line it lands on and never forces the break itself. */
+    /* The tabs have this row to themselves on a phone: the unit/currency controls moved up to the
+       wordmark's row (owner, 2026-09-23), so this copy of them stands down, and the spacer with it. */
     .pv-title-row {
       gap: var(--stack-sm);
       flex-wrap: wrap;
     }
-    .pv-title-row .pv-spacer {
-      min-width: var(--stack-sm);
+    .pv-title-row .pv-spacer,
+    .pv-title-row :global(.pv-controls) {
+      display: none;
     }
     .pv-state {
       padding-inline: var(--stack-lg);

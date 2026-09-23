@@ -101,7 +101,8 @@ describe('orderedCollectionNames', () => {
       { collection: 'Kilims', collections: ['Kilims', 'Antique'] },
       { collection: 'Tulu', collections: ['Tulu'] },
     ] as Product[];
-    expect(orderedCollectionNames(products, COLLECTIONS)).toEqual(['Kilims', 'Tulu', 'Antique']);
+    // Tulu before Kilims: the studio's fixed order (STUDIO_COLLECTION_ORDER) beats sort_order.
+    expect(orderedCollectionNames(products, COLLECTIONS)).toEqual(['Tulu', 'Kilims', 'Antique']);
   });
 });
 

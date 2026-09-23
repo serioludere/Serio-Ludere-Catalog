@@ -48,30 +48,127 @@
   } catch (e) {
     /* ignore */
   }
+  var curGuess = [];
+  try {
+    // The visitor's likely currency (owner, 2026-09-23): the browser's own time zone first, then the
+    // region of its languages — no IP lookup, no third party. It is only a default: a choice made in
+    // the picker is saved to `sl-cur` and always wins, and the guess itself is never saved, so a
+    // traveller is guessed afresh on the next visit. The result is left on <html data-cur-guess> for
+    // prefs.ts, so these tables exist once. A zone beats a language because "en-US" is the default
+    // language of half the world's phones, while the clock is set to where the phone actually is.
+    var ZONES = {
+      MXN:
+        'America/Mexico_City America/Cancun America/Merida America/Monterrey America/Matamoros ' +
+        'America/Chihuahua America/Ciudad_Juarez America/Ojinaga America/Mazatlan America/Bahia_Banderas ' +
+        'America/Hermosillo America/Tijuana America/Ensenada America/Santa_Isabel Mexico/General ' +
+        'Mexico/BajaNorte Mexico/BajaSur',
+      CAD:
+        'America/Toronto America/Montreal America/Vancouver America/Edmonton America/Winnipeg ' +
+        'America/Halifax America/St_Johns America/Regina America/Swift_Current America/Moncton ' +
+        'America/Glace_Bay America/Goose_Bay America/Whitehorse America/Dawson America/Dawson_Creek ' +
+        'America/Fort_Nelson America/Creston America/Iqaluit America/Rankin_Inlet America/Resolute ' +
+        'America/Cambridge_Bay America/Inuvik America/Yellowknife America/Atikokan America/Blanc-Sablon ' +
+        'America/Nipigon America/Thunder_Bay America/Rainy_River America/Pangnirtung',
+      USD:
+        'America/New_York America/Chicago America/Denver America/Los_Angeles America/Phoenix ' +
+        'America/Anchorage America/Juneau America/Sitka America/Yakutat America/Nome America/Metlakatla ' +
+        'America/Adak America/Boise America/Detroit America/Menominee America/Puerto_Rico Pacific/Honolulu',
+      GBP: 'Europe/London Europe/Belfast Europe/Guernsey Europe/Jersey Europe/Isle_of_Man GB GB-Eire',
+      AED: 'Asia/Dubai',
+      SAR: 'Asia/Riyadh',
+      EUR:
+        'Atlantic/Canary Atlantic/Madeira Atlantic/Azores Africa/Ceuta Asia/Nicosia Asia/Famagusta ' +
+        'Arctic/Longyearbyen Eire',
+      // Europe/* means EUR below — the picker has no CHF, SEK or PLN — except where it plainly is not.
+      NONE:
+        'Europe/Moscow Europe/Kirov Europe/Volgograd Europe/Samara Europe/Ulyanovsk Europe/Astrakhan ' +
+        'Europe/Saratov Europe/Kaliningrad Europe/Istanbul Europe/Minsk Europe/Simferopol',
+    };
+    var PREFIXES = [
+      ['Canada/', 'CAD'],
+      ['US/', 'USD'],
+      ['America/Indiana/', 'USD'],
+      ['America/Kentucky/', 'USD'],
+      ['America/North_Dakota/', 'USD'],
+      ['Europe/', 'EUR'],
+    ];
+    var REGIONS = {
+      MXN: 'MX',
+      CAD: 'CA',
+      USD: 'US PR',
+      GBP: 'GB GG JE IM',
+      AED: 'AE',
+      SAR: 'SA',
+      EUR:
+        'AD AT BE BG CY DE EE ES FI FR GR HR IE IT LT LU LV MC ME MT NL PT SI SK SM VA XK ' +
+        'AL BA CH CZ DK HU IS LI MD MK NO PL RO RS SE UA',
+    };
+    var listed = function (list, key) {
+      return (' ' + list + ' ').indexOf(' ' + key + ' ') >= 0;
+    };
+    var tz = '';
+    try {
+      tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    } catch (e) {
+      /* no Intl: languages only */
+    }
+    var byZone = '';
+    for (var zc in ZONES) if (tz && listed(ZONES[zc], tz)) byZone = zc;
+    if (!byZone)
+      for (var p = 0; p < PREFIXES.length; p++)
+        if (tz.indexOf(PREFIXES[p][0]) === 0) {
+          byZone = PREFIXES[p][1];
+          break;
+        }
+    if (byZone && byZone !== 'NONE') curGuess.push(byZone);
+    var langs =
+      navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language];
+    for (var g = 0; g < langs.length; g++) {
+      var parts = String(langs[g] || '').split(/[-_]/);
+      for (var sub = 1; sub < parts.length; sub++) {
+        if (!/^[A-Za-z]{2}$/.test(parts[sub])) continue;
+        for (var rc in REGIONS)
+          if (listed(REGIONS[rc], parts[sub].toUpperCase()) && curGuess.indexOf(rc) < 0) curGuess.push(rc);
+      }
+    }
+    if (curGuess.length) document.documentElement.setAttribute('data-cur-guess', curGuess.join(' '));
+  } catch (e) {
+    /* ignore */
+  }
   try {
     // Unit + currency (src/scripts/prefs.ts owns the interaction; this mirrors its first render so a
     // returning visitor never sees cm/USD flash before their saved choice, and prices are grouped in
-    // the visitor's locale from the start, exactly as prefs.ts will re-render them).
+    // the visitor's locale from the start, exactly as prefs.ts will re-render them). The controls
+    // can appear twice — the catalog's phone header carries its own copy (owner, 2026-09-23) — so
+    // every copy is set, by id or by data attribute.
     var unit = localStorage.getItem('sl-unit') === 'ft' ? 'ft' : 'cm';
-    var cur = localStorage.getItem('sl-cur') || 'USD';
+    var curWanted = [localStorage.getItem('sl-cur') || ''].concat(curGuess);
     var ratesEl = document.getElementById('sl-rates');
     var table = ratesEl && ratesEl.textContent ? JSON.parse(ratesEl.textContent) : {};
     var rates = table.rates || {};
     var symbols = table.symbols || {};
     if (typeof rates.USD !== 'number') rates.USD = 1;
     if (typeof symbols.USD !== 'string') symbols.USD = '$';
-    var select = document.getElementById('cur');
-    var offered = false;
-    if (select && select.options)
-      for (var o = 0; o < select.options.length; o++) if (select.options[o].value === cur) offered = true;
-    if (!offered || typeof rates[cur] !== 'number' || typeof symbols[cur] !== 'string') cur = 'USD';
-    var toggles = document.querySelectorAll('#unitTog button[data-u]');
+    var selects = document.querySelectorAll('#cur, select[data-cur]');
+    var select = selects[0];
+    var cur = 'USD';
+    for (var cw = 0; cw < curWanted.length; cw++) {
+      var offered = false;
+      if (select && select.options)
+        for (var o = 0; o < select.options.length; o++)
+          if (select.options[o].value === curWanted[cw]) offered = true;
+      if (offered && typeof rates[curWanted[cw]] === 'number' && typeof symbols[curWanted[cw]] === 'string') {
+        cur = curWanted[cw];
+        break;
+      }
+    }
+    var toggles = document.querySelectorAll('#unitTog button[data-u], [data-unit-toggle] button[data-u]');
     for (var t = 0; t < toggles.length; t++) {
       var isOn = toggles[t].getAttribute('data-u') === unit;
       toggles[t].classList.toggle('on', isOn);
       toggles[t].setAttribute('aria-pressed', isOn ? 'true' : 'false');
     }
-    if (select) select.value = cur;
+    for (var sl = 0; sl < selects.length; sl++) selects[sl].value = cur;
     var ftIn = function (cm) {
       var total = cm / 2.54;
       var ft = Math.floor(total / 12);

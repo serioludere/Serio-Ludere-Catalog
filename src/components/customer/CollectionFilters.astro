@@ -10,9 +10,9 @@
 // This strip now shares its row with the unit/currency controls (owner, 2026-09-17): "The
 // collection" heading it used to sit under is gone, which is what freed the space.
 //
-// The row wraps on desktop but not on a phone: at 390 it scrolls sideways and the last tab is cut at
-// the frame edge rather than folding onto a second line. The cut IS the affordance, which is why no
-// scrollbar is drawn.
+// The row wraps at every width (owner, 2026-09-23). A phone used to scroll it sideways with the last
+// tab cut at the frame edge as the only hint, and buyers never guessed there were more tabs to slide
+// to — every collection is now on screen, on a second line where it needs one.
 interface Props {
   collections: Array<{ slug: string; name: string; count: number; description?: string }>;
 }
@@ -81,17 +81,11 @@ const { collections } = Astro.props;
 
   @media (max-width: 767px) {
     .pv-filters {
-      /* Claims the whole row inside .pv-title-row (src/pages/[slug]/index.astro), so the shared
-         unit/currency controls wrap onto their own line below it rather than being squeezed. */
+      /* Claims the whole row inside .pv-title-row (src/pages/[slug]/index.astro); the unit/currency
+         controls live in the header on a phone. The lines sit closer than the tabs do across. */
       flex: 1 1 100%;
-      flex-wrap: nowrap;
-      gap: var(--stack-lg);
-      overflow-x: auto;
-      overscroll-behavior-x: contain;
-      scrollbar-width: none;
-    }
-    .pv-filters::-webkit-scrollbar {
-      display: none;
+      column-gap: var(--stack-lg);
+      row-gap: var(--stack-sm);
     }
     .pv-chip {
       flex: none;

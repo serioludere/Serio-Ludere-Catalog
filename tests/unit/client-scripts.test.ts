@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { initPrefs, readTable, render } from '../../src/scripts/prefs.ts';
+import { PREFS_RENDER_EVENT, initPrefs, readTable, render } from '../../src/scripts/prefs.ts';
 import { initTabs } from '../../src/scripts/tabs.ts';
 import { ReactionBuffer, bindVotes, paint, readSaved } from '../../src/scripts/votes.ts';
 
@@ -312,5 +312,66 @@ describe('prefs.ts', () => {
     select.dispatchEvent(new Event('change'));
     expect(localStorage.getItem('sl-cur')).toBe('MXN');
     expect(document.querySelector('[data-price]')?.textContent).toMatch(/10[,.\s]?080/);
+  });
+
+  describe('the guessed currency (prepaint.js leaves it on <html data-cur-guess>)', () => {
+    afterEach(() => {
+      delete document.documentElement.dataset.curGuess;
+    });
+    it('starts in the guess when nothing is saved, and never saves it', () => {
+      page(dom);
+      document.documentElement.dataset.curGuess = 'MXN';
+      initPrefs();
+      expect((document.getElementById('cur') as HTMLSelectElement).value).toBe('MXN');
+      expect(document.querySelector('[data-price]')?.textContent).toMatch(/10[,.\s]?080/);
+      expect(localStorage.getItem('sl-cur')).toBeNull();
+    });
+    it('lets a saved choice beat the guess', () => {
+      page(dom);
+      document.documentElement.dataset.curGuess = 'MXN';
+      localStorage.setItem('sl-cur', 'USD');
+      initPrefs();
+      expect((document.getElementById('cur') as HTMLSelectElement).value).toBe('USD');
+    });
+    it('takes the first guess the sheet can price, else USD', () => {
+      page(dom); // EUR is offered in the picker but has no rate
+      document.documentElement.dataset.curGuess = 'EUR MXN';
+      initPrefs();
+      expect((document.getElementById('cur') as HTMLSelectElement).value).toBe('MXN');
+      page(dom);
+      document.documentElement.dataset.curGuess = 'EUR GBP';
+      initPrefs();
+      expect((document.getElementById('cur') as HTMLSelectElement).value).toBe('USD');
+    });
+    it('repaints on the render event without turning the guess into a saved choice', () => {
+      page(dom);
+      document.documentElement.dataset.curGuess = 'MXN';
+      initPrefs();
+      // The product dialog clones fresh nodes in, rendered in USD by the server.
+      document.body.insertAdjacentHTML('beforeend', '<p data-price data-usd="576" id="fresh">$576</p>');
+      document.dispatchEvent(new Event(PREFS_RENDER_EVENT));
+      expect(document.getElementById('fresh')?.textContent).toMatch(/10[,.\s]?080/);
+      expect(localStorage.getItem('sl-cur')).toBeNull();
+    });
+  });
+
+  it('keeps the phone header’s copy of the controls in step with the page copy', () => {
+    page(`${dom}
+      <div data-unit-toggle><button data-u="cm" class="on" aria-pressed="true">cm</button><button data-u="ft" aria-pressed="false">ft</button></div>
+      <select data-cur id="headerCur"><option>USD</option><option>MXN</option><option>EUR</option></select>`);
+    initPrefs();
+    const header = document.getElementById('headerCur') as HTMLSelectElement;
+    const main = document.getElementById('cur') as HTMLSelectElement;
+    expect([...header.options].find((o) => o.value === 'EUR')?.disabled).toBe(true);
+    header.value = 'MXN';
+    header.dispatchEvent(new Event('change'));
+    expect(main.value).toBe('MXN');
+    expect(localStorage.getItem('sl-cur')).toBe('MXN');
+    document.querySelector<HTMLButtonElement>('[data-unit-toggle] button[data-u="ft"]')!.click();
+    expect(document.querySelector('#unitTog button[data-u="ft"]')?.getAttribute('aria-pressed')).toBe('true');
+    expect(document.querySelector('[data-dims]')?.textContent).toContain(`4' 5"`);
+    main.value = 'USD';
+    main.dispatchEvent(new Event('change'));
+    expect(header.value).toBe('USD');
   });
 });

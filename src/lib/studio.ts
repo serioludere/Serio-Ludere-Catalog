@@ -7,8 +7,8 @@ export const STUDIO_INSTAGRAM_LABEL = '@serioluderestudio';
 // Owner, 2026-09-13: the studio's catalogue-footer number moved to Mexico.
 export const STUDIO_WHATSAPP = '525535760978';
 export const STUDIO_PHONE_LABEL = '+52 55 3576 0978';
-// Owner, 2026-09-16: a second line, Canada/US.
-export const STUDIO_WHATSAPP_2 = '16475615156';
-export const STUDIO_PHONE_LABEL_2 = '+1 647 561 5156';
+// Owner, 2026-09-16: a second line, Canada/US. Corrected 2026-09-23: it ends 5157, not 5156.
+export const STUDIO_WHATSAPP_2 = '16475615157';
+export const STUDIO_PHONE_LABEL_2 = '+1 647 561 5157';
 export const STUDIO_EMAIL = 'hello@serioludere.com';
 export const STUDIO_NAME = 'Serio Ludere';

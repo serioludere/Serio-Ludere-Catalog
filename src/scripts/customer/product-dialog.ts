@@ -4,6 +4,7 @@
 // The cards remain ordinary links, so middle-click, ⌘/Ctrl-click, "open in new tab" and a browser
 // without JavaScript all still reach `/{slug}/{id}`. Only a plain left click is intercepted.
 import { bindPreviewGallery } from '../preview-gallery.ts';
+import { PREFS_RENDER_EVENT } from '../prefs.ts';
 import { paint, readSaved } from '../votes.ts';
 
 export interface ProductDialogBindings {
@@ -42,8 +43,9 @@ export function bindProductDialog(opts: ProductDialogBindings = {}): () => void 
     // The thumbnail strip is bound per open, because the strip it binds is the one just cloned in.
     releaseGallery = bindPreviewGallery({ doc });
     // Sizes and prices are rendered in the visitor's chosen unit and currency by prefs.ts, which
-    // paints on load and on change — so the freshly cloned nodes are told to catch up.
-    doc.getElementById('cur')?.dispatchEvent(new Event('change', { bubbles: true }));
+    // paints on load and on change — so the freshly cloned nodes are told to catch up. Its own event,
+    // not a `change` on the picker: that would save a guessed currency as if the buyer had chosen it.
+    doc.dispatchEvent(new Event(PREFS_RENDER_EVENT));
     // A rug this buyer has already liked opens showing it (votes.ts owns the click itself).
     const saved = readSaved(view?.localStorage ?? localStorage, customer)[id];
     if (saved) paint(id, saved, doc);

@@ -9,6 +9,7 @@ import {
   PRODUCT_COLS,
   PRODUCT_OPTIONAL_TRAILING,
   REFERENCE_COLLECTION_ORDER,
+  STUDIO_COLLECTION_ORDER,
   TABS,
   type TabName,
 } from './contract.ts';
@@ -590,7 +591,10 @@ export function ratingOf(likes: number, dislikes: number): number {
   return n === 0 ? 0 : Math.round((likes / n) * 5 * 100) / 100;
 }
 
-/** Orders collections by sort_order then A→Z; falls back to the reference ORDER list when the tab is empty. */
+/**
+ * Orders collections: the studio's fixed order first (STUDIO_COLLECTION_ORDER), then sort_order, then
+ * A→Z; the reference ORDER list stands in for sort_order when the tab is empty.
+ */
 export function orderedCollectionNames(products: Product[], collections: Collection[]): string[] {
   // Every name a product claims, not just its primary: a collection that only ever appears as a
   // second membership still deserves a tab (owner requirement 2026-09-13).
@@ -606,9 +610,19 @@ export function orderedCollectionNames(products: Product[], collections: Collect
   const order = known.length ? known : [...REFERENCE_COLLECTION_ORDER];
   // Key by the slug the tabs and cards use, so "Wabi-sabi" fills the "Wabi Sabi" slot (view.ts navTabs).
   const keyOf = (name: string): string => collectionSlug(name, collections);
+  // Only the studio's own list is matched loosely: two real collections a plural apart still get two tabs.
+  const looseOf = (name: string): string => keyOf(name).replace(/s$/, '');
   const byKey = new Map<string, string>();
-  for (const name of present) if (!byKey.has(keyOf(name))) byKey.set(keyOf(name), name);
+  const byLoose = new Map<string, string>();
+  for (const name of present) {
+    if (!byKey.has(keyOf(name))) byKey.set(keyOf(name), name);
+    if (!byLoose.has(looseOf(name))) byLoose.set(looseOf(name), name);
+  }
   const out: string[] = [];
+  for (const name of STUDIO_COLLECTION_ORDER) {
+    const hit = byKey.get(keyOf(name)) ?? byLoose.get(looseOf(name));
+    if (hit && !out.includes(hit)) out.push(hit);
+  }
   for (const name of order) {
     const hit = byKey.get(keyOf(name));
     if (hit && !out.includes(hit)) out.push(hit);

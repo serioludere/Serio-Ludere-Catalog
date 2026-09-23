@@ -1,8 +1,8 @@
 ---
 // Unit toggle + currency picker (Figma "Unit Toggle" 130:260, "Currency Picker" 130:265).
 //
-// The behaviour already exists in src/scripts/prefs.ts and is unchanged: it finds `#unitTog
-// button[data-u]` and `#cur`, remembers the choice, and re-renders every `[data-dims]` and
+// The behaviour already exists in src/scripts/prefs.ts: it finds every `#unitTog` / `[data-unit-toggle]`
+// and `#cur` / `select[data-cur]`, remembers the choice, and re-renders every `[data-dims]` and
 // `[data-price]` on the page. Only the appearance is new — a bordered segmented control where the
 // active half is filled with ink, and a bordered select with its own chevron.
 //
@@ -25,21 +25,28 @@ interface Props {
    * the detail page renders the same control strip without it rather than showing a dead select.
    */
   sort?: boolean;
+  /**
+   * `header`: the copy the catalog puts beside the wordmark on a phone (owner, 2026-09-23), shown
+   * only below 768. It carries no ids — the page copy keeps `#unitTog` / `#cur` — and prefs.ts finds
+   * both copies by their data attributes and keeps them in step. Never offers sort.
+   */
+  placement?: 'page' | 'header';
 }
-const { rates, sort = false } = Astro.props;
+const { rates, sort = false, placement = 'page' } = Astro.props;
+const page = placement === 'page';
 const fromSheet = Object.keys(rates.rates).filter((c) => c in rates.symbols);
 const currencies = fromSheet.length
   ? ['USD', ...fromSheet.filter((c) => c !== 'USD')]
   : [...SUPPORTED_CURRENCIES];
 ---
 
-<div class="pv-controls">
-  <div class="pv-seg" id="unitTog" role="group" aria-label="Units">
+<div class:list={['pv-controls', { 'pv-controls--header': !page }]}>
+  <div class="pv-seg" id={page ? 'unitTog' : undefined} data-unit-toggle role="group" aria-label="Units">
     <button type="button" data-u="cm" class="on" aria-pressed="true">cm</button>
     <button type="button" data-u="ft" aria-pressed="false">ft</button>
   </div>
   {
-    sort && (
+    sort && page && (
       <div class="pv-select">
         {/* Native <select> for the same reason the currency picker is one: the platform's keyboard
             handling, mobile pickers and screen-reader support are not worth re-earning by hand. */}
@@ -59,7 +66,7 @@ const currencies = fromSheet.length
     )
   }
   <div class="pv-select">
-    <select id="cur" aria-label="Currency">
+    <select id={page ? 'cur' : undefined} data-cur aria-label="Currency">
       {currencies.map((c) => <option>{c}</option>)}
     </select>
     <svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true" focusable="false">
@@ -149,6 +156,11 @@ const currencies = fromSheet.length
     pointer-events: none;
   }
 
+  /* The phone header's copy: a desktop has the page copy beside the tabs, so this one waits. */
+  .pv-controls--header {
+    display: none;
+  }
+
   @media (max-width: 767px) {
     /* Wraps for the same reason the title row does: three controls no longer fit the 358px the
        two-control frame was measured against, and a select cannot shrink below its own label. */
@@ -156,6 +168,10 @@ const currencies = fromSheet.length
       gap: var(--stack-sm);
       flex-wrap: wrap;
       justify-content: flex-end;
+    }
+    .pv-controls--header {
+      display: flex;
+      flex-wrap: nowrap;
     }
   }
 </style>

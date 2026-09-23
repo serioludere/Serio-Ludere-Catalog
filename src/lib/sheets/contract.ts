@@ -199,6 +199,23 @@ export const READ_RANGES = [
   `${TABS.customers}!A1:F`,
 ] as const;
 
+/**
+ * The tab order the studio asked for (owner, 2026-09-23). It wins over Collections.sort_order: the
+ * admin lost its reorder control on 2026-09-18, so the sheet column only records creation order now.
+ * A collection named here but absent from the catalogue gets no tab; one not named here follows these
+ * in sort_order, then A→Z. Matched by slug, and a trailing "s" is forgiven ("Kilim" fills "Kilims").
+ */
+export const STUDIO_COLLECTION_ORDER = [
+  'Classics',
+  'Modern',
+  'Tribal',
+  'Gabbeh',
+  'Tulu',
+  'Kilims',
+  'Signed',
+  'Runners',
+] as const;
+
 /** Reference ORDER list; used only when the Collections tab is empty (ADR D10.5). */
 export const REFERENCE_COLLECTION_ORDER = [
   'Classics',

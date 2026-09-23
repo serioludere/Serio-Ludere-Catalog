@@ -276,18 +276,67 @@ describe('orderedCollectionNames', () => {
       'Patchwork',
     ]);
   });
-  it('uses Collections.sort_order when present (case-insensitive match)', () => {
+  it('uses Collections.sort_order for what the studio order does not name (case-insensitive match)', () => {
     const cols = [
       { id: 'a', slug: 'signed', name: 'signed', description: '', sortOrder: 1 },
       { id: 'b', slug: 'kilims', name: 'Kilims', description: '', sortOrder: 2 },
+      { id: 'c', slug: 'patchwork', name: 'patchwork', description: '', sortOrder: 3 },
+      { id: 'd', slug: 'aubusson', name: 'Aubusson', description: '', sortOrder: 4 },
     ];
     expect(orderedCollectionNames(rugs, cols)).toEqual([
+      'Classics',
+      'Kilims',
+      'Signed',
+      'Patchwork',
+      'Aubusson',
+    ]);
+  });
+  it('puts the studio order first: Classics, Modern, Tribal, Gabbeh, Tulu, Kilims, Signed, Runners', () => {
+    const all = [
+      'Runners',
       'Signed',
       'Kilims',
-      'Aubusson',
+      'Tulu',
+      'Gabbeh',
+      'Tribal',
+      'Modern',
       'Classics',
-      'Patchwork',
+      'Wabi Sabi',
+    ];
+    // sort_order says the exact reverse; the studio's order still wins, and the unnamed one trails.
+    const cols = all.map((name, i) => ({
+      id: name,
+      slug: name.toLowerCase(),
+      name,
+      description: '',
+      sortOrder: i,
+    }));
+    const products = all.map((collection) => ({ collection })) as Parameters<
+      typeof orderedCollectionNames
+    >[0];
+    expect(orderedCollectionNames(products, cols)).toEqual([
+      'Classics',
+      'Modern',
+      'Tribal',
+      'Gabbeh',
+      'Tulu',
+      'Kilims',
+      'Signed',
+      'Runners',
+      'Wabi Sabi',
     ]);
+  });
+  it('forgives a singular name in the sheet ("Kilim" takes the Kilims slot), but never merges two present names', () => {
+    const products = [
+      { collection: 'Runner' },
+      { collection: 'Kilim' },
+      { collection: 'Classic' },
+    ] as Parameters<typeof orderedCollectionNames>[0];
+    expect(orderedCollectionNames(products, [])).toEqual(['Classic', 'Kilim', 'Runner']);
+    const both = [{ collection: 'Tulu' }, { collection: 'Tulus' }] as Parameters<
+      typeof orderedCollectionNames
+    >[0];
+    expect(orderedCollectionNames(both, [])).toEqual(['Tulu', 'Tulus']);
   });
 });
 

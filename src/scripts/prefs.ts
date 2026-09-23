@@ -57,43 +57,58 @@ export function render(unit: Unit, cur: string, table: RateTable, doc: Document 
   });
 }
 
+/**
+ * Asks prefs.ts to paint freshly inserted `[data-dims]` / `[data-price]` nodes (the product dialog
+ * clones its content in on every open). Not a `change` on the picker: that would save the currency,
+ * and a guessed currency must never become a saved choice.
+ */
+export const PREFS_RENDER_EVENT = 'sl:prefs-render';
+
 export function initPrefs(doc: Document = document): void {
-  const toggle = doc.getElementById('unitTog');
-  const select = doc.getElementById('cur') as HTMLSelectElement | null;
+  // Every copy of the controls: the catalog renders a second one in its phone header (owner,
+  // 2026-09-23), and the two must never disagree.
+  const toggles = [...doc.querySelectorAll<HTMLElement>('#unitTog, [data-unit-toggle]')];
+  const selects = [...doc.querySelectorAll<HTMLSelectElement>('select#cur, select[data-cur]')];
   const table = readTable(doc);
-  const options = select ? [...select.options].map((o) => o.value) : ['USD'];
+  const options = selects[0] ? [...selects[0].options].map((o) => o.value) : ['USD'];
   // A currency the sheet no longer provides is not selectable (the option is kept but disabled).
-  if (select)
+  for (const select of selects)
     for (const o of select.options) o.disabled = !(o.value in table.rates && o.value in table.symbols);
-  const allowed = (c: string | null): c is string =>
+  const allowed = (c: string | null | undefined): c is string =>
     Boolean(c && options.includes(c) && c in table.rates && c in table.symbols);
 
   let unit: Unit = stored(UNIT_KEY) === 'ft' ? 'ft' : 'cm';
   const storedCur = stored(CUR_KEY);
-  let cur = allowed(storedCur) ? storedCur : 'USD';
+  // No saved choice: the currency prepaint.js guessed from the visitor's time zone and language.
+  const guessed = (doc.documentElement.dataset.curGuess ?? '').split(' ').find(allowed);
+  let cur = allowed(storedCur) ? storedCur : (guessed ?? 'USD');
 
   const apply = (): void => {
-    toggle?.querySelectorAll<HTMLButtonElement>('button').forEach((b) => {
-      const on = b.dataset.u === unit;
-      b.classList.toggle('on', on);
-      b.setAttribute('aria-pressed', on ? 'true' : 'false');
-    });
-    if (select) select.value = cur;
+    for (const toggle of toggles)
+      toggle.querySelectorAll<HTMLButtonElement>('button').forEach((b) => {
+        const on = b.dataset.u === unit;
+        b.classList.toggle('on', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+    for (const select of selects) select.value = cur;
     render(unit, cur, table, doc);
   };
 
-  toggle?.addEventListener('click', (e) => {
-    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-u]');
-    if (!b) return;
-    unit = b.dataset.u === 'ft' ? 'ft' : 'cm';
-    store(UNIT_KEY, unit);
-    apply();
-  });
-  select?.addEventListener('change', () => {
-    cur = allowed(select.value) ? select.value : 'USD';
-    store(CUR_KEY, cur);
-    apply();
-  });
+  for (const toggle of toggles)
+    toggle.addEventListener('click', (e) => {
+      const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-u]');
+      if (!b) return;
+      unit = b.dataset.u === 'ft' ? 'ft' : 'cm';
+      store(UNIT_KEY, unit);
+      apply();
+    });
+  for (const select of selects)
+    select.addEventListener('change', () => {
+      cur = allowed(select.value) ? select.value : 'USD';
+      store(CUR_KEY, cur);
+      apply();
+    });
+  doc.addEventListener(PREFS_RENDER_EVENT, apply);
 
   apply(); // idempotent; normalises grouping to the visitor's locale on every load
 }

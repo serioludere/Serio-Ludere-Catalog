@@ -6,6 +6,7 @@ import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { describe, expect, it, vi } from 'vitest';
 import { hashPassword } from '../../src/lib/admin/auth.ts';
 import { parseSnapshot } from '../../src/lib/sheets/parse.ts';
+import { catalogueDto } from '../../src/lib/votes/dto.ts';
 import { rangesWith, rugRow } from '../helpers/ranges.ts';
 
 vi.mock('astro:env/server', () => ({
@@ -59,6 +60,8 @@ vi.mock('../../src/lib/runtime.ts', async () => {
               id: 'SL-021',
               texture: '1TeXtUrE0000000000000000000000000',
               tags: 'Kilim|Denizli|Antique',
+              // Admin-only (owner, 2026-09-25): must never reach any customer-facing render.
+              shopify: 'TA',
             }),
             row({
               id: 'SL-022',
@@ -394,6 +397,31 @@ describe('/{slug} — the signed-in catalog', () => {
       { customer: 'hala' },
     );
     expect(stray.html).toMatch(/data-filter="kilims"[^>]*aria-pressed="true"/);
+  });
+});
+
+describe('the Shopify field never reaches the customer (owner, 2026-09-25: admin only)', () => {
+  // SL-021 in the fixture is marked Shopify "TA". The customer side parses Products into `Product`,
+  // which has no Shopify field at all; these pin that, so a later change cannot leak it by accident.
+  it.each([
+    ['the catalog', () => render(CustomerCatalog, '/hala', { slug: 'hala' }, { customer: 'hala' })],
+    [
+      'the detail page',
+      () =>
+        render(CustomerDetail, '/hala/SL-021', { slug: 'hala', productId: 'SL-021' }, { customer: 'hala' }),
+    ],
+  ])('%s says nothing about Shopify', async (_label, go) => {
+    state.down = false;
+    const { status, html } = await go();
+    expect(status).toBe(200);
+    expect(html).not.toMatch(/shopify/i);
+  });
+
+  it('is not in the parsed product, nor in the public catalogue JSON', () => {
+    const parsed = parseSnapshot(rangesWith({ rugs: [rugRow({ id: 'SL-021', shopify: 'TA' })] }));
+    expect(parsed.catalogue.rugs[0]).not.toHaveProperty('shopify');
+    const json = JSON.stringify(catalogueDto({ ...parsed, fetchedAt: Date.now() } as never));
+    expect(json).not.toMatch(/shopify/i);
   });
 });
 

@@ -8,22 +8,25 @@
 // wool AND silk, and the studio was already typing pairs into the old free-text fields.
 //
 // Nothing here throws away what it does not recognise. A value a row already carries that is not on
-// the list — "Hand-loomed" from the list this replaced, "Handmade pile rug" from a scrape — survives
-// as an extra, already-ticked option on the form and as itself in the cell. The lists are a shortcut
-// for what the studio picks most, not a cage.
+// the list — "Vegetable Dye" from before 2026-09-25, "Tufted" typed by hand — survives as an extra,
+// already-ticked option on the form and as itself in the cell. The lists are a shortcut for what the
+// studio picks most, not a cage.
 
 /** What the rug is made of. */
 export const MATERIAL_OPTIONS: readonly string[] = ['Wool', 'Viscose', 'Silk', 'Cotton', 'Bamboo'];
 
-/** How it was made. */
+/**
+ * How it was made. Hand-Loomed is its own choice again and Vegetable Dye is gone (owner, 2026-09-25).
+ * A row that already says "Vegetable Dye" keeps it: the form shows it as an extra, ticked option.
+ */
 export const METHOD_OPTIONS: readonly string[] = [
   'Hand-Knotted',
   'Flatweave',
   'Hand-Woven',
+  'Hand-Loomed',
   'Hand-Embroidered',
   'Jacquard Loom',
   'Aghabani - Natural Dye',
-  'Vegetable Dye',
 ];
 
 /**
@@ -46,11 +49,12 @@ const ALIASES: Readonly<Record<string, readonly string[]>> = {
   Bamboo: ['bamboo'],
   'Hand-Knotted': ['hand knotted', 'handknotted', 'knotted', 'handmade pile rug', 'pile rug'],
   Flatweave: ['flatweave', 'flat weave', 'flat woven', 'flatwoven', 'kilim', 'dhurrie', 'soumak'],
-  'Hand-Woven': ['hand woven', 'handwoven', 'hand loomed', 'handloomed', 'handloom', 'hand loom'],
+  'Hand-Woven': ['hand woven', 'handwoven'],
+  // Its own option since 2026-09-25; these four spellings used to be read as Hand-Woven.
+  'Hand-Loomed': ['hand loomed', 'handloomed', 'handloom', 'hand loom'],
   'Hand-Embroidered': ['hand embroidered', 'handembroidered', 'embroidered', 'embroidery', 'suzani'],
   'Jacquard Loom': ['jacquard loom', 'jacquard'],
   'Aghabani - Natural Dye': ['aghabani', 'agabani'],
-  'Vegetable Dye': ['vegetable dye', 'vegetal dye', 'plant dye', 'plant dyes', 'natural dye'],
 };
 
 /** Lower case, every run of punctuation or space a single space, padded so a match has boundaries. */
@@ -126,9 +130,8 @@ export function extraTerms(cell: string | undefined, options: readonly string[])
  * The options a piece of supplier text mentions, in list order.
  *
  * Longest alias first, and every match is consumed from the text before the shorter ones are tried,
- * so overlapping names resolve the same way every time: "Aghabani - Natural Dye" is that one option
- * rather than also matching "natural dye" for Vegetable Dye, and "bamboo silk" does not quietly
- * become Silk alone.
+ * so overlapping names resolve the same way every time: "handmade pile rug" is read once rather
+ * than again as "pile rug", and "bamboo silk" does not quietly become Silk alone.
  */
 export function matchTerms(text: string | undefined, options: readonly string[]): string[] {
   if (!text?.trim()) return [];

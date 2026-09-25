@@ -1,5 +1,5 @@
 // The `Products` tab as a Shopify-importable CSV (brief §9, §14), pure. The route
-// (src/pages/api/admin/export/shopify-csv.ts) reads `Products!A1:AQ` and hands the values here.
+// (src/pages/api/admin/export/shopify-csv.ts) reads `Products!A1:AR` and hands the values here.
 //
 // Column order. The brief pins the tab to Shopify's product-CSV format "so it imports without
 // remapping". `PRODUCT_HEADER_LABELS` is the *sheet's* order, which puts our manually assigned
@@ -76,6 +76,8 @@ export const RUG_COLUMNS: readonly number[] = [
   // The texture photograph (owner, 2026-09-20). Ours, not Shopify's, so it trails with the rest —
   // and it has to be HERE, because the export is asserted to be a permutation of the whole tab.
   PRODUCT_COLS.textureImage,
+  // Whether it is on the Shopify store (owner, 2026-09-25). Ours too, and trailing for the same reason.
+  PRODUCT_COLS.shopify,
 ];
 
 /** Every Products column, Shopify's 23 first. A permutation of 0…PRODUCT_WIDTH-1 (asserted in tests). */
@@ -91,7 +93,7 @@ const isBlank = (v: CellValue | undefined): boolean =>
 
 /**
  * Data rows in export order. Short rows (Sheets omits trailing blanks) are padded, over-long rows
- * are ignored past column AQ, and a row with no `Product ID` **and** no `Handle` is a spacer the
+ * are ignored past column AR, and a row with no `Product ID` **and** no `Handle` is a spacer the
  * owner left in the tab, not a product.
  */
 export function shopifyCsvRows(values: CellValue[][] | undefined): CellValue[][] {
@@ -106,7 +108,7 @@ export function shopifyCsvRows(values: CellValue[][] | undefined): CellValue[][]
 }
 
 /**
- * `Products!A1:AQ` (header row included) as the whole CSV document: BOM, header, one record per
+ * `Products!A1:AR` (header row included) as the whole CSV document: BOM, header, one record per
  * product. Throws SheetContractError when the tab's headers have drifted — the route maps that to
  * 503, which is the right answer for "the sheet no longer matches the contract".
  */

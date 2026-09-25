@@ -32,6 +32,7 @@ import {
 import { GET as nextIdGet } from '../../../src/pages/api/admin/rugs/next-id.ts';
 import { GET as oneGet, POST as updatePost } from '../../../src/pages/api/admin/rugs/[id]/index.ts';
 import { POST as deletePost } from '../../../src/pages/api/admin/rugs/[id]/delete.ts';
+import { POST as shopifyPost, ALL as shopifyAll } from '../../../src/pages/api/admin/rugs/[id]/shopify.ts';
 
 const session = newSession('owner', Date.now());
 const PHOTO = '1U8FwNPCdm-n8RUvSNRcJLBA_27u-Pjkb';
@@ -176,8 +177,9 @@ describe('POST /api/admin/rugs (rug.create)', () => {
    * exactly as Sheets does, so this test fails against a server without `ensureProductWidth`.
    */
   it('saves against a sheet from before the texture column, widening it first', async () => {
+    // Two columns short since `Shopify` followed `Texture Image` (2026-09-25).
     forgetProductWidth();
-    sheet = seed({ columns: PRODUCT_WIDTH - 1, rugsHeader: [...HEADERS.Products].slice(0, -1) });
+    sheet = seed({ columns: PRODUCT_WIDTH - 2, rugsHeader: [...HEADERS.Products].slice(0, -2) });
     state.sheet = sheet;
 
     const res = await createPost(ctx({ path: '/api/admin/rugs', method: 'POST', body: baseInput }));
@@ -188,8 +190,8 @@ describe('POST /api/admin/rugs (rug.create)', () => {
     // The repair came first and is only ever additive: the column, and the label for it.
     expect(sheet.writes).toHaveLength(2);
     const repair = sheet.writes[0] as Array<Record<string, unknown>>;
-    expect(repair[0]).toMatchObject({ appendDimension: { dimension: 'COLUMNS', length: 1 } });
-    expect(sheet.row('Products', 1)).toEqual([...HEADERS.Products.slice(0, -1), 'Texture Image']);
+    expect(repair[0]).toMatchObject({ appendDimension: { dimension: 'COLUMNS', length: 2 } });
+    expect(sheet.row('Products', 1)).toEqual([...HEADERS.Products.slice(0, -2), 'Texture Image', 'Shopify']);
 
     // And the row itself landed whole, texture cell included.
     const written = sheet.row('Products', 5);
@@ -450,6 +452,100 @@ describe('GET/POST /api/admin/rugs/[id] (rug.update)', () => {
       }),
     );
     expect((await renamed.json()).rug.slug).toBe('sunny');
+  });
+});
+
+describe('POST /api/admin/rugs/[id]/shopify (the products-table dropdown, owner 2026-09-25)', () => {
+  // Its own session: every test file shares one, and the mutation window is 30 a minute.
+  const own = newSession('owner', Date.now());
+  const ctx = (init: Parameters<typeof apiContext>[0]): APIContext =>
+    apiContext({ session: own, ...init }) as unknown as APIContext;
+  const choose = async (id: string, shopify: unknown): Promise<Response> =>
+    shopifyPost(
+      ctx({ path: `/api/admin/rugs/${id}/shopify`, method: 'POST', params: { id }, body: { shopify } }),
+    );
+
+  it('writes the one cell, audits it, and leaves every other column exactly as it was', async () => {
+    const before = [...sheet.row('Products', 2)];
+    const res = await choose('SL-021', 'TA');
+    expect(res.status).toBe(200);
+    const out = await res.json();
+    expect(out.rug).toMatchObject({ id: 'SL-021', shopify: 'TA' });
+    expect(out.audit).toEqual({ row: 2, action: 'rug.update' });
+
+    const after = sheet.row('Products', 2);
+    expect(after[PRODUCT_COLS.shopify]).toBe('TA');
+    // Nothing else on the row moved — the whole reason this is not the full-row update route.
+    expect(after.slice(0, PRODUCT_COLS.shopify)).toEqual(before.slice(0, PRODUCT_COLS.shopify));
+    const audit = sheet.auditRows()[0]!;
+    expect(audit[2]).toBe('rug.update');
+    expect(JSON.parse(String(audit[5]))).toEqual({ shopify: '' });
+    expect(JSON.parse(String(audit[6]))).toEqual({ shopify: 'TA' });
+    expect(cache.busts).toBe(1);
+
+    // Back to "not chosen" clears the cell.
+    expect((await choose('SL-021', '')).status).toBe(200);
+    expect(sheet.row('Products', 2)[PRODUCT_COLS.shopify] ?? '').toBe('');
+  });
+
+  it('writes nothing when the answer has not changed', async () => {
+    await choose('SL-021', 'Yes');
+    const writes = sheet.writes.length;
+    const res = await choose('SL-021', 'Yes');
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ ok: true, unchanged: true });
+    expect(sheet.writes).toHaveLength(writes);
+  });
+
+  it('accepts only the three answers or blank, and only a product that exists', async () => {
+    expect((await choose('SL-021', 'yes please')).status).toBe(400);
+    expect((await choose('SL-021', 'yes')).status).toBe(400);
+    expect((await choose('SL-999', 'Yes')).status).toBe(404);
+    expect(sheet.writes).toHaveLength(0);
+    expect(
+      (await shopifyAll(ctx({ path: '/api/admin/rugs/SL-021/shopify', params: { id: 'SL-021' } }))).status,
+    ).toBe(405);
+  });
+
+  it('widens and labels a sheet from before the Shopify column, then writes the cell', async () => {
+    forgetProductWidth();
+    sheet = seed({ columns: PRODUCT_WIDTH - 1, rugsHeader: [...HEADERS.Products].slice(0, -1) });
+    state.sheet = sheet;
+    const res = await choose('SL-021', 'No');
+    expect(res.status).toBe(200);
+    expect(sheet.row('Products', 1).at(-1)).toBe('Shopify');
+    expect(sheet.row('Products', 2)[PRODUCT_COLS.shopify]).toBe('No');
+  });
+
+  it('is stored when a fetched product is saved with an answer, and blank without one', async () => {
+    const withAnswer = await createPost(
+      ctx({ path: '/api/admin/rugs', method: 'POST', body: { ...baseInput, shopify: 'TA' } }),
+    );
+    expect(withAnswer.status).toBe(201);
+    expect((await withAnswer.json()).rug.shopify).toBe('TA');
+    expect(sheet.row('Products', 5)[PRODUCT_COLS.shopify]).toBe('TA');
+    const without = await createPost(
+      ctx({ path: '/api/admin/rugs', method: 'POST', body: { ...baseInput, supplierRef: '380115' } }),
+    );
+    expect((await without.json()).rug.shopify).toBe('');
+  });
+
+  it('is carried by the full update route too, so an edit keeps (or changes) the answer', async () => {
+    await choose('SL-021', 'Yes');
+    const rug = (
+      await (await oneGet(ctx({ path: '/api/admin/rugs/SL-021', params: { id: 'SL-021' } }))).json()
+    ).rug;
+    expect(rug.shopify).toBe('Yes');
+    const res = await updatePost(
+      ctx({
+        path: '/api/admin/rugs/SL-021',
+        method: 'POST',
+        params: { id: 'SL-021' },
+        body: { ...baseInput, name: 'Winks', shopify: 'No', version: rug.version },
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(sheet.row('Products', 2)[PRODUCT_COLS.shopify]).toBe('No');
   });
 });
 

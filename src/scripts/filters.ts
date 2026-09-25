@@ -3,9 +3,12 @@
 // round trip.
 //
 // Collections only (owner, 2026-09-17): buyers think in collections, never in tags, so the strip is
-// "All" plus one chip per collection. The tag chips and the "Liked" shortlist chip are gone.
+// one chip per collection, then "All". The tag chips and the "Liked" shortlist chip are gone.
 //
-// The chosen filter is written to `?collection=` so a reload and the Back button keep it.
+// The grid opens on the chip the page rendered pressed — the first collection (owner, 2026-09-25) —
+// and the chosen filter is written to `?collection=` so a reload and the Back button keep it. "All"
+// is written too (`?collection=all`): with no parameter the page opens on the first collection, so
+// leaving it out would send a buyer who chose "All" back to Classics.
 import { initPager } from './ui/paginate.ts';
 
 const PARAM = 'collection';
@@ -47,7 +50,8 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
     introMore.setAttribute('aria-expanded', open ? 'true' : 'false');
   });
 
-  let active = 'all';
+  // What the server rendered pressed; 'all' only for a page that pressed nothing.
+  let active = chips.find((c) => c.getAttribute('aria-pressed') === 'true')?.dataset.filter ?? 'all';
 
   /** 20 per page (owner, 2026-09-16), when the page renders the control. */
   const pagerRoot = doc.getElementById('gridPager');
@@ -95,8 +99,9 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
       fitIntro();
     }
     /* Carry the chosen chip onto every card link, so opening a rug and coming back lands on the
-       same filtered grid. The detail page reads `?collection=` for its back link and prev/next run. */
-    const q = active === 'all' ? '' : `?${PARAM}=${encodeURIComponent(active)}`;
+       same filtered grid. The detail page reads `?collection=` for its back link and prev/next run;
+       'all' rides along as well, since the bare grid now opens on the first collection. */
+    const q = `?${PARAM}=${encodeURIComponent(active)}`;
     for (const card of cards) {
       for (const a of card.querySelectorAll<HTMLAnchorElement>('a[href]')) {
         // Rebuilt from the base each time, so switching chips replaces rather than appends.
@@ -118,8 +123,7 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
     if (!win) return;
     try {
       const url = new URL(win.location.href);
-      if (next === 'all') url.searchParams.delete(PARAM);
-      else url.searchParams.set(PARAM, next);
+      url.searchParams.set(PARAM, next);
       win.history.replaceState(null, '', url.toString());
     } catch {
       /* ignore */

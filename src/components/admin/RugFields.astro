@@ -10,7 +10,8 @@
 // and where it is filed, then what it is, then what it cost:
 //
 //   photos · name + collections · tags · description · supplier link · size · material + method ·
-//   age + origin · pile + shape · price + supplier · notes · what the supplier said · Save
+//   age + origin · pile + shape · price + supplier · supplier ref + Shopify · notes ·
+//   what the supplier said · Save
 //
 // The supplier's own measurement and price sit at the BOTTOM with the scrape warnings: they are
 // provenance for a number already in the form above, not a field to fill in.
@@ -19,6 +20,7 @@ import { driveImageUrl } from '../../lib/images.ts';
 import { BADGE_TAG_NAMES } from '../../lib/view.ts';
 import { MATERIAL_OPTIONS, METHOD_OPTIONS, extraTerms, splitTerms } from '../../lib/terms.ts';
 import MultiSelect from '../ui/MultiSelect.astro';
+import { SHOPIFY_OPTIONS } from '../../lib/shopify-listing.ts';
 
 interface Props {
   mode: 'add' | 'edit';
@@ -383,6 +385,23 @@ const methodOptions = termOptions(rug?.method, METHOD_OPTIONS);
     <div class="f">
       <label for="f_supplierRef">Supplier ref</label>
       <input id="f_supplierRef" value={rug?.supplierRef ?? ''} autocomplete="off" />
+    </div>
+    {
+      /* Is it on the Shopify store (owner, 2026-09-25)? Blank until the studio says; the products
+         table offers the same three answers on every row. */
+    }
+    <div class="f">
+      <label for="f_shopify">Shopify</label>
+      <select id="f_shopify">
+        <option value="" selected={!rug?.shopify}>Not chosen</option>
+        {
+          SHOPIFY_OPTIONS.map((o) => (
+            <option value={o} selected={rug?.shopify === o}>
+              {o}
+            </option>
+          ))
+        }
+      </select>
     </div>
 
     <div class="f wide">

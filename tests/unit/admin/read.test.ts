@@ -130,7 +130,7 @@ describe('parseAdminSnapshot', () => {
     broken[0] = { range: ADMIN_READ_RANGES[0], values: [['id', 'title']] };
     expect(() => parseAdminSnapshot(broken)).toThrow(/Products/);
   });
-  it('adminRugFromCells parses one A:AQ row (undefined when invalid)', () => {
+  it('adminRugFromCells parses one A:AR row (undefined when invalid)', () => {
     const rug = adminRugFromCells(
       admin({ id: 'SL-030', name: 'New' }, ['', 'ecarpetgallery', '412224', '']),
       31,

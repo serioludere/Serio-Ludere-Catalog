@@ -97,7 +97,7 @@ describe('GET /api/admin/export/shopify-csv (brief §9)', () => {
 
   it('reads the tab fresh, and refuses anything but GET', async () => {
     await exportGet(ctx({ path: '/api/admin/export/shopify-csv' }));
-    expect(sheet.reads).toEqual([['Products!A1:AQ']]);
+    expect(sheet.reads).toEqual([['Products!A1:AR']]);
 
     const res = await exportAll(ctx({ path: '/api/admin/export/shopify-csv', method: 'POST' }));
     expect(res.status).toBe(405);

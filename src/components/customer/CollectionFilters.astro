@@ -1,7 +1,7 @@
 ---
 // The filter strip, by collection only (owner, 2026-09-17: buyers never filter by tag).
 //
-// "All" plus one tab per collection that has rugs, in the Collections sort order. Text tabs, not
+// One tab per collection that has rugs, in the studio's order, then "All". Text tabs, not
 // buttons (owner, 2026-09-17, replacing the earlier bordered chip): a plain label with a hairline
 // underneath, active = bold with a thicker underline. The underline is a box-shadow, not a border —
 // the same trick .pv-input:focus-visible uses (preview.css) — so the 1px → 3px change on activation
@@ -13,10 +13,17 @@
 // The row wraps at every width (owner, 2026-09-23). A phone used to scroll it sideways with the last
 // tab cut at the frame edge as the only hint, and buyers never guessed there were more tabs to slide
 // to — every collection is now on screen, on a second line where it needs one.
+//
+// "All" comes LAST, after the collections (owner, 2026-09-25), and the page opens on the first
+// collection rather than on everything: the buyer meets one collection at a time and reaches for
+// "All" when they want the whole wall. Which tab starts pressed is the page's decision (`active`),
+// because a `?collection=` link can name any of them.
 interface Props {
   collections: Array<{ slug: string; name: string; count: number; description?: string }>;
+  /** The tab pressed on first paint: a collection slug, or 'all'. */
+  active: string;
 }
-const { collections } = Astro.props;
+const { collections, active } = Astro.props;
 ---
 
 {
@@ -24,20 +31,27 @@ const { collections } = Astro.props;
     page renders under this strip (owner, 2026-09-18). "All" has none — it is not a collection. */
 }
 <nav class="pv-filters" aria-label="Filter by collection">
-  <button type="button" class="pv-chip is-on" data-filter="all" aria-pressed="true">All</button>
   {
     collections.map((c) => (
       <button
         type="button"
-        class="pv-chip"
+        class:list={['pv-chip', { 'is-on': c.slug === active }]}
         data-filter={c.slug}
         data-description={c.description || undefined}
-        aria-pressed="false"
+        aria-pressed={c.slug === active ? 'true' : 'false'}
       >
         {c.name}
       </button>
     ))
   }
+  <button
+    type="button"
+    class:list={['pv-chip', { 'is-on': active === 'all' }]}
+    data-filter="all"
+    aria-pressed={active === 'all' ? 'true' : 'false'}
+  >
+    All
+  </button>
 </nav>
 
 <style>
@@ -82,8 +96,11 @@ const { collections } = Astro.props;
   @media (max-width: 767px) {
     .pv-filters {
       /* Claims the whole row inside .pv-title-row (src/pages/[slug]/index.astro); the unit/currency
-         controls live in the header on a phone. The lines sit closer than the tabs do across. */
+         controls live in the header on a phone. The lines sit closer than the tabs do across, and
+         every line is centred (owner, 2026-09-25) — a ragged left edge with a short second line read
+         as a row that had run out, not as a set of tabs. */
       flex: 1 1 100%;
+      justify-content: center;
       column-gap: var(--stack-lg);
       row-gap: var(--stack-sm);
     }

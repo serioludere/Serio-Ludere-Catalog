@@ -57,6 +57,23 @@ const cards = rugs.map((r) => cardView(r, catalogue));
 // order. A collection nothing belongs to is not offered.
 const collections = navTabs(rugs, catalogue).filter((t) => t.count > 0);
 
+/* The tab the grid opens on (owner, 2026-09-25): the FIRST collection — Classics, in the studio's
+   order — not "All", which now sits last. A `?collection=` link still wins when it names a tab on the
+   page ('all' included, which is how coming back from a rug lands on the whole wall again). Decided
+   here rather than in filters.ts so the first paint is already the right grid, not the whole wall
+   flashing before the script narrows it. */
+const wanted = Astro.url.searchParams.get('collection');
+const activeFilter =
+  wanted && (wanted === 'all' || collections.some((c) => c.slug === wanted))
+    ? wanted
+    : (collections[0]?.slug ?? 'all');
+const shownFirst = (card: (typeof cards)[number]): boolean =>
+  activeFilter === 'all' || card.collectionSlugs.includes(activeFilter);
+// The first rugs ON SCREEN load eagerly, not the first in the document: under Classics those are
+// the first Classics cards, wherever the server's order put them.
+const firstShown = new Map(cards.filter(shownFirst).map((card, i) => [card.id, i]));
+const intro = collections.find((c) => c.slug === activeFilter)?.description ?? '';
+
 // Never the buyer's name (owner, 2026-09-14): the tab title is read over a shoulder, lands in
 // browser history, and is what a screen-share shows before anything else.
 const title = 'Serio Ludere';
@@ -99,14 +116,18 @@ const title = 'Serio Ludere';
         <main class="pv-main">
           <section class="pv-wrap pv-title">
             <div class="pv-title-row">
-              {collections.length > 0 && <CollectionFilters collections={collections} />}
+              {collections.length > 0 && (
+                <CollectionFilters collections={collections} active={activeFilter} />
+              )}
               <span class="pv-spacer" aria-hidden="true" />
               <PreviewControls rates={rates} />
             </div>
             {/* The selected collection's own description, as the intro to the cards below it (owner,
                 2026-09-18). filters.ts fills it from the pressed tab; blank under "All", and hidden
                 outright rather than left as an empty line that would still take its gap. */}
-            <p class="pv-lede pv-collection-intro" data-collection-intro hidden />
+            <p class="pv-lede pv-collection-intro" data-collection-intro hidden={!intro}>
+              {intro}
+            </p>
             <button class="pv-intro-more" type="button" data-intro-more aria-expanded="false" hidden>
               read more
             </button>
@@ -115,20 +136,21 @@ const title = 'Serio Ludere';
           <section class="pv-wrap">
             {cards.length > 0 ? (
               <div class="pv-grid">
-                {cards.map((card, i) => (
+                {cards.map((card) => (
                   <div
                     data-card
                     data-rug={card.id}
                     data-collections={card.collectionSlugs.join(' ')}
                     data-likes={visibleLikes(card.likes)}
+                    hidden={!shownFirst(card)}
                   >
                     <ProductCard
                       card={card}
                       rates={rates}
                       baseCurrency={baseCurrency}
                       href={`/${slug}/${encodeURIComponent(card.id)}`}
-                      eager={i < 4}
-                      priority={i === 0}
+                      eager={(firstShown.get(card.id) ?? Infinity) < 4}
+                      priority={firstShown.get(card.id) === 0}
                     />
                   </div>
                 ))}
@@ -206,11 +228,11 @@ const title = 'Serio Ludere';
        small step inside a large one is what makes the rhythm read as deliberate. */
     margin-top: var(--stack-xl);
     max-width: none;
-    /* Owner, 2026-09-23: twice the size — the description is the collection's introduction, not a
-       caption under the tabs. */
-    font-size: calc(var(--text-base) * 2);
-    /* The body's 1.65 is a small-text leading; at this size it opens the lines into stripes. */
-    line-height: 1.4;
+    /* Owner, 2026-09-25: 11px. It was twice the body size from 2026-09-23, which made the
+       introduction louder than the rugs it introduces; it is a quiet note under the tabs now. */
+    font-size: 11px;
+    /* The body's small-text leading, which is what this size is again. */
+    line-height: var(--leading-body);
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 3;

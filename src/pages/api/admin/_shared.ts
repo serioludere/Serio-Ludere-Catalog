@@ -155,6 +155,7 @@ export function rugFieldsFrom(
     driveFolderId: body.driveFolderId,
     driveFolderUrl: body.driveFolderUrl,
     scrapedAt: resolved.scrapedAt,
+    shopify: body.shopify,
   };
 }
 
@@ -186,6 +187,7 @@ export function fieldsOfRug(rug: AdminRug): RugFields {
     commitStatus: rug.commitStatus,
     driveFolderId: rug.driveFolderId,
     driveFolderUrl: rug.driveFolderUrl,
+    shopify: rug.shopify,
     /**
      * Server-owned provenance, carried through rather than re-derived.
      *

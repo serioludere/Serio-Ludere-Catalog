@@ -88,6 +88,7 @@ const rug: AdminRug = {
   supplier: 'karavanrug',
   supplierRef: '1389',
   notes: '',
+  shopify: 'No',
 };
 
 let addHtml = '';
@@ -419,6 +420,17 @@ describe('add mode', () => {
     expect(val('f_price')).toBe('1335');
   });
 
+  it('asks Shopify on the add form, blank until chosen, and Cancel clears it (owner, 2026-09-25)', () => {
+    form = mount(() => ({ status: 500, body: {} }));
+    form.applyScrape(scraped);
+    expect(val('f_shopify')).toBe('');
+    expect(form.collect().shopify).toBe('');
+    set('f_shopify', 'Yes');
+    expect(form.collect().shopify).toBe('Yes');
+    form.reset();
+    expect(val('f_shopify')).toBe('');
+  });
+
   it('fills Pile and Shape from a scrape of the studio’s own store, and names the price rule', () => {
     // Owner, 2026-09-23: serioludere.com prints Pile and Shape, and its price is already retail.
     form = mount(() => ({ status: 500, body: {} }));
@@ -718,6 +730,21 @@ describe('edit mode', () => {
     expect(text('m2')).toContain('Saved name');
   });
 
+  it("shows the row's Shopify answer and saves the one chosen (owner, 2026-09-25)", async () => {
+    const form = mount(() => ({ status: 200, body: { ok: true, rug, changed: ['shopify'] } }));
+    // Server-rendered from the row, and offered with the same three answers as the table.
+    expect(val('f_shopify')).toBe('No');
+    expect(
+      [...document.querySelectorAll<HTMLOptionElement>('#f_shopify option')].map((o) => o.value),
+    ).toEqual(['', 'Yes', 'No', 'TA']);
+    set('f_shopify', 'TA');
+    await form.save();
+    expect(calls[0]?.body).toMatchObject({ shopify: 'TA' });
+    // fill() is the server's answer, so it wins over whatever the select shows.
+    form.fill({ ...rug, shopify: 'Yes' });
+    expect(val('f_shopify')).toBe('Yes');
+  });
+
   it('loads Pile and Shape from the row and sends them back, so a save no longer blanks them', async () => {
     const form = mount(() => ({ status: 200, body: { ok: true, rug, changed: ['name'] } }));
     form.fill({ ...rug, pile: 'No Pile', shape: 'Round' });
@@ -738,10 +765,10 @@ describe('edit mode', () => {
       'Hand-Knotted',
       'Flatweave',
       'Hand-Woven',
+      'Hand-Loomed',
       'Hand-Embroidered',
       'Jacquard Loom',
       'Aghabani - Natural Dye',
-      'Vegetable Dye',
     ]);
     expect(picked('f_material')).toEqual(['Wool']);
     expect(picked('f_method')).toEqual(['Hand-Woven']);
@@ -754,9 +781,13 @@ describe('edit mode', () => {
     // Something the lists do not cover survives as its own ticked option rather than being dropped.
     form.applyScrape({ method: 'Aghabani' });
     expect(picked('f_method')).toEqual(['Aghabani - Natural Dye']);
-    // "Hand-loomed" is the list this replaced; it is hand-woven, and it is read as that.
+    // "Hand-loomed" is its own option (owner, 2026-09-25), no longer read as Hand-Woven.
     form.fill({ ...rug, method: 'Hand-loomed' });
-    expect(picked('f_method')).toEqual(['Hand-Woven']);
+    expect(picked('f_method')).toEqual(['Hand-Loomed']);
+    // Vegetable Dye left the list the same day; a row that carries it keeps it, ticked.
+    form.fill({ ...rug, method: 'Vegetable Dye' });
+    expect(picked('f_method')).toEqual(['Vegetable Dye']);
+    expect(form.collect().method).toBe('Vegetable Dye');
     // Something nothing recognises is kept verbatim, as its own ticked option.
     form.fill({ ...rug, method: 'Tufted' });
     expect(picked('f_method')).toEqual(['Tufted']);

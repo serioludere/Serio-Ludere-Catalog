@@ -110,8 +110,9 @@ export async function provisionSheet(
 
   /* 2. Products needs PRODUCT_WIDTH columns and a new tab defaults to 26 (brief §9).
 
-     Widened BEFORE row 1 is written, not after: the header now runs to AQ (the texture column, added
-     2026-09-20), and writing past the grid's last column is a 400 from Sheets, not a silent no-op. */
+     Widened BEFORE row 1 is written, not after: the header now runs to AR (`Texture Image`, added
+     2026-09-20, then `Shopify` on 2026-09-25), and writing past the grid's last column is a 400
+     from Sheets, not a silent no-op. */
   const grid = await client.getSpreadsheet('sheets.properties');
   const productsSheet = (grid.sheets ?? []).find((sh) => sh.properties.title === TABS.products);
   const columnCount = productsSheet?.properties.gridProperties?.columnCount ?? 26;

@@ -99,12 +99,12 @@ const controls = Astro.slots.has('default');
     .pv-back-short {
       display: inline;
     }
-    /* The controls are 36 tall against the wordmark's ~19, so the row sheds half its padding and
-       stays the 52 it was: 8 + 36 + 8. The gaps tighten and the spacer gives up its minimum so the
-       row still fits a 320 phone inside its gutters; anything narrower wraps the controls under the
-       wordmark rather than pushing them past the edge. */
+    /* The controls are 28 tall on a phone (2026-09-25; 36 before) against the wordmark's ~19, so the
+       row sheds a quarter of its padding and stays the 52 it was: 12 + 28 + 12. The gaps tighten and
+       the spacer gives up its minimum so the row still fits a 320 phone inside its gutters; anything
+       narrower wraps the controls under the wordmark rather than pushing them past the edge. */
     .pv-header--controls {
-      padding-block: var(--stack-sm);
+      padding-block: var(--stack-md);
       gap: var(--stack-sm);
       flex-wrap: wrap;
     }

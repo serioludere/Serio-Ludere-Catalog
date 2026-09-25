@@ -2,6 +2,7 @@
 // its body with `Schema.safeParse` and answers 400 `{ ok:false, error:'invalid body', issues }`.
 import * as z from 'zod';
 import { DRIVE_ID_RE } from '../images.ts';
+import { SHOPIFY_OPTIONS } from '../shopify-listing.ts';
 import { splitCollections } from '../text.ts';
 
 export const ID_RE = /^[A-Za-z0-9_-]{1,64}$/; // parse.ts ID_RE (excludes * ? = < > by construction)
@@ -27,6 +28,7 @@ export const CLIENT_CODE_RE = /^[a-z0-9]([a-z0-9-]{0,26})[a-z0-9]$/;
 export const VERSION_RE = /^[a-f0-9]{16}$/;
 
 const Id = z.string().regex(ID_RE);
+const ShopifyListingInput = z.enum([...SHOPIFY_OPTIONS, '']).default('');
 const Slug = z.string().regex(SLUG_RE);
 const Text = (max: number) => z.string().trim().max(max).default('');
 const TagName = z
@@ -111,6 +113,11 @@ export const RugInput = z.object({
   commitStatus: z.enum(['pending', 'complete', '']).default(''),
   driveFolderId: z.string().trim().max(200).default(''),
   driveFolderUrl: z.string().trim().max(400).default(''),
+  /**
+   * Is it on the Shopify store (owner, 2026-09-25)? `''` is "not chosen yet", which is also what an
+   * omitted field means — so every full-row write has to send the value it read.
+   */
+  shopify: ShopifyListingInput,
 });
 export type RugInputT = z.infer<typeof RugInput>;
 export const RugUpdate = RugInput.omit({ id: true }).extend({ version: Version });
@@ -124,6 +131,13 @@ export const RugCommit = z.object({
   driveFolderUrl: z.string().trim().max(400).default(''),
 });
 export type RugCommitT = z.infer<typeof RugCommit>;
+/**
+ * The Shopify dropdown in the admin products table (owner, 2026-09-25): one cell, saved the moment
+ * it changes. No version token — it rewrites that cell and nothing else, so there is no neighbouring
+ * edit it could clobber, and the last choice made is the one that should stand.
+ */
+export const RugShopify = z.object({ shopify: z.enum([...SHOPIFY_OPTIONS, '']) });
+export type RugShopifyT = z.infer<typeof RugShopify>;
 /** Name and description only (owner, 2026-09-16): the studio never set a cover image, and the
  *  column stays in the sheet written blank rather than shifting the Collections contract. */
 /** Exported so the admin's own description box can cap and count against the same number. */

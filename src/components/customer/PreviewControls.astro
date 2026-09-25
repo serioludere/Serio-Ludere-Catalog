@@ -173,6 +173,29 @@ const currencies = fromSheet.length
       display: flex;
       flex-wrap: nowrap;
     }
+    /* Smaller on a phone (owner, 2026-09-25): at 36px with 12px bold labels the two controls read as
+       the loudest thing on the wordmark's row. 28 tall, 11px labels, tighter padding and a 12px
+       chevron — still clear of WCAG 2.5.8's 24px minimum target. */
+    .pv-seg {
+      height: 28px;
+    }
+    .pv-seg button {
+      padding-inline: var(--stack-sm);
+      font-size: var(--text-xs);
+    }
+    .pv-select {
+      min-height: 28px;
+    }
+    .pv-select select {
+      padding-left: var(--stack-sm);
+      padding-right: calc(var(--stack-sm) + var(--stack-xs) + 12px);
+      font-size: var(--text-xs);
+    }
+    .pv-select svg {
+      right: var(--stack-sm);
+      width: 12px;
+      height: 12px;
+    }
   }
 </style>
 

@@ -11,6 +11,7 @@ import type { Logger } from '../sheets/errors.ts';
 import { parseAuditRows, type AuditEntry } from './audit.ts';
 import { parseClients, type ClientRow } from './clients.ts';
 import { parseSettings, type AdminSettings } from './settings.ts';
+import { shopifyListingOf, type ShopifyListing } from '../shopify-listing.ts';
 
 export const AUDIT_DASHBOARD_ROWS = 100;
 export const ADMIN_READ_RANGES = [
@@ -29,6 +30,8 @@ export interface AdminRug extends Rug {
   supplier: string;
   supplierRef: string;
   notes: string;
+  /** The `Shopify` cell (owner, 2026-09-25): admin-only, the buyer never sees it. */
+  shopify: ShopifyListing;
 }
 export interface AdminCollection extends Collection {
   row: number;
@@ -176,6 +179,7 @@ function adminRugFrom(rug: Rug, cells: CellValue[], row: number): AdminRug {
     supplier: text(cells[PRODUCT_COLS.sourceSite]).toLowerCase(),
     supplierRef: text(cells[PRODUCT_COLS.variantSku]),
     notes: text(cells[PRODUCT_COLS.internalNotes]),
+    shopify: shopifyListingOf(cells[PRODUCT_COLS.shopify]),
   };
 }
 

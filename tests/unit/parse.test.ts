@@ -23,17 +23,22 @@ describe('header contract', () => {
     expect(() => assertHeaders('Rates', ['Currency', 'rate_to_base', 'symbol', 'updated_at'])).not.toThrow();
   });
   it('tolerates a Products sheet that predates the texture column, but not a wrong label', () => {
-    // contract.ts PRODUCT_OPTIONAL_TRAILING: `Texture Image` was appended to a contract that was
-    // already live, so a sheet nobody has re-run `sheet:init` on keeps SERVING rather than 503-ing
-    // the buyer's page. A blank cell in that position is the same thing as a missing one.
-    const short = rugHeaders.slice(0, -1);
+    // contract.ts PRODUCT_OPTIONAL_TRAILING: `Texture Image` (2026-09-20) and then `Shopify`
+    // (2026-09-25) were appended to a contract that was already live, so a sheet nobody has re-run
+    // `sheet:init` on keeps SERVING rather than 503-ing the buyer's page. A blank cell in that
+    // position is the same thing as a missing one.
+    const noShopify = rugHeaders.slice(0, -1);
+    const short = rugHeaders.slice(0, -2);
+    expect(() => assertHeaders('Products', noShopify)).not.toThrow();
     expect(() => assertHeaders('Products', short)).not.toThrow();
     expect(() => assertHeaders('Products', [...short, ''])).not.toThrow();
+    expect(() => assertHeaders('Products', [...short, '', ''])).not.toThrow();
     expect(() => assertHeaders('Products', [...short, 'texture'])).toThrow(SheetContractError);
+    expect(() => assertHeaders('Products', [...noShopify, 'shop'])).toThrow(SheetContractError);
     // The tolerance is the TAIL only: a missing column anywhere else is still a contract error.
-    expect(() => assertHeaders('Products', rugHeaders.slice(0, -2))).toThrow(SheetContractError);
+    expect(() => assertHeaders('Products', rugHeaders.slice(0, -3))).toThrow(SheetContractError);
     // And a row read from such a sheet simply has no texture.
-    expect(parseProducts([short, rugRow().slice(0, -1)]).items[0]!.textureId).toBe('');
+    expect(parseProducts([short, rugRow().slice(0, -2)]).items[0]!.textureId).toBe('');
   });
   it('fails loudly naming the wrong column', () => {
     const bad = [...rugHeaders];

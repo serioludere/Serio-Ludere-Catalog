@@ -76,7 +76,7 @@ function fake(rows: Record<string, CellValue[]>): Fake {
 }
 
 const product = rugRow({ id: 'SL-021' });
-const PRODUCT_RANGE = `${TABS.products}!A7:AQ7`;
+const PRODUCT_RANGE = `${TABS.products}!A7:AR7`;
 
 /** A Collections row and the range `deleteRow` reads it through. */
 const collection: CellValue[] = ['kilims', 'Kilims', 'kilims', 'Flat weaves', '2026-09-01', '', 1];

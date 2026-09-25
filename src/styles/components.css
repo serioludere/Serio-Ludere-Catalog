@@ -511,7 +511,10 @@
 /* ═══ Inline Row ═══════════════════════════════════════════════════════════════════════════════
    Set 78:325. Click a cell to edit in place; Enter commits, Esc reverts, Tab moves on. NOT used on
    mobile — editing a cell in place on a phone is a worse tool than a form. Columns differ from
-   Table Row: ID 110 · Title 280 · Collection 150 · Size 140 · Price 130. */
+   Table Row: ID 90 · Title 240 · Collection 130 · Size 120 · Price 100 · Likes 56 · Shopify 76 ·
+   Source 150. Narrower than drawn since Shopify and Source joined (owner, 2026-09-25): at the drawn
+   widths the row needed 1373px against the 1172 a 1440 screen gives it, and Open / Edit went off the
+   right edge. Every column still fits what it holds; the gaps went from 16 to 12 for the same reason. */
 .irow {
   display: flex;
   flex-direction: column;
@@ -535,7 +538,7 @@
   box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: var(--stack-lg);
+  gap: var(--stack-md);
   width: 100%;
   padding: var(--stack-xs) var(--stack-md);
   border-bottom: var(--rule-width) solid var(--rule);
@@ -545,32 +548,67 @@
 }
 .irow__id {
   flex: none;
-  width: 110px;
+  width: 90px;
   font-family: var(--mono);
   font-size: var(--size-mono);
   color: var(--ink-soft);
 }
 .irow__title {
   flex: none;
-  width: 280px;
+  width: 240px;
 }
 .irow__collection {
   flex: none;
-  width: 150px;
+  width: 130px;
 }
 .irow__size {
   flex: none;
-  width: 140px;
+  width: 120px;
 }
 .irow__price {
   flex: none;
-  width: 130px;
+  width: 100px;
 }
 /* Distinct customers currently liking the rug (owner, 2026-09-15). */
 .irow__likes {
   flex: none;
-  width: 80px;
+  width: 56px;
   font-variant-numeric: tabular-nums;
+}
+/* Is it on the Shopify store — Yes / No / TA, saved as it changes (owner, 2026-09-25). A compact
+   select: the row is a line of text, and a full-height field would make every row taller. */
+.irow__shopify {
+  flex: none;
+  width: 76px;
+}
+.irow__shopify select {
+  padding-block: 0;
+  font-size: var(--text-sm);
+}
+/* The scraped product page, opened in a new tab (owner, 2026-09-25); the label is its site. The
+   ellipsis is on the link rather than the cell, so a clipped cell never clips the focus ring too. */
+.irow__source {
+  flex: none;
+  width: 150px;
+  white-space: nowrap;
+  color: var(--ink-soft);
+}
+.irow__source a {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: top;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.irow__source a:hover {
+  color: var(--ink);
+}
+.irow__source a:focus-visible {
+  outline: var(--border-width-focus) solid var(--border-focus);
+  outline-offset: 2px;
 }
 .irow__spacer {
   flex: 1 1 auto;
@@ -1667,9 +1705,10 @@
    Figma P2 79:1439. The header row takes a border/strong bottom edge — heavier than the row
    hairlines, so the head reads as a head — and the Label style at 12 muted. Column widths come from
    the .irow__* rules the rows already use, so the two cannot drift apart. */
-/* The .irow__* columns below are `flex: none` and total 810px, so they cannot shrink. Between 768 and
-   ~1090px the DOCUMENT scrolled sideways instead — carrying the nav rail and the page header off-screen
-   with it. That is a WCAG 1.4.10 Reflow failure, and 1920px at 200% zoom (= 960 CSS px) lands squarely
+/* The .irow__* columns below are `flex: none` and total about 1160px with their gaps (Shopify and
+   Source joined on 2026-09-25), so they cannot shrink. Before the table scrolled on its own, a narrow
+   window scrolled the whole DOCUMENT sideways instead — carrying the nav rail and the page header
+   off-screen with it. That is a WCAG 1.4.10 Reflow failure, and 1920px at 200% zoom (= 960 CSS px) lands squarely
    inside the band, as does a 1280px laptop at 125%. Scrolling the table rather than the page is what
    `.table-wrap` (admin.css) already does for every other admin table.
    The scroll container is the existing `#table` wrapper rather than a new element, because that is the
@@ -1692,7 +1731,7 @@
   box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: var(--stack-lg);
+  gap: var(--stack-md);
   width: 100%;
   padding: var(--stack-sm) var(--stack-md);
   border-bottom: var(--rule-width) solid var(--border-strong);

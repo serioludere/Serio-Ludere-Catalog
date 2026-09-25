@@ -26,7 +26,7 @@ export interface LegacyRug {
 
 export interface SeedRows {
   /** Rugs columns A..P (id … status); formula columns Q..S are never written. */
-  /** Whole Products rows, A..AQ (brief §9). */
+  /** Whole Products rows, A..AR (brief §9). */
   products: CellValue[][];
   collections: CellValue[][];
   tags: CellValue[][];

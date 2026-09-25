@@ -354,11 +354,46 @@ describe('/{slug} — the signed-in catalog', () => {
     state.down = false;
     const { html } = await render(CustomerCatalog, '/hala', { slug: 'hala' }, { customer: 'hala' });
     // Owner, 2026-09-18: the selected collection's description introduces its cards. It ships as an
-    // attribute on the tab and filters.ts moves the pressed one into the intro line, so the server
-    // renders that line empty and hidden — "All" has no description of its own.
+    // attribute on the tab and filters.ts moves the pressed one into the intro line. The page opens
+    // on the first collection (owner, 2026-09-25), so the server already renders ITS description.
     expect(html).toMatch(/data-filter="kilims"[^>]*data-description="Flatweaves from Denizli\."/);
-    expect(html).toContain('data-collection-intro');
+    expect(html).toMatch(/data-collection-intro[^>]*>\s*Flatweaves from Denizli\.\s*</);
+    expect(html).not.toMatch(/data-collection-intro[^>]*hidden/);
+  });
+
+  it('puts "All" last and opens on the first collection (owner, 2026-09-25)', async () => {
+    state.down = false;
+    const { html } = await render(CustomerCatalog, '/hala', { slug: 'hala' }, { customer: 'hala' });
+    const strip = html.slice(
+      html.indexOf('class="pv-filters"'),
+      html.indexOf('</nav>', html.indexOf('pv-filters')),
+    );
+    const order = [...strip.matchAll(/data-filter="([^"]+)"/g)].map((m) => m[1]);
+    expect(order).toEqual(['kilims', 'all']);
+    // The first collection is pressed on first paint, not "All".
+    expect(strip).toMatch(/class="pv-chip is-on"[^>]*data-filter="kilims"[^>]*aria-pressed="true"/);
+    expect(strip).toMatch(/data-filter="all"[^>]*aria-pressed="false"/);
+  });
+
+  it('opens on "All" when the link asks for it, with no intro line', async () => {
+    state.down = false;
+    const { html } = await render(
+      CustomerCatalog,
+      '/hala?collection=all',
+      { slug: 'hala' },
+      { customer: 'hala' },
+    );
+    expect(html).toMatch(/data-filter="all"[^>]*aria-pressed="true"/);
+    expect(html).toMatch(/data-filter="kilims"[^>]*aria-pressed="false"/);
     expect(html).toMatch(/data-collection-intro[^>]*hidden/);
+    // A tab that is not on the page is ignored, and the first collection opens instead.
+    const stray = await render(
+      CustomerCatalog,
+      '/hala?collection=nope',
+      { slug: 'hala' },
+      { customer: 'hala' },
+    );
+    expect(stray.html).toMatch(/data-filter="kilims"[^>]*aria-pressed="true"/);
   });
 });
 

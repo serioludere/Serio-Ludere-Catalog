@@ -11,7 +11,8 @@
 // Only the Title cell is editable here. Figma draws exactly one editable cell per row (the Title on
 // the editing state, the ID on the error state), and the error state's ID input is the duplicate-ID
 // recovery path rather than a general-purpose field — so widening this to "any cell" would be
-// inventing an interaction the file does not draw.
+// inventing an interaction the file does not draw. The one addition is the owner's (2026-09-25): the
+// Shopify dropdown, which is a choice rather than a cell to type into, and saves as it changes.
 import { get, post, type ApiOptions } from './api.ts';
 
 const SAVED_HOLD_MS = 1200;
@@ -38,6 +39,8 @@ interface RugForRename {
   method: string;
   age: string;
   origin: string;
+  pile: string;
+  shape: string;
   priceUsd?: number;
   rotate: string;
   featured: boolean;
@@ -46,6 +49,10 @@ interface RugForRename {
   supplier: string;
   supplierRef: string;
   notes: string;
+  shopify: string;
+  commitStatus: string;
+  driveFolderId: string;
+  driveFolderUrl: string;
 }
 
 /**
@@ -72,6 +79,15 @@ function renameBody(rug: RugForRename, name: string): Record<string, unknown> {
     method: rug.method,
     age: rug.age,
     origin: rug.origin,
+    /* Every column the update route would otherwise write BLANK (2026-09-25): Pile and Shape joined
+       the form on 2026-09-23 but not this body, so a rename in the table wiped them; the Shopify
+       choice, the photo-import state and the Drive folder are carried for the same reason. */
+    pile: rug.pile,
+    shape: rug.shape,
+    shopify: rug.shopify,
+    commitStatus: rug.commitStatus,
+    driveFolderId: rug.driveFolderId,
+    driveFolderUrl: rug.driveFolderUrl,
     priceUsd: rug.priceUsd,
     rotate: rug.rotate,
     featured: rug.featured,
@@ -222,6 +238,44 @@ export function bindInlineRows(opts: InlineRowBindings = {}): () => void {
     cancel.addEventListener('click', () => restore(original));
   };
 
+  /**
+   * The Shopify dropdown (owner, 2026-09-25): saved the moment it changes, to that one cell. The row
+   * dims while it saves and flashes when it has, exactly as a rename does; a refusal puts the old
+   * answer back, so the table never shows a choice the sheet does not hold.
+   */
+  const saveShopify = async (select: HTMLSelectElement): Promise<void> => {
+    const row = select.closest<HTMLElement>('[data-row]');
+    const id = select.dataset.shopify ?? '';
+    const before =
+      select.dataset.saved ?? select.querySelector<HTMLOptionElement>('option[selected]')?.value ?? '';
+    if (!row || !id || select.value === before) return;
+    setState(row, 'saving');
+    showMessage(row, null);
+    select.disabled = true;
+    const res = await post<RugPatchResponse>(
+      `/api/admin/rugs/${encodeURIComponent(id)}/shopify`,
+      { shopify: select.value },
+      opts.api,
+    );
+    select.disabled = false;
+    if (res.ok) {
+      select.dataset.saved = select.value;
+      setState(row, 'read');
+      row.classList.add('irow--saved');
+      setTimeout(() => row.classList.remove('irow--saved'), SAVED_HOLD_MS);
+    } else {
+      select.value = before;
+      setState(row, 'error');
+      showMessage(row, res.message ?? res.error ?? 'That change was not saved.');
+    }
+    select.focus();
+  };
+
+  const onChange = (e: Event): void => {
+    const select = (e.target as HTMLElement | null)?.closest<HTMLSelectElement>('select[data-shopify]');
+    if (select) void saveShopify(select);
+  };
+
   const onClick = (e: Event): void => {
     const target = e.target as HTMLElement | null;
     if (!target) return;
@@ -232,7 +286,11 @@ export function bindInlineRows(opts: InlineRowBindings = {}): () => void {
   };
 
   doc.addEventListener('click', onClick);
-  return () => doc.removeEventListener('click', onClick);
+  doc.addEventListener('change', onChange);
+  return () => {
+    doc.removeEventListener('click', onClick);
+    doc.removeEventListener('change', onChange);
+  };
 }
 
 export function initInlineRows(): void {

@@ -29,11 +29,13 @@ const { rugs, collections, likesById } = Astro.props;
     <span class="irow__size" role="columnheader">Size</span>
     <span class="irow__price" role="columnheader">Price</span>
     <span class="irow__likes" role="columnheader">Likes</span>
+    <span class="irow__shopify" role="columnheader">Shopify</span>
+    <span class="irow__source" role="columnheader">Source</span>
     {
       /* A role="row" may own only cells, and these two were plain spans — the same defect the body
         rows had. The spacer is pure layout so it says so; the action column is a real column and
         needs a name, which is visually hidden because the header cell is drawn empty. Head and body
-        now agree at six columns. */
+        now agree at nine columns (Shopify and Source joined on 2026-09-25). */
     }
     <span class="irow__spacer" role="presentation"></span>
     <span class="irow__action" role="columnheader"><span class="sr-only">Actions</span></span>

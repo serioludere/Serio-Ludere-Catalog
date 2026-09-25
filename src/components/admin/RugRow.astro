@@ -4,10 +4,12 @@
 // "A products row that edits in place. Click a cell, it becomes an input; Enter commits, Esc
 // reverts, Tab moves on. Saving dims the row rather than replacing it with a spinner."
 //
-// Columns match the P2 header exactly: ID 110 · Title 280 · Collection 150 · Size 140 · Price 130,
-// then a flexible spacer, then the action slot. The read state is server-rendered; the editing,
-// saving and error states are applied by src/scripts/admin/inline-row.ts, which is what keeps the
-// row in place throughout — the thing the footnote on P2 is careful to promise.
+// Columns match the header in RugTable: ID · Title · Collection · Size · Price · Likes, then Shopify
+// and Source (owner, 2026-09-25), a flexible spacer, then the action slot. Widths live in
+// components.css (.irow__*), narrowed that day so the row still fits a 1440 screen. The read state
+// is server-rendered; the editing, saving and error states are applied by
+// src/scripts/admin/inline-row.ts, which is what keeps the row in place throughout — the thing the
+// footnote on P2 is careful to promise.
 //
 // NOT used on mobile: "inline table editing on a phone is a trap. Mobile uses cards, and editing
 // opens the same drawer." The table is hidden below 768 in admin.css.
@@ -17,6 +19,7 @@ import type { AdminRug } from '../../lib/admin/read.ts';
 import { dims } from '../../lib/units.ts';
 import { collectionSlug, collectionSlugs } from '../../lib/text.ts';
 import type { Collection } from '../../lib/sheets/types.ts';
+import { SHOPIFY_OPTIONS } from '../../lib/shopify-listing.ts';
 
 interface Props {
   rug: AdminRug;
@@ -38,6 +41,18 @@ const search = [rug.name, rug.id, rug.supplierRef, rug.slug, rug.supplier]
   .join(' ')
   .toLowerCase()
   .replace(/[<>]/g, ' ');
+/* The scraped product page (owner, 2026-09-25), opened in a new tab. The cell is plain sheet text and
+   can be edited by hand, so only an http(s) address becomes a link — never a `javascript:` one — and
+   it is labelled with the site it points at, which is what tells the studio which supplier it is. */
+const source = ((): { href: string; label: string } | undefined => {
+  try {
+    const url = new URL(rug.sourceUrl);
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return undefined;
+    return { href: url.toString(), label: url.hostname.replace(/^www\./, '') };
+  } catch {
+    return undefined;
+  }
+})();
 ---
 
 {
@@ -46,7 +61,7 @@ const search = [rug.name, rug.id, rug.supplierRef, rug.slug, rug.supplier]
     hundred, and table navigation was dead. The row role goes on `.irow` rather than on `.irow__line`
     because `.irow` is the table's direct descendant; `.irow__line` is pure layout and says so, which
     leaves the cells owned by the row. `.irow__spacer` is presentational in both head and row, so the
-    column count matches at six. */
+    column count matches at nine. */
 }
 <div
   class="irow"
@@ -66,6 +81,35 @@ const search = [rug.name, rug.id, rug.supplierRef, rug.slug, rug.supplier]
     <span class="irow__size" role="cell">{size}</span>
     <span class="irow__price" role="cell">{price}</span>
     <span class="irow__likes" role="cell">{likes > 0 ? likes : '—'}</span>
+    {
+      /* Saved the moment it changes (inline-row.ts), straight to this product's `Shopify` cell.
+         Named by the product id, not its title: the id is a closed alphabet, the title is sheet text. */
+    }
+    <span class="irow__shopify" role="cell">
+      <select data-shopify={rug.id} aria-label={`Shopify, product ${rug.id}`}>
+        <option value="" selected={rug.shopify === ''}>—</option>
+        {
+          SHOPIFY_OPTIONS.map((o) => (
+            <option value={o} selected={rug.shopify === o}>
+              {o}
+            </option>
+          ))
+        }
+      </select>
+    </span>
+    <span class="irow__source" role="cell">
+      {
+        source ? (
+          <a href={source.href} target="_blank" rel="noopener noreferrer" title={source.href}>
+            {source.label}
+            <span aria-hidden="true"> ↗</span>
+            <span class="sr-only"> (opens in a new tab)</span>
+          </a>
+        ) : (
+          '—'
+        )
+      }
+    </span>
     <span class="irow__spacer" role="presentation"></span>
     <span class="irow__action" role="cell">
       {

@@ -76,9 +76,15 @@ export const PRODUCT_HEADER_LABELS = [
    * yet — see PRODUCT_OPTIONAL_TRAILING.
    */
   'Texture Image',
+  /**
+   * Whether the product is on the Shopify store (owner, 2026-09-25): `Yes`, `No` or `TA`, blank until
+   * the studio picks one. Chosen on the add/edit form and straight from the admin products table.
+   * Trailing for the same reason as `Texture Image`: nothing before it moves.
+   */
+  'Shopify',
 ] as const;
 
-/** Zero-based column index of every Products field (A..AQ). */
+/** Zero-based column index of every Products field (A..AR). */
 export const PRODUCT_COLS = {
   productId: 0,
   handle: 1,
@@ -123,13 +129,14 @@ export const PRODUCT_COLS = {
   commitStatus: 40,
   internalNotes: 41,
   textureImage: 42,
+  shopify: 43,
 } as const;
 
-/** Number of columns a Products row occupies (A..AQ). */
+/** Number of columns a Products row occupies (A..AR). */
 export const PRODUCT_WIDTH = PRODUCT_HEADER_LABELS.length;
 
 /** The last Products column letter, so a range is never spelled out by hand and left behind. */
-export const PRODUCT_LAST_COL = 'AQ';
+export const PRODUCT_LAST_COL = 'AR';
 
 /**
  * How many of the Products headers a sheet is allowed to be missing off the END of row 1.
@@ -140,9 +147,13 @@ export const PRODUCT_LAST_COL = 'AQ';
  * column(s) may be ABSENT (a blank cell is absent too); anything present must still be the right
  * label in the right place, and the cells behind a missing header read as empty.
  *
- * `sheet:init` writes the header and widens the grid, after which this tolerance does nothing.
+ * `Shopify` followed on 2026-09-25, so the window is the last two: a sheet may lack both, or only
+ * the newer one.
+ *
+ * `sheet:init` writes the header and widens the grid, after which this tolerance does nothing — and
+ * so does the first product save (src/lib/admin/write.ts ensureProductWidth).
  */
-export const PRODUCT_OPTIONAL_TRAILING = 1;
+export const PRODUCT_OPTIONAL_TRAILING = 2;
 
 /**
  * What column X carries now that products have no status (owner, 2026-09-16). The column stays in

@@ -238,6 +238,13 @@ describe('inline row editing', () => {
     supplier: 'karavanrug',
     supplierRef: '',
     notes: '',
+    // Columns the rename used to drop — and so blank — on every save (2026-09-25).
+    pile: 'Low Pile',
+    shape: 'Runner',
+    shopify: 'TA',
+    commitStatus: 'complete',
+    driveFolderId: '1FoLdEr000000000000000000000000000',
+    driveFolderUrl: 'https://drive.google.com/drive/folders/1FoLdEr000000000000000000000000000',
   };
 
   /** Answers the rename's GET with a real rug, and records what the follow-up POST sent. */
@@ -300,6 +307,17 @@ describe('inline row editing', () => {
     expect(posted().roundPrice).toBe(false);
     // `sourceUrl` is optional-not-nullable on the DTO: sending '' fails validation outright.
     expect(posted()).not.toHaveProperty('sourceUrl');
+    // The update route writes the WHOLE row, so anything left out of the body is written blank.
+    // Pile and Shape were, from 2026-09-23 until 2026-09-25; the Shopify answer and the photo-import
+    // state would have been too.
+    expect(posted()).toMatchObject({
+      pile: 'Low Pile',
+      shape: 'Runner',
+      shopify: 'TA',
+      commitStatus: 'complete',
+      driveFolderId: RUG_FOR_RENAME.driveFolderId,
+      driveFolderUrl: RUG_FOR_RENAME.driveFolderUrl,
+    });
   });
 
   it('a rejected save keeps the row in place and says why', async () => {
@@ -333,5 +351,80 @@ describe('inline row editing', () => {
     row.querySelector('input')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     expect(fetchImpl).not.toHaveBeenCalled();
     expect(row.classList.contains('irow--editing')).toBe(false);
+  });
+});
+
+describe('the Shopify dropdown in a row (owner, 2026-09-25)', () => {
+  /** A row as RugRow renders it, with the dropdown's saved answer marked `selected`. */
+  function mountRow(saved: string): HTMLSelectElement {
+    const opts = ['', 'Yes', 'No', 'TA']
+      .map((o) => `<option value="${o}"${o === saved ? ' selected' : ''}>${o || '—'}</option>`)
+      .join('');
+    document.body.innerHTML = `
+      <div class="irow" data-row data-id="SL-021">
+        <div class="irow__line">
+          <span class="irow__title" data-cell="name">Winks</span>
+          <span class="irow__shopify"><select data-shopify="SL-021">${opts}</select></span>
+        </div>
+        <p class="irow__message" hidden></p>
+      </div>`;
+    return document.querySelector<HTMLSelectElement>('select[data-shopify]')!;
+  }
+  const json = (status: number, body: unknown): Response =>
+    new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+
+  it('saves the new answer to that one product the moment it changes', async () => {
+    const fetchImpl = vi.fn(async () => json(200, { ok: true }));
+    track(bindInlineRows({ api: { fetchImpl: fetchImpl as unknown as typeof fetch } }));
+    const select = mountRow('');
+    const row = select.closest<HTMLElement>('[data-row]')!;
+    select.value = 'Yes';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+
+    await vi.waitFor(() => expect(row.classList.contains('irow--saved')).toBe(true));
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe('/api/admin/rugs/SL-021/shopify');
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(String(init.body))).toEqual({ shopify: 'Yes' });
+    expect(select.value).toBe('Yes');
+    expect(select.disabled).toBe(false);
+    // Clicking the dropdown is not a rename: the title stays a title.
+    expect(row.classList.contains('irow--editing')).toBe(false);
+  });
+
+  it('puts the saved answer back and says why when the save is refused', async () => {
+    const fetchImpl = vi.fn(async () =>
+      json(409, { ok: false, message: 'That product moved. Reload the list.' }),
+    );
+    track(bindInlineRows({ api: { fetchImpl: fetchImpl as unknown as typeof fetch } }));
+    const select = mountRow('No');
+    const row = select.closest<HTMLElement>('[data-row]')!;
+    select.value = 'TA';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+
+    await vi.waitFor(() => expect(row.classList.contains('irow--error')).toBe(true));
+    expect(select.value).toBe('No');
+    const msg = row.querySelector<HTMLElement>('.irow__message')!;
+    expect(msg.hidden).toBe(false);
+    expect(msg.textContent).toContain('Reload the list');
+  });
+
+  it('reverts to the last answer that SAVED, not to the one the page loaded with', async () => {
+    let fail = false;
+    const fetchImpl = vi.fn(async () =>
+      fail ? json(500, { ok: false, message: 'Nope.' }) : json(200, { ok: true }),
+    );
+    track(bindInlineRows({ api: { fetchImpl: fetchImpl as unknown as typeof fetch } }));
+    const select = mountRow('');
+    const row = select.closest<HTMLElement>('[data-row]')!;
+    select.value = 'Yes';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    await vi.waitFor(() => expect(row.classList.contains('irow--saved')).toBe(true));
+
+    fail = true;
+    select.value = 'No';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    await vi.waitFor(() => expect(row.classList.contains('irow--error')).toBe(true));
+    expect(select.value).toBe('Yes');
   });
 });

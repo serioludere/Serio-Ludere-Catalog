@@ -22,7 +22,13 @@ import {
 } from '../../../src/lib/admin/write.ts';
 import type { CellValue, SpreadsheetInfo, ValueRange } from '../../../src/lib/sheets/client.ts';
 import { SheetsApiError } from '../../../src/lib/sheets/errors.ts';
-import { HEADERS, PRODUCT_COLS, PRODUCT_WIDTH, TABS } from '../../../src/lib/sheets/contract.ts';
+import {
+  HEADERS,
+  PRODUCT_COLS,
+  PRODUCT_HEADER_LABELS,
+  PRODUCT_WIDTH,
+  TABS,
+} from '../../../src/lib/sheets/contract.ts';
 import { buildInsertRows, cellOrClear } from '../../../src/lib/sheets/write.ts';
 import { rugRow } from '../../helpers/ranges.ts';
 
@@ -312,7 +318,12 @@ describe('updateRug', () => {
    * was already forgiving about the missing column; this is the write half of that promise.
    */
   it('widens a sheet that predates the newest column, and labels it, before writing the row', async () => {
-    const f = fake({ columns: PRODUCT_WIDTH - 1, rows: { 'Products!A31:AQ31': current } });
+    // A sheet from before `Shopify` (2026-09-25): a real header up to `Texture Image`, one short.
+    const header: CellValue[] = [...PRODUCT_HEADER_LABELS.slice(0, -1)];
+    const f = fake({
+      columns: PRODUCT_WIDTH - 1,
+      rows: { 'Products!A31:AR31': current, 'Products!A1:AR1': header },
+    });
     const result = await updateRug(f.client, { row: 31, id: 'SL-021', version, cells, audit });
     expect(result.verified).toBe(true);
 
@@ -323,20 +334,62 @@ describe('updateRug', () => {
       appendDimension: { sheetId: IDS.Products, dimension: 'COLUMNS', length: 1 },
     });
     // …and the new column gets its contract label, since a sheet being widened never had one.
-    const header = repair[1] as Req;
-    expect(header.updateCells?.start).toEqual({
+    const labelled = repair[1] as Req;
+    expect(labelled.updateCells?.start).toEqual({
       sheetId: IDS.Products,
       rowIndex: 0,
       columnIndex: PRODUCT_WIDTH - 1,
     });
-    expect(header.updateCells?.rows[0]?.values).toEqual([
-      { userEnteredValue: { stringValue: 'Texture Image' } },
-    ]);
+    expect(labelled.updateCells?.rows[0]?.values).toEqual([{ userEnteredValue: { stringValue: 'Shopify' } }]);
 
     // Second save in the same process: checked once, so no second repair.
-    const again = fake({ columns: PRODUCT_WIDTH - 1, rows: { 'Products!A31:AQ31': current } });
+    const again = fake({ columns: PRODUCT_WIDTH - 1, rows: { 'Products!A31:AR31': current } });
     await updateRug(again.client, { row: 31, id: 'SL-021', version, cells, audit });
     expect(again.writes).toHaveLength(1);
+  });
+
+  it('labels both trailing columns on a sheet from before either of them', async () => {
+    const header: CellValue[] = [...PRODUCT_HEADER_LABELS.slice(0, -2)];
+    const f = fake({
+      columns: PRODUCT_WIDTH - 2,
+      rows: { 'Products!A31:AR31': current, 'Products!A1:AR1': header },
+    });
+    await updateRug(f.client, { row: 31, id: 'SL-021', version, cells, audit });
+    const repair = f.writes[0]! as Req[];
+    expect(repair[0]?.appendDimension).toEqual({ sheetId: IDS.Products, dimension: 'COLUMNS', length: 2 });
+    expect(repair[1]?.updateCells?.start.columnIndex).toBe(PRODUCT_WIDTH - 2);
+    expect(repair[1]?.updateCells?.rows[0]?.values).toEqual([
+      { userEnteredValue: { stringValue: 'Texture Image' } },
+      { userEnteredValue: { stringValue: 'Shopify' } },
+    ]);
+  });
+
+  it('names a blank Shopify header on a grid that already has room for it (owner, 2026-09-25)', async () => {
+    // Spare columns are room, not a name: the studio reading the spreadsheet should see what the
+    // column holds. No appendDimension — the grid is wide enough — just the one label.
+    const header: CellValue[] = [...PRODUCT_HEADER_LABELS.slice(0, -1)];
+    const f = fake({
+      columns: PRODUCT_WIDTH + 5,
+      rows: { 'Products!A31:AR31': current, 'Products!A1:AR1': header },
+    });
+    await updateRug(f.client, { row: 31, id: 'SL-021', version, cells, audit });
+    expect(f.writes).toHaveLength(2);
+    const repair = f.writes[0]! as Req[];
+    expect(repair).toHaveLength(1);
+    expect(repair[0]?.appendDimension).toBeUndefined();
+    expect(repair[0]?.updateCells?.start).toEqual({
+      sheetId: IDS.Products,
+      rowIndex: 0,
+      columnIndex: PRODUCT_WIDTH - 1,
+    });
+  });
+
+  it('never labels the tail of a header row that is blank from end to end', async () => {
+    // That is a sheet `sheet:init` has never seen; two labels at the far end would turn "not set up
+    // yet" into a contract error about column A.
+    const f = fake({ columns: PRODUCT_WIDTH, rows: { 'Products!A31:AR31': current } });
+    await updateRug(f.client, { row: 31, id: 'SL-021', version, cells, audit });
+    expect(f.writes).toHaveLength(1);
   });
 
   it('leaves a header cell that already has text alone, and only adds the columns', async () => {
@@ -345,7 +398,7 @@ describe('updateRug', () => {
     const header: CellValue[] = [...HEADERS.Products];
     const f = fake({
       columns: PRODUCT_WIDTH - 1,
-      rows: { 'Products!A31:AQ31': current, 'Products!A1:AQ1': header },
+      rows: { 'Products!A31:AR31': current, 'Products!A1:AR1': header },
     });
     await updateRug(f.client, { row: 31, id: 'SL-021', version, cells, audit });
     expect(f.writes[0]).toEqual([
@@ -356,7 +409,7 @@ describe('updateRug', () => {
   it('writes as it always did when the API reports no grid properties at all', async () => {
     // Nothing to measure is not a reason to refuse a save: the write itself is then the source of
     // truth, exactly as it was before this check existed.
-    const f = fake({ noGrid: true, rows: { 'Products!A31:AQ31': current } });
+    const f = fake({ noGrid: true, rows: { 'Products!A31:AR31': current } });
     const result = await updateRug(f.client, { row: 31, id: 'SL-021', version, cells, audit });
     expect(result.verified).toBe(true);
     expect(f.writes).toHaveLength(1);
@@ -373,7 +426,7 @@ describe('updateRug', () => {
     const f = fake({
       // Wide when first measured; narrow from then on, as if a column had just been deleted.
       columns: () => (measured++ === 0 ? PRODUCT_WIDTH : PRODUCT_WIDTH - 1),
-      rows: { 'Products!A31:AQ31': current },
+      rows: { 'Products!A31:AR31': current },
       fail: (reqs) => {
         const isRug = reqs.some((r) => (r as Req).updateCells?.start.sheetId === IDS.Products);
         if (!isRug || refused) return undefined;
@@ -396,7 +449,7 @@ describe('updateRug', () => {
     // The replay is for one named failure. Anything else — a bad range, a permission problem — must
     // surface as itself rather than being quietly attempted twice.
     const f = fake({
-      rows: { 'Products!A31:AQ31': current },
+      rows: { 'Products!A31:AR31': current },
       fail: () => new SheetsApiError(403, 'The caller does not have permission'),
     });
     await expect(updateRug(f.client, { row: 31, id: 'SL-021', version, cells, audit })).rejects.toThrow(
@@ -406,18 +459,19 @@ describe('updateRug', () => {
   });
 
   it('re-reads the row, checks id + version, sends ONE batchUpdate with the audit row, then verifies', async () => {
-    const f = fake({ rows: { 'Products!A31:AQ31': current } });
+    const f = fake({ rows: { 'Products!A31:AR31': current } });
     const result = await updateRug(f.client, { row: 31, id: 'SL-021', version, cells, audit });
     expect(result).toEqual({ row: 31, audit: { row: 2, action: 'rug.update' }, verified: true });
     expect(f.writes).toHaveLength(1);
     const reqs = f.writes[0]!;
     expect(reqs.some((r) => (r as Req).updateCells?.start.sheetId === IDS.AuditLog)).toBe(true);
-    expect(f.reads).toEqual([['Products!A31:AQ31'], ['Products!A31:AQ31']]); // check + verify
+    // The header once (the width check, once per process), then check + verify.
+    expect(f.reads).toEqual([['Products!A1:AR1'], ['Products!A31:AR31'], ['Products!A31:AR31']]);
   });
   it('answers 409 with the fresh row and sends NO batchUpdate on a version mismatch or a moved id', async () => {
     const changed = [...current];
     changed[2] = 'Renamed by hand';
-    const f = fake({ rows: { 'Products!A31:AQ31': changed } });
+    const f = fake({ rows: { 'Products!A31:AR31': changed } });
     const err = await updateRug(f.client, { row: 31, id: 'SL-021', version, cells, audit }).catch(
       (e: unknown) => e,
     );
@@ -425,24 +479,24 @@ describe('updateRug', () => {
     expect((err as VersionMismatchError).status).toBe(409);
     expect((err as VersionMismatchError).fresh).toEqual(changed);
     expect(f.writes).toHaveLength(0);
-    const moved = fake({ rows: { 'Products!A31:AQ31': rugRow({ id: 'SL-099' }) } });
+    const moved = fake({ rows: { 'Products!A31:AR31': rugRow({ id: 'SL-099' }) } });
     await expect(updateRug(moved.client, { row: 31, id: 'SL-021', version, cells, audit })).rejects.toThrow(
       /expected id/,
     );
     expect(moved.writes).toHaveLength(0);
     // Counts live in the Reactions log now, so every cell of the row is owned by the admin: an
     // unchanged row still commits.
-    const ok = fake({ rows: { 'Products!A31:AQ31': [...current] } });
+    const ok = fake({ rows: { 'Products!A31:AR31': [...current] } });
     await expect(
       updateRug(ok.client, { row: 31, id: 'SL-021', version, cells, audit }),
     ).resolves.toMatchObject({ row: 31 });
   });
   it('logs a verify-read mismatch and appends a verify-failed audit row (the write has already committed)', async () => {
-    const store: Record<string, CellValue[]> = { 'Products!A31:AQ31': current };
+    const store: Record<string, CellValue[]> = { 'Products!A31:AR31': current };
     const f = fake({
       rows: store,
       afterWrite: () => {
-        store['Products!A31:AQ31'] = rugRow({ id: 'SOMEONE-ELSE' });
+        store['Products!A31:AR31'] = rugRow({ id: 'SOMEONE-ELSE' });
       },
     });
     const errors: string[] = [];
@@ -458,7 +512,7 @@ describe('updateRug', () => {
     expect(values[9]?.userEnteredValue?.stringValue).toMatch(/^verify-failed/);
   });
   it('the mutex serialises two writers (the second sees the first commit)', async () => {
-    const store: Record<string, CellValue[]> = { 'Products!A31:AQ31': current };
+    const store: Record<string, CellValue[]> = { 'Products!A31:AR31': current };
     const order: string[] = [];
     const f = fake({
       rows: store,
@@ -467,7 +521,7 @@ describe('updateRug', () => {
         const name = (
           (reqs[0] as Req).updateCells!.rows[0]!.values[1] as { userEnteredValue: { stringValue: string } }
         ).userEnteredValue.stringValue;
-        store['Products!A31:AQ31'] = [...rugRow({ id: 'SL-021', name }), '', '', '', ''];
+        store['Products!A31:AR31'] = [...rugRow({ id: 'SL-021', name }), '', '', '', ''];
       },
     });
     const first = updateRug(f.client, {
@@ -506,7 +560,7 @@ describe('insertRug', () => {
     const f = fake({
       colA: { Products: 29 },
       rows: {
-        'Products!A31:AQ31': ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+        'Products!A31:AR31': ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
       },
       afterWrite: () => {
         f.client.batchGet.mockImplementationOnce(async (r) => [
@@ -518,7 +572,7 @@ describe('insertRug', () => {
     expect(result).toEqual({ row: 31, audit: { row: 2, action: 'rug.create' }, verified: true });
     expect(f.writes[0]!.some((r) => (r as Req).appendDimension)).toBe(false);
 
-    const busy = fake({ colA: { Products: 29 }, rows: { 'Products!A31:AQ31': ['', '', 'stray name'] } });
+    const busy = fake({ colA: { Products: 29 }, rows: { 'Products!A31:AR31': ['', '', 'stray name'] } });
     await expect(insertRug(busy.client, { cells, audit: created })).rejects.toBeInstanceOf(RowConflictError);
     expect(busy.writes).toHaveLength(0);
     // Q:S spill values ("") on the target row are ignored: first read = blank check (spills), second = verify

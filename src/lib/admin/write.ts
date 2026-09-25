@@ -121,12 +121,14 @@ export interface RugFields {
   driveFolderUrl?: string;
   scrapedAt?: string;
   commitStatus?: string;
+  /** Written to `Shopify` (owner, 2026-09-25): 'Yes', 'No', 'TA' or '' for not chosen yet. */
+  shopify?: string;
 }
 
 export type Cells = Array<CellValue | undefined>;
 
 /**
- * Every Products cell A..AQ in column order (brief §9). `featured` and `rotate` have no column in
+ * Every Products cell A..AR in column order (brief §9). `featured` and `rotate` have no column in
  * the Shopify set, so they ride on Tags as the flags `featured` / `rotate` / `rotate-force`.
  */
 export function productFieldsToCells(f: RugFields, id: string): Cells {
@@ -181,6 +183,7 @@ export function productFieldsToCells(f: RugFields, id: string): Cells {
   cells[PRODUCT_COLS.commitStatus] = f.commitStatus ?? '';
   cells[PRODUCT_COLS.internalNotes] = f.notes;
   cells[PRODUCT_COLS.textureImage] = f.textureId ?? '';
+  cells[PRODUCT_COLS.shopify] = f.shopify ?? '';
   return cells;
 }
 
@@ -278,7 +281,7 @@ export function assertDeleteRequestsSafe(
     throw new UnsafeRequestError(`a delete batch carries one deleteDimension, got ${deletes}`);
 }
 
-/** Update: B{row}:AQ{row} (everything except the Product ID) + the audit row, in one batch. */
+/** Update: B{row}:AR{row} (everything except the Product ID) + the audit row, in one batch. */
 export function buildRugUpdateRequests(
   ids: { rugs: number; auditLog: number },
   row: number,
@@ -295,7 +298,7 @@ export function buildRugUpdateRequests(
   return requests;
 }
 
-/** Insert: optional appendDimension first, then A{row}:AQ{row} + the audit row. */
+/** Insert: optional appendDimension first, then A{row}:AR{row} + the audit row. */
 export function buildRugInsertRequests(
   ids: { rugs: number; auditLog: number },
   targetRow: number,
@@ -402,8 +405,8 @@ function onSheetIdError(client: Client, e: unknown): never {
  * that never had them). A header cell with the wrong text is left alone and still fails the contract
  * check loudly — overwriting row 1 is `sheet:init --force-headers`, a decision a human makes.
  *
- * Runs once per process, and a wide-enough sheet — every healthy one — costs a single properties
- * read and no write at all.
+ * Runs once per process, and a wide-enough, fully named sheet — every healthy one — costs a
+ * properties read and a header read, and no write at all.
  */
 let productWidthChecked = false;
 
@@ -422,32 +425,39 @@ async function ensureProductWidth(client: Client, logger?: Logger): Promise<void
     productWidthChecked = true;
     return;
   }
-  // Wide enough already — the overwhelmingly common case, and the end of it.
-  if (columns >= PRODUCT_WIDTH) {
-    productWidthChecked = true;
-    return;
-  }
-  const requests: unknown[] = [
-    {
+  const requests: unknown[] = [];
+  if (columns < PRODUCT_WIDTH) {
+    requests.push({
       appendDimension: {
         sheetId: sheet.properties.sheetId,
         dimension: 'COLUMNS',
         length: PRODUCT_WIDTH - columns,
       },
-    },
-  ];
+    });
+  }
+  /* The header is read even when the grid is wide enough (owner, 2026-09-25): a sheet with spare
+     columns already has room for `Shopify`, but its row 1 does not NAME it, and the studio reading
+     the spreadsheet should see what the column is. One read, once per process. */
   const [headerRange] = await client.batchGet([`${TABS.products}!A1:${PRODUCT_LAST_COL}1`]);
   const header = headerRange?.values?.[0] ?? [];
   /* The optional window only, and only its blank SUFFIX: `buildRowUpdate` writes `userEnteredValue`
      for every cell it is given, so a run that included a filled cell would rewrite it — and an
      `undefined` in the middle would CLEAR it (cellOrClear). Writing the tail and nothing else is the
-     only shape that can add a label without touching one. */
+     only shape that can add a label without touching one. A header row that is blank from start to
+     finish is not ours to label here: that is a sheet `sheet:init` has never seen. */
   const from: number = PRODUCT_WIDTH - PRODUCT_OPTIONAL_TRAILING;
   let start: number = PRODUCT_WIDTH;
   for (let c = PRODUCT_WIDTH - 1; c >= from && cellText(header[c]) === ''; c--) start = c;
-  const labels: Cells = start < PRODUCT_WIDTH ? PRODUCT_HEADER_LABELS.slice(start).map(String) : [];
+  const named = header.slice(0, start).some((c) => cellText(c) !== '');
+  const labels: Cells =
+    start < PRODUCT_WIDTH && (named || requests.length) ? PRODUCT_HEADER_LABELS.slice(start).map(String) : [];
   // One batch, in order: Sheets adds the columns before the header write lands in the last of them.
   if (labels.length) requests.push(buildRowUpdate(sheet.properties.sheetId, 1, start, labels));
+  // Wide enough and fully named — the overwhelmingly common case, and the end of it.
+  if (!requests.length) {
+    productWidthChecked = true;
+    return;
+  }
   await client.batchUpdate(requests);
   logger?.info('widened Products to the contract', { columns, width: PRODUCT_WIDTH, headers: labels });
   productWidthChecked = true;
@@ -800,6 +810,9 @@ export async function deleteRow(
  * into every product that named the thing being removed and rewrite that product's own cell, because
  * a product stores those names as text rather than as a reference.
  *
+ * It is also the Shopify dropdown in the admin products table (owner, 2026-09-25): one cell on one
+ * row, where rebuilding the whole row from the browser would risk every other column on it.
+ *
  * Each row's column A is re-read and checked against the id it was read under before anything is
  * written — the same guard `updateColumnCells` used to carry for the reorder. No version token: the
  * caller is editing one known cell on rows it just listed, not replacing a whole row, and demanding a
@@ -811,12 +824,16 @@ export async function updateProductCell(
     columnIndex: number;
     updates: Array<{ row: number; expectFirstCell: string; value: CellValue | undefined }>;
     audit: AuditRow;
+    logger?: Logger;
   },
 ): Promise<CommitResult> {
   if (args.columnIndex < 1 || args.columnIndex >= PRODUCT_WIDTH)
     throw new UnsafeRequestError('column out of range');
   if (args.updates.some((u) => u.row < 2)) throw new UnsafeRequestError('never write the header row');
   return withAdminLock(async () => {
+    // The Shopify dropdown writes the LAST column (owner, 2026-09-25), which a sheet from before it
+    // does not have yet — the same repair a full-row save makes first.
+    await ensureProductWidth(client, args.logger);
     const ranges = args.updates.map((u) => `${TABS.products}!A${u.row}:A${u.row}`);
     const read = ranges.length ? await client.batchGet(ranges) : [];
     args.updates.forEach((u, i) => {
@@ -832,14 +849,14 @@ export async function updateProductCell(
     });
     const sheetId = await client.sheetIdByTitle(TABS.products);
     const auditSheetId = await client.sheetIdByTitle(TABS.auditLog);
-    try {
-      await client.batchUpdate([
+    await commitProductBatch(
+      client,
+      [
         ...args.updates.map((u) => buildRowUpdate(sheetId, u.row, args.columnIndex, [u.value])),
         ...buildAuditInsert(auditSheetId, args.audit),
-      ]);
-    } catch (e) {
-      onSheetIdError(client, e);
-    }
+      ],
+      args.logger,
+    );
     return {
       row: args.updates[0]?.row ?? 0,
       audit: { row: TOP_ROW, action: args.audit.action },

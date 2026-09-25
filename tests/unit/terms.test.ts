@@ -22,11 +22,16 @@ describe('the two lists', () => {
       'Hand-Knotted',
       'Flatweave',
       'Hand-Woven',
+      'Hand-Loomed',
       'Hand-Embroidered',
       'Jacquard Loom',
       'Aghabani - Natural Dye',
-      'Vegetable Dye',
     ]);
+  });
+
+  it('offers Hand-Loomed as its own choice and no longer offers Vegetable Dye (owner, 2026-09-25)', () => {
+    expect(METHOD_OPTIONS).toContain('Hand-Loomed');
+    expect(METHOD_OPTIONS).not.toContain('Vegetable Dye');
   });
 });
 
@@ -36,8 +41,11 @@ describe('splitTerms', () => {
     expect(splitTerms('100% Wool', MATERIAL_OPTIONS)).toEqual(['Wool']);
     expect(splitTerms('hand knotted', METHOD_OPTIONS)).toEqual(['Hand-Knotted']);
     expect(splitTerms('HAND-WOVEN', METHOD_OPTIONS)).toEqual(['Hand-Woven']);
-    // The list this replaced, and the supplier's own words for the same thing.
-    expect(splitTerms('Hand-loomed', METHOD_OPTIONS)).toEqual(['Hand-Woven']);
+    // Hand-loomed was read as Hand-Woven until it became its own option (2026-09-25).
+    expect(splitTerms('Hand-loomed', METHOD_OPTIONS)).toEqual(['Hand-Loomed']);
+    expect(splitTerms('handloom', METHOD_OPTIONS)).toEqual(['Hand-Loomed']);
+    // The supplier's own words for a knotted pile.
+
     expect(splitTerms('Handmade pile rug', METHOD_OPTIONS)).toEqual(['Hand-Knotted']);
     expect(splitTerms('Viscos', MATERIAL_OPTIONS)).toEqual(['Viscose']);
   });
@@ -56,6 +64,12 @@ describe('splitTerms', () => {
     expect(splitTerms('Tufted', METHOD_OPTIONS)).toEqual(['Tufted']);
     expect(extraTerms('Tufted', METHOD_OPTIONS)).toEqual(['Tufted']);
     expect(extraTerms('Hand-loomed', METHOD_OPTIONS)).toEqual([]);
+    // Off the list since 2026-09-25, but a row that already says it keeps saying it.
+    expect(splitTerms('Hand-Knotted, Vegetable Dye', METHOD_OPTIONS)).toEqual([
+      'Hand-Knotted',
+      'Vegetable Dye',
+    ]);
+    expect(extraTerms('Hand-Knotted, Vegetable Dye', METHOD_OPTIONS)).toEqual(['Vegetable Dye']);
     expect(extraTerms('100% Wool', MATERIAL_OPTIONS)).toEqual([]);
   });
 
@@ -92,9 +106,17 @@ describe('matchTerms', () => {
   });
 
   it('gives the longest name the match, so overlapping options do not both fire', () => {
-    // "Aghabani - Natural Dye" contains "natural dye", which is also Vegetable Dye's alias.
     expect(matchTerms('Aghabani - Natural Dye', METHOD_OPTIONS)).toEqual(['Aghabani - Natural Dye']);
-    expect(matchTerms('Dyed with natural dyes', METHOD_OPTIONS)).toEqual(['Vegetable Dye']);
+    expect(matchTerms('Handmade pile rug', METHOD_OPTIONS)).toEqual(['Hand-Knotted']);
+  });
+
+  it('tells hand-woven and hand-loomed apart', () => {
+    expect(matchTerms('Hand woven, then hand loomed', METHOD_OPTIONS)).toEqual(['Hand-Woven', 'Hand-Loomed']);
+    expect(matchTerms('A handloomed wool rug', METHOD_OPTIONS)).toEqual(['Hand-Loomed']);
+  });
+
+  it('no longer reads natural dyes as a method, now that Vegetable Dye is off the list', () => {
+    expect(matchTerms('Dyed with natural dyes', METHOD_OPTIONS)).toEqual([]);
   });
 });
 

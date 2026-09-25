@@ -64,7 +64,35 @@ describe('filters.ts', () => {
 
     document.querySelector<HTMLButtonElement>('[data-filter="all"]')!.click();
     expect(shown()).toEqual(['SL-1', 'SL-2', 'SL-3']);
-    expect(String(replaceState.mock.calls.at(-1)?.[2])).not.toContain('collection=');
+    // "All" is written too (owner, 2026-09-25): a bare URL now opens on the first collection.
+    expect(String(replaceState.mock.calls.at(-1)?.[2])).toContain('collection=all');
+  });
+
+  it('opens on whichever tab the page rendered pressed — the first collection (owner, 2026-09-25)', () => {
+    // The strip as the page renders it now: collections first, "All" last, the first one pressed,
+    // and the cards outside it already hidden so the first paint is the right grid.
+    page(`
+      <nav class="pv-filters">
+        <button class="pv-chip is-on" data-filter="kilims" aria-pressed="true">Kilims</button>
+        <button class="pv-chip" data-filter="gabbeh" aria-pressed="false">Gabbeh</button>
+        <button class="pv-chip" data-filter="all" aria-pressed="false">All</button>
+      </nav>
+      <div data-card data-rug="SL-1" data-collections="kilims"><a href="/hala/SL-1">Winks</a></div>
+      <div data-card data-rug="SL-2" data-collections="gabbeh" hidden><a href="/hala/SL-2">Yellow</a></div>
+      <p data-grid-empty hidden></p>`);
+    const { win, replaceState } = fakeWin();
+    unbind = bindFilters({ win });
+    expect(shown()).toEqual(['SL-1']);
+    // Loading changes nothing in the address bar; only a choice does.
+    expect(replaceState).not.toHaveBeenCalled();
+
+    document.querySelector<HTMLButtonElement>('[data-filter="all"]')!.click();
+    expect(shown()).toEqual(['SL-1', 'SL-2']);
+    expect(String(replaceState.mock.calls.at(-1)?.[2])).toContain('collection=all');
+    // Opening a rug from "All" and coming back must land on "All", not on the first collection.
+    expect(document.querySelector('[data-rug="SL-2"] a')?.getAttribute('href')).toBe(
+      '/hala/SL-2?collection=all',
+    );
   });
 
   it('honours ?collection= on load and ignores one that is not on the page', () => {

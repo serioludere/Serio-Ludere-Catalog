@@ -57,6 +57,8 @@ export interface RugLike {
   supplier: string;
   supplierRef: string;
   notes: string;
+  /** Is it on the Shopify store: 'Yes', 'No', 'TA' or '' (owner, 2026-09-25); optional for older fixtures. */
+  shopify?: string;
   row: number;
   version: string;
 }
@@ -131,6 +133,7 @@ export interface RugBody {
   supplier: string;
   supplierRef: string;
   notes: string;
+  shopify: string;
   roundPrice: boolean;
   version?: string;
   /** Brief §12: `pending` until every photo has landed in the rug's Drive folder. */
@@ -290,6 +293,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     sourceUrl: input('f_sourceUrl'),
     supplier: byId<HTMLSelectElement>('f_supplier', doc),
     supplierRef: input('f_supplierRef'),
+    shopify: byId<HTMLSelectElement>('f_shopify', doc),
     notes: byId<HTMLTextAreaElement>('f_notes', doc),
     photos: byId<HTMLTextAreaElement>('f_photos', doc),
     version: input('f_version'),
@@ -507,6 +511,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     f.sourceUrl.value = rug.sourceUrl;
     f.supplier.value = rug.supplier;
     f.supplierRef.value = rug.supplierRef;
+    f.shopify.value = rug.shopify ?? '';
     f.notes.value = rug.notes;
     f.photos.value = rug.photos.join('\n');
     // The saved texture wins over whatever is ticked: fill() is the server's answer, not the form's.
@@ -538,6 +543,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
       featured: f.featured.checked,
       supplier: f.supplier.value,
       supplierRef: f.supplierRef.value.trim(),
+      shopify: f.shopify.value,
       notes: f.notes.value.trim(),
       roundPrice: roundOnSave.checked,
     };
@@ -990,6 +996,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     f.notes.value = '';
     f.photos.value = '';
     f.supplier.value = '';
+    f.shopify.value = '';
     f.rotate.value = 'false';
     f.featured.checked = false;
     f.id.value = data.nextId ?? '';

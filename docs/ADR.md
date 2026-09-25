@@ -1364,7 +1364,7 @@ it.
 measures the grid once per process before the first product write and, when it is too narrow, appends
 the missing columns and labels the new trailing header — additively, never over a cell that already
 has text, because rewriting row 1 is `sheet:init --force-headers`, a decision a human makes. A healthy
-sheet costs one properties read and no write. `sheet:init` does the same repair (and now widens the
+sheet costs one properties read and no write (a header read too since D31). `sheet:init` does the same repair (and now widens the
 grid BEFORE writing row 1, or the header write itself lands past the last column), but a studio
 hitting Save should not have to know that.
 
@@ -1380,6 +1380,30 @@ refusal for any other reason (never replayed), and the whole thing end to end th
 `POST /api/admin/rugs`. All six fail with the repair removed.
 
 Gates: **1142 tests**, 0 typecheck errors, lint clean, build with no warnings.
+
+### D31 — `Shopify`, a second trailing column, and a dropdown that writes one cell (2026-09-25)
+
+**Decision.** Products gains `Shopify` (AR): `Yes`, `No`, `TA`, or blank for "not chosen yet". It is
+appended after `Texture Image` for D30's reason, and `PRODUCT_OPTIONAL_TRAILING` becomes 2, so a sheet
+may lack both trailing columns or only the newer one. The cell is read forgivingly
+(`shopifyListingOf`: case and space ignored, anything else is blank) and never drops a row; the buyer
+never sees it.
+
+**The admin table saves it from the row, one cell at a time.** `POST /api/admin/rugs/[id]/shopify`
+writes that cell through `updateProductCell` — column A re-read under the lock, audit row in the same
+batch — rather than through the full-row update. The full-row route replaces the row from what the
+browser sends, so a dropdown built on it would have to carry every column, and one it forgot would be
+written blank. That is not hypothetical: the table's inline rename had been blanking `Pile` and
+`Shape` since they joined the form (2026-09-23), and now carries them, the Shopify answer, the import
+state and the Drive folder.
+
+**The width check names the column even on a wide grid.** `ensureProductWidth` now reads row 1 once
+per process whatever the grid width, and labels a blank trailing header when the rest of the row is
+named: spare columns are room, not a name, and the studio reading the spreadsheet should see what AR
+holds. A row 1 that is blank from end to end is left alone — that is a sheet `sheet:init` has never
+seen, and two labels at its far end would turn "not set up yet" into a contract error on column A.
+
+Gates: **1271 tests**, 0 typecheck errors, lint clean, build with no warnings.
 
 ## 5. Sheet contract (created/validated by `scripts/init-sheet.ts`)
 

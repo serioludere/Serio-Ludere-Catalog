@@ -56,13 +56,16 @@ describe('the Products contract', () => {
       expect(label, `${key} → column ${index}`).toBeDefined();
     }
     expect(PRODUCT_COLS.productId).toBe(0);
-    expect(PRODUCT_COLS.textureImage).toBe(PRODUCT_WIDTH - 1);
+    // The two columns appended to a live contract trail everything else, newest last.
+    expect(PRODUCT_COLS.textureImage).toBe(PRODUCT_WIDTH - 2);
+    expect(PRODUCT_COLS.shopify).toBe(PRODUCT_WIDTH - 1);
+    expect(PRODUCT_HEADER_LABELS[PRODUCT_COLS.shopify]).toBe('Shopify');
     expect(new Set(Object.values(PRODUCT_COLS)).size).toBe(Object.values(PRODUCT_COLS).length);
   });
 
   it('reads every tab the brief names, in one batch', () => {
     expect(READ_RANGES).toEqual([
-      'Products!A1:AQ',
+      'Products!A1:AR',
       'Collections!A1:G',
       'Tags!A1:D',
       'Rates!A1:D',

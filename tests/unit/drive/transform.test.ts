@@ -6,6 +6,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyTransforms,
+  coverFrame,
+  cropTo2x3,
   removeBackground,
   rotate90,
   transformsFor,
@@ -49,10 +51,40 @@ describe('transformsFor', () => {
     const flags = FEATURES as { backgroundRemoval: boolean };
     flags.backgroundRemoval = false;
     try {
-      expect(transformsFor('karavanrug', 0)).toEqual(['rotate90']);
+      expect(transformsFor('karavanrug', 0)).toEqual(['rotate90', 'crop2x3']);
       expect(transformsFor('ecarpetgallery', 0)).toEqual([]);
     } finally {
       flags.backgroundRemoval = true;
+    }
+  });
+
+  it('crops the Karavan cover to 2:3 LAST — after the turn and the cut-out (owner, 2026-09-27)', () => {
+    // The order matters: backdropOf needs the photo's white border, which a tight crop would remove.
+    expect(transformsFor('karavanrug', 0)).toEqual(['rotate90', 'removeBackground', 'crop2x3']);
+    expect(transformsFor('karavanrug', 1)).not.toContain('crop2x3');
+  });
+
+  it('crops no other supplier until its switch is turned on', () => {
+    expect(transformsFor('ecarpetgallery', 0)).not.toContain('crop2x3');
+    expect(transformsFor('serioludere', 0)).toEqual([]);
+    const crop = FEATURES.coverCrop2x3 as Record<string, boolean>;
+    crop.ecarpetgallery = true;
+    try {
+      // On for ECG it crops without rotating: the turn stays a Karavan fix.
+      expect(transformsFor('ecarpetgallery', 0)).toEqual(['removeBackground', 'crop2x3']);
+      expect(transformsFor('ecarpetgallery', 1)).toEqual([]);
+    } finally {
+      crop.ecarpetgallery = false;
+    }
+  });
+
+  it("drops the crop — and only that — when Karavan's switch is off", () => {
+    const crop = FEATURES.coverCrop2x3 as Record<string, boolean>;
+    crop.karavanrug = false;
+    try {
+      expect(transformsFor('karavanrug', 0)).toEqual(['rotate90', 'removeBackground']);
+    } finally {
+      crop.karavanrug = true;
     }
   });
 
@@ -144,15 +176,31 @@ describe('removeBackground', () => {
 });
 
 describe('applyTransforms', () => {
-  it('rotates the primary Karavan photo and reports what it did', async () => {
+  it('rotates the primary Karavan photo, crops it to 2:3 and reports what it did', async () => {
     const bytes = await landscapePng();
     const out = await applyTransforms(
       { bytes, contentType: 'image/png' },
       { supplier: 'karavanrug', index: 0 },
     );
-    expect(out.applied).toEqual(['rotate90']);
+    expect(out.applied).toEqual(['rotate90', 'crop2x3']);
     expect(out.skipped).toBeUndefined();
-    expect(await sizeOf(out.bytes)).toMatchObject({ width: 30, height: 60 });
+    // 60×30 turns to 30×60; solid red has no backdrop to find a rug on, so the plain centred 2:3.
+    expect(await sizeOf(out.bytes)).toMatchObject({ width: 30, height: 45 });
+  });
+
+  it('only rotates the Karavan cover when the crop is switched off', async () => {
+    const crop = FEATURES.coverCrop2x3 as Record<string, boolean>;
+    crop.karavanrug = false;
+    try {
+      const out = await applyTransforms(
+        { bytes: await landscapePng(), contentType: 'image/png' },
+        { supplier: 'karavanrug', index: 0 },
+      );
+      expect(out.applied).toEqual(['rotate90']);
+      expect(await sizeOf(out.bytes)).toMatchObject({ width: 30, height: 60 });
+    } finally {
+      crop.karavanrug = true;
+    }
   });
 
   it('does not claim removeBackground ran on a photo it left alone', async () => {
@@ -172,10 +220,13 @@ describe('applyTransforms', () => {
       { bytes: await rugOnWhite(), contentType: 'image/jpeg' },
       { supplier: 'karavanrug', index: 0 },
     );
-    expect(kv.applied).toEqual(['rotate90', 'removeBackground']);
+    expect(kv.applied).toEqual(['rotate90', 'removeBackground', 'crop2x3']);
     expect(kv.contentType).toBe('image/webp');
-    expect(await sizeOf(kv.bytes)).toMatchObject({ width: 60, height: 80 });
+    // Turned to 60×80 with a 30×40 rug, then framed: the rug plus a 2px margin, made 2:3.
+    expect(await sizeOf(kv.bytes)).toMatchObject({ width: 34, height: 51 });
     expect(await alphaAt(kv.bytes, 1, 1)).toBe(0);
+    // The whole rug and nothing else is opaque: nothing of it was cut.
+    expect(await countPixels(kv.bytes, (p) => p[3]! >= 128)).toBe(30 * 40);
 
     const ecg = await applyTransforms(
       { bytes: await rugOnWhite(), contentType: 'image/jpeg' },
@@ -243,6 +294,135 @@ describe('applyTransforms', () => {
       { bytes, contentType: 'image/png; charset=binary' },
       { supplier: 'karavanrug', index: 0 },
     );
-    expect(out.applied).toEqual(['rotate90']);
+    expect(out.applied).toEqual(['rotate90', 'crop2x3']);
+  });
+});
+
+/**
+ * A `w`×`h` studio shot: a red rug filling `rug` on an off-white sweep — or, with `cutOut`, on a
+ * fully transparent ground, as a cover looks once its backdrop has been removed.
+ */
+async function rugOn(
+  w: number,
+  h: number,
+  rug: { left: number; top: number; width: number; height: number },
+  opts: { cutOut?: boolean; speck?: [number, number] } = {},
+): Promise<Uint8Array> {
+  const { default: sharp } = await import('sharp');
+  const px = Buffer.alloc(w * h * 4);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      const inRug = x >= rug.left && x < rug.left + rug.width && y >= rug.top && y < rug.top + rug.height;
+      px.set(inRug ? [180, 30, 40, 255] : [250, 250, 250, opts.cutOut ? 0 : 255], i);
+    }
+  if (opts.speck) px.set([20, 20, 20, 255], (opts.speck[1] * w + opts.speck[0]) * 4);
+  return new Uint8Array(
+    await sharp(px, { raw: { width: w, height: h, channels: 4 } })
+      .png()
+      .toBuffer(),
+  );
+}
+
+/** How many pixels of the decoded image (as RGBA) pass `test`. */
+async function countPixels(bytes: Uint8Array, test: (p: Uint8Array) => boolean): Promise<number> {
+  const { default: sharp } = await import('sharp');
+  const { data, info } = await sharp(bytes).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  let n = 0;
+  for (let i = 0; i < info.width * info.height * 4; i += 4) if (test(data.subarray(i, i + 4))) n++;
+  return n;
+}
+
+const isRug = (p: Uint8Array): boolean => p[3]! >= 128 && p[0]! > 150 && p[1]! < 80;
+
+async function pixelAt(bytes: Uint8Array, x: number, y: number): Promise<number[]> {
+  const { default: sharp } = await import('sharp');
+  const { data, info } = await sharp(bytes).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const i = (y * info.width + x) * 4;
+  return [data[i]!, data[i + 1]!, data[i + 2]!, data[i + 3]!];
+}
+
+describe('coverFrame', () => {
+  it('is the plain centred 2:3 when there is no rug to frame', () => {
+    expect(coverFrame(60, 30)).toEqual({ left: 20, top: 0, width: 20, height: 30 });
+    expect(coverFrame(30, 60)).toEqual({ left: 0, top: 7, width: 30, height: 45 });
+    expect(coverFrame(40, 60)).toEqual({ left: 0, top: 0, width: 40, height: 60 });
+  });
+
+  it('always contains the whole rug, and is always 2:3', () => {
+    const cases = [
+      { w: 80, h: 80, box: { left: 10, top: 15, width: 60, height: 50 } }, // squarish: needs padding
+      { w: 60, h: 80, box: { left: 15, top: 20, width: 30, height: 40 } }, // fits: a pure crop
+      { w: 100, h: 100, box: { left: 0, top: 0, width: 20, height: 90 } }, // runner against the edge
+      { w: 100, h: 100, box: { left: 70, top: 5, width: 30, height: 30 } }, // off-centre
+    ];
+    for (const { w, h, box } of cases) {
+      const f = coverFrame(w, h, box);
+      expect(f.left).toBeLessThanOrEqual(box.left);
+      expect(f.top).toBeLessThanOrEqual(box.top);
+      expect(f.left + f.width).toBeGreaterThanOrEqual(box.left + box.width);
+      expect(f.top + f.height).toBeGreaterThanOrEqual(box.top + box.height);
+      expect(Math.abs(f.width / f.height - 2 / 3)).toBeLessThan(1 / f.height);
+    }
+  });
+});
+
+describe('cropTo2x3', () => {
+  it('frames a tall rug on white: spare backdrop trimmed, the rug untouched', async () => {
+    const before = await rugOn(60, 80, { left: 15, top: 20, width: 30, height: 40 });
+    const after = await cropTo2x3(before, 'image/png');
+    expect(await sizeOf(after)).toMatchObject({ width: 34, height: 51 });
+    expect(await countPixels(after, isRug)).toBe(30 * 40);
+    expect(await pixelAt(after, 0, 0)).toEqual([250, 250, 250, 255]);
+  });
+
+  it('pads a rug too wide for 2:3 with its own backdrop rather than cutting its sides', async () => {
+    // The Karavan case: a square photo, and a rug nearly as wide as it once turned upright.
+    const before = await rugOn(80, 80, { left: 10, top: 15, width: 60, height: 50 });
+    const after = await cropTo2x3(before, 'image/png');
+    expect(await sizeOf(after)).toMatchObject({ width: 64, height: 96 });
+    expect(await countPixels(after, isRug)).toBe(60 * 50);
+    expect(await pixelAt(after, 0, 0)).toEqual([250, 250, 250, 255]); // added: the sweep's colour
+  });
+
+  it('frames a cut-out cover by its alpha, and pads it with transparency', async () => {
+    const before = await rugOn(80, 80, { left: 10, top: 15, width: 60, height: 50 }, { cutOut: true });
+    const after = await cropTo2x3(before, 'image/png');
+    expect(await sizeOf(after)).toMatchObject({ width: 64, height: 96 });
+    expect(await countPixels(after, isRug)).toBe(60 * 50);
+    expect((await pixelAt(after, 0, 0))[3]).toBe(0);
+    expect((await pixelAt(after, 63, 95))[3]).toBe(0);
+  });
+
+  it('ignores a speck of dirt in the backdrop', async () => {
+    const rug = { left: 15, top: 20, width: 30, height: 40 };
+    const clean = await cropTo2x3(await rugOn(60, 80, rug), 'image/png');
+    const specked = await cropTo2x3(await rugOn(60, 80, rug, { speck: [2, 2] }), 'image/png');
+    expect(await sizeOf(specked)).toEqual(await sizeOf(clean));
+  });
+
+  it('falls back to the plain centred 2:3 when there is no plain backdrop', async () => {
+    const after = await cropTo2x3(await landscapePng(), 'image/png');
+    expect(await sizeOf(after)).toMatchObject({ width: 20, height: 30 });
+  });
+
+  it('returns the very same bytes when the photo is already its own 2:3 frame', async () => {
+    const { default: sharp } = await import('sharp');
+    const bytes = new Uint8Array(
+      await sharp({ create: { width: 40, height: 60, channels: 3, background: { r: 200, g: 40, b: 40 } } })
+        .png()
+        .toBuffer(),
+    );
+    expect(await cropTo2x3(bytes, 'image/png')).toBe(bytes);
+  });
+
+  it('keeps the format it was given', async () => {
+    const { default: sharp } = await import('sharp');
+    const png = await rugOn(80, 80, { left: 10, top: 15, width: 60, height: 50 });
+    const jpeg = new Uint8Array(await sharp(png).jpeg().toBuffer());
+    const webp = new Uint8Array(await sharp(png).webp().toBuffer());
+    expect((await sharp(await cropTo2x3(jpeg, 'image/jpeg')).metadata()).format).toBe('jpeg');
+    expect((await sharp(await cropTo2x3(webp, 'image/webp')).metadata()).format).toBe('webp');
+    expect((await sharp(await cropTo2x3(png, 'image/png')).metadata()).format).toBe('png');
   });
 });

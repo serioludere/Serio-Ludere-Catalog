@@ -2,6 +2,7 @@
 //
 //   "rotate first image by 90 degrees that is coming from https://karavanrug.com/"
 //   "remove background of the first image from both karavan and ecarpet gallery"
+//   "the first photo scraped from KV cropped to a 2:3 ratio after rotating -90 degrees" (2026-09-27)
 //
 // Applied to the BYTES at import, not with a CSS transform at display. The rug's photos are the
 // studio's own asset afterwards — they are re-used in exports, sent to buyers, and opened straight
@@ -15,7 +16,7 @@
 import { FEATURES } from '../features.ts';
 
 /** What can be done to a supplier photo before it is stored. */
-export type ImageTransform = 'rotate90' | 'removeBackground';
+export type ImageTransform = 'rotate90' | 'removeBackground' | 'crop2x3';
 
 /**
  * The media type without its parameters.
@@ -44,7 +45,15 @@ export function transformsFor(supplier: string, index: number): ImageTransform[]
   // cover is stored exactly as the supplier sent it (rotation aside).
   if (FEATURES.backgroundRemoval && (supplier === 'karavanrug' || supplier === 'ecarpetgallery'))
     out.push('removeBackground');
+  // Last, and after the backdrop is gone (owner, 2026-09-27): backdropOf needs most of the border to
+  // be plain white, and a cover cropped tight first would lose exactly that border.
+  if (coverCrops(supplier)) out.push('crop2x3');
   return out;
+}
+
+/** Whether src/lib/features.ts has the 2:3 cover crop on for this supplier. */
+function coverCrops(supplier: string): boolean {
+  return (FEATURES.coverCrop2x3 as Readonly<Record<string, boolean>>)[supplier] === true;
 }
 
 /**
@@ -206,13 +215,191 @@ export async function removeBackground(bytes: Uint8Array): Promise<Uint8Array> {
   return new Uint8Array(out);
 }
 
+/* ---------- 2:3 cover crop (owner, 2026-09-27) ---------- */
+
+/** Width over height of a stored cover: the 2:3 box the product card shows (ProductCard.astro). */
+export const COVER_RATIO = 2 / 3;
+/** Backdrop left around the rug, as a share of its longer side, so the frame does not touch it. */
+const CROP_MARGIN = 0.04;
+/**
+ * A row or column belongs to the rug only when at least this share of it is rug. A few specks of JPEG
+ * noise in the backdrop must not stretch the frame out to the edge of the photo.
+ */
+const LINE_SHARE = 0.005;
+/** Below this alpha a pixel of an already cut-out cover is backdrop. */
+const ALPHA_FLOOR = 128;
+
+/** A rectangle in pixels. A crop frame may reach outside the photo: that part is padded. */
+export interface Box {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/** What surrounds the rug: nothing (already cut out), or a plain studio colour. */
+type Backdrop = { kind: 'transparent' } | { kind: 'colour'; rgb: [number, number, number] };
+
+function backdropAround(px: Uint8Array | Uint8ClampedArray, w: number, h: number): Backdrop | undefined {
+  let n = 0;
+  let clear = 0;
+  const visit = (x: number, y: number): void => {
+    n++;
+    if (px[(y * w + x) * 4 + 3]! < ALPHA_FLOOR) clear++;
+  };
+  for (let x = 0; x < w; x++) {
+    visit(x, 0);
+    if (h > 1) visit(x, h - 1);
+  }
+  for (let y = 1; y < h - 1; y++) {
+    visit(0, y);
+    if (w > 1) visit(w - 1, y);
+  }
+  if (n > 0 && clear / n >= BORDER_WHITE_SHARE) return { kind: 'transparent' };
+  const rgb = backdropOf(px, w, h);
+  return rgb ? { kind: 'colour', rgb } : undefined;
+}
+
+/**
+ * The rug's bounding box: every opaque pixel that is not backdrop, over rows and columns that carry
+ * enough of it to be more than noise. Undefined when nothing stands out from the backdrop.
+ */
+export function subjectBox(
+  px: Uint8Array | Uint8ClampedArray,
+  w: number,
+  h: number,
+  bg: Backdrop,
+): Box | undefined {
+  const rows = new Uint32Array(h);
+  const cols = new Uint32Array(w);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      if (px[i + 3]! < ALPHA_FLOOR) continue;
+      if (bg.kind === 'colour') {
+        const [r, g, b] = bg.rgb;
+        const d = Math.max(Math.abs(px[i]! - r), Math.abs(px[i + 1]! - g), Math.abs(px[i + 2]! - b));
+        if (d <= BG_TOLERANCE) continue;
+      }
+      rows[y]!++;
+      cols[x]!++;
+    }
+  }
+  const span = (counts: Uint32Array, min: number): [number, number] | undefined => {
+    let first = -1;
+    let last = -1;
+    for (let i = 0; i < counts.length; i++) {
+      if (counts[i]! < min) continue;
+      if (first < 0) first = i;
+      last = i;
+    }
+    return first < 0 ? undefined : [first, last];
+  };
+  // A row is `w` pixels long and a column `h`, so each is measured against its own length.
+  const ys = span(rows, Math.max(2, Math.ceil(w * LINE_SHARE)));
+  const xs = span(cols, Math.max(2, Math.ceil(h * LINE_SHARE)));
+  if (!ys || !xs) return undefined;
+  return { left: xs[0], top: ys[0], width: xs[1] - xs[0] + 1, height: ys[1] - ys[0] + 1 };
+}
+
+/** Where a frame of `size` starts along an edge of `extent`, centred on `centre`. */
+function place(centre: number, size: number, extent: number): number {
+  const start = Math.round(centre - size / 2);
+  // It fits: slide it inside the photo rather than pad. Sliding never uncovers the rug — the frame is
+  // at least as big as the rug, and it only moves towards the photo's own edge.
+  if (size <= extent) return Math.min(Math.max(start, 0), extent - size);
+  // It does not: padding is unavoidable, so keep the rug in the middle of it.
+  return start;
+}
+
+/**
+ * The 2:3 frame for a `w`×`h` photo whose rug sits in `box`: the rug plus a margin, widened or
+ * heightened to exactly 2:3. The rug is always entirely inside it. Without a box, the plain centred
+ * 2:3 crop of the whole photo.
+ */
+export function coverFrame(w: number, h: number, box?: Box): Box {
+  if (!box) {
+    if (w / h > COVER_RATIO) {
+      const width = Math.round(h * COVER_RATIO);
+      return { left: Math.floor((w - width) / 2), top: 0, width, height: h };
+    }
+    const height = Math.round(w / COVER_RATIO);
+    return { left: 0, top: Math.floor((h - height) / 2), width: w, height };
+  }
+  const m = Math.round(Math.max(box.width, box.height) * CROP_MARGIN);
+  let width = box.width + 2 * m;
+  let height = box.height + 2 * m;
+  if (width / height > COVER_RATIO) height = Math.round(width / COVER_RATIO);
+  else width = Math.round(height * COVER_RATIO);
+  return {
+    left: place(box.left + box.width / 2, width, w),
+    top: place(box.top + box.height / 2, height, h),
+    width,
+    height,
+  };
+}
+
+/**
+ * Crops a cover to 2:3 portrait around the rug (owner, 2026-09-27).
+ *
+ * Framed around the rug, never through it: spare backdrop is trimmed, and a rug too wide for 2:3 at
+ * the photo's full height gets backdrop added at the top and bottom instead of losing its sides. The
+ * padding is transparent on a cover whose backdrop was already removed, and the backdrop's own colour
+ * otherwise. A photo with no plain backdrop, where the rug cannot be told apart, gets the plain
+ * centred 2:3 crop.
+ *
+ * The format is kept. A frame that is already the whole photo returns the same bytes object, which is
+ * how applyTransforms knows nothing happened.
+ */
+export async function cropTo2x3(bytes: Uint8Array, contentType: string): Promise<Uint8Array> {
+  const { default: sharp } = await import('sharp');
+  // Oriented first, in both passes, so the frame is measured on the pixels a viewer actually sees.
+  const { data, info } = await sharp(bytes)
+    .autoOrient()
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const { width: w, height: h } = info;
+  const bg = backdropAround(data, w, h);
+  const frame = coverFrame(w, h, bg && subjectBox(data, w, h, bg));
+  if (frame.left === 0 && frame.top === 0 && frame.width === w && frame.height === h) return bytes;
+
+  const left = Math.max(0, frame.left);
+  const top = Math.max(0, frame.top);
+  const right = Math.min(w, frame.left + frame.width);
+  const bottom = Math.min(h, frame.top + frame.height);
+  let img = sharp(bytes)
+    .autoOrient()
+    .extract({ left, top, width: right - left, height: bottom - top });
+  const pad = {
+    top: top - frame.top,
+    bottom: frame.top + frame.height - bottom,
+    left: left - frame.left,
+    right: frame.left + frame.width - right,
+  };
+  if (pad.top || pad.bottom || pad.left || pad.right) {
+    const background =
+      bg?.kind === 'colour'
+        ? { r: Math.round(bg.rgb[0]), g: Math.round(bg.rgb[1]), b: Math.round(bg.rgb[2]), alpha: 1 }
+        : { r: 0, g: 0, b: 0, alpha: 0 };
+    img = img.extend({ ...pad, background });
+  }
+  // WebP exactly as removeBackground writes it, alpha lossless, so the soft edge of a cut-out
+  // survives the second encode.
+  const mime = bareMime(contentType);
+  if (mime === 'image/webp') img = img.webp({ quality: 90, alphaQuality: 100 });
+  else if (mime === 'image/jpeg') img = img.jpeg({ quality: 90 });
+  else if (mime === 'image/png') img = img.png();
+  return new Uint8Array(await img.toBuffer());
+}
+
 export interface TransformInput {
   bytes: Uint8Array;
   contentType: string;
 }
 
 export interface TransformOutcome extends TransformInput {
-  /** What actually ran — `removeBackground` is omitted while it is a no-op. */
+  /** What actually ran — `removeBackground` and `crop2x3` are omitted when they were no-ops. */
   applied: ImageTransform[];
   /** Set when a transform was wanted but could not run; the ORIGINAL bytes are returned. */
   skipped?: string;
@@ -253,6 +440,13 @@ export async function applyTransforms(
         if (next !== bytes) {
           bytes = next;
           contentType = 'image/webp';
+          applied.push(t);
+        }
+      } else if (t === 'crop2x3') {
+        // Same rule: a cover that is already a tight 2:3 comes back as the same bytes, unclaimed.
+        const next = await cropTo2x3(bytes, contentType);
+        if (next !== bytes) {
+          bytes = next;
           applied.push(t);
         }
       }

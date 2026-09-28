@@ -48,7 +48,7 @@ const badges = badgesFor(rug.tags);
   data-attention={rug.commitStatus === 'pending' ? 'photos' : ''}
   data-search={search}
 >
-  <div class="ph">
+  <div class:list={['ph', { 'ph--empty': !photo }]}>
     {photo ? <img src={photo} alt="" loading="lazy" data-rot={dataRot(rug.rotate)} /> : <span>no photo</span>}
     {rug.photos.length > 1 && <span class="cnt">{rug.photos.length}</span>}
     {likes > 0 && <span class="lk">♥ {likes}</span>}

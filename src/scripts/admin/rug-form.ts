@@ -164,6 +164,19 @@ export interface RugForm {
   chips: TagTokens;
 }
 
+/** The vendors /api/admin/cover-preview previews a cover for: every shop the scraper reads. */
+const PREVIEW_VENDORS: readonly string[] = ['ecarpetgallery', 'karavanrug', 'serioludere'];
+
+/**
+ * Where the add form loads a fetched cover from so it looks as it will once stored (owner,
+ * 2026-09-28). Undefined — show the supplier's photo as it is — when there is no vendor to take the
+ * fixes from, or the photo is not an https URL the preview could download.
+ */
+export function coverPreviewSrc(url: string, supplier: string): string | undefined {
+  if (!PREVIEW_VENDORS.includes(supplier) || !/^https:\/\//i.test(url)) return undefined;
+  return `/api/admin/cover-preview?${new URLSearchParams({ url, supplier }).toString()}`;
+}
+
 /** Drive ids from the photos textarea: bare ids or any Drive/lh3 link, one per line, de-duplicated. */
 export function parsePhotoLines(text: string): { ids: string[]; bad: string[] } {
   const ids: string[] = [];
@@ -416,15 +429,25 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
       .filter((c) => c.checked)
       .map((c) => c.dataset.url ?? '');
 
-  const renderPhotoStrip = (photos: Array<{ url: string }>): void => {
+  const renderPhotoStrip = (photos: Array<{ url: string }>, supplier = ''): void => {
     clear(photoStrip);
     photos.slice(0, 12).forEach((p, i) => {
-      const box = el(
-        'div',
-        { class: 'ph' },
-        el('img', { src: p.url, alt: '', loading: 'lazy' }, [], doc),
-        doc,
-      );
+      // The cover is shown as it will be stored (owner, 2026-09-28): turned, cut out and cropped by
+      // the server. Only the picture changes — the checkbox and the texture radio below still carry
+      // the supplier's own URL, which is what the save imports. If the preview cannot be made, the
+      // supplier's photo is shown as before.
+      const preview = i === 0 ? coverPreviewSrc(p.url, supplier) : undefined;
+      const img = el('img', { src: preview ?? p.url, alt: '', loading: 'lazy' }, [], doc);
+      if (preview) {
+        img.addEventListener(
+          'error',
+          () => {
+            img.src = p.url;
+          },
+          { once: true },
+        );
+      }
+      const box = el('div', { class: 'ph' }, img, doc);
       const check = el(
         'input',
         { type: 'checkbox', 'data-url': p.url, checked: true, 'aria-label': `Photo ${i + 1}` },
@@ -622,7 +645,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     clear(warnings);
     for (const w of d.warnings ?? []) warnings.appendChild(el('li', {}, w, doc));
     warnings.hidden = (d.warnings ?? []).length === 0;
-    renderPhotoStrip(d.photos ?? []);
+    renderPhotoStrip(d.photos ?? [], d.supplier ?? '');
     preview.classList.add('on');
   };
 

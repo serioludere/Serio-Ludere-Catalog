@@ -67,6 +67,21 @@ export function supplierForHost(hostname: string): Supplier | undefined {
 }
 
 /**
+ * The shop a stored product came from: its Source Site cell when that names one, else the host of
+ * its Source URL (owner, 2026-09-28). An older row can carry a supplier link with that cell blank,
+ * and "Re-fetch cover" has to know it is a Karavan rug to turn and crop the cover like one.
+ */
+export function supplierOfRow(sourceSite: string, sourceUrl: string): Supplier | undefined {
+  const named = sourceSite.trim().toLowerCase();
+  if (named === 'karavanrug' || named === 'ecarpetgallery' || named === 'serioludere') return named;
+  try {
+    return supplierForHost(new URL(sourceUrl).hostname);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Parses a pasted supplier link. http is rewritten to https; userinfo, ports, tracking query/hash
  * and anything off the allow-list are refused. Paths are compared lowercased ([assumption]: Magento
  * url keys and Shopify handles are lowercase).

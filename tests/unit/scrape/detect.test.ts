@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { detectSupplier, manualFallback, manualFromDetected } from '../../../src/lib/scrape/detect.ts';
+import {
+  detectSupplier,
+  manualFallback,
+  manualFromDetected,
+  supplierOfRow,
+} from '../../../src/lib/scrape/detect.ts';
 
 describe('detectSupplier (ADMIN_SPEC §4.2)', () => {
   it('rebuilds ECG links on the us_en store from any store code, host spelling or scheme', () => {
@@ -289,5 +294,26 @@ describe('manualFallback (ADMIN_SPEC §4.8)', () => {
         sourceUrl: 'https://karavanrug.com/products/abc',
       });
     }
+  });
+});
+
+describe('supplierOfRow (owner, 2026-09-28)', () => {
+  it('takes the Source Site cell when it names a shop', () => {
+    expect(supplierOfRow('karavanrug', '')).toBe('karavanrug');
+    expect(supplierOfRow(' Ecarpetgallery ', '')).toBe('ecarpetgallery');
+    expect(supplierOfRow('serioludere', 'https://karavanrug.com/products/x')).toBe('serioludere');
+  });
+
+  it("falls back to the link's host for an older row whose Source Site is blank", () => {
+    expect(supplierOfRow('', 'https://karavanrug.com/products/winks')).toBe('karavanrug');
+    expect(supplierOfRow('', 'https://www.karavanrug.com/products/winks')).toBe('karavanrug');
+    expect(supplierOfRow('', 'https://ecarpetgallery.com/us_en/red-rug-380114')).toBe('ecarpetgallery');
+  });
+
+  it('names no shop for anything else', () => {
+    expect(supplierOfRow('', '')).toBeUndefined();
+    expect(supplierOfRow('', 'not a link')).toBeUndefined();
+    expect(supplierOfRow('', 'https://example.com/rugs/x')).toBeUndefined();
+    expect(supplierOfRow('owned', 'https://notkaravanrug.com/products/x')).toBeUndefined();
   });
 });

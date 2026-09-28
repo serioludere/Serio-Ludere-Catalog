@@ -705,7 +705,7 @@ describe('add mode', () => {
 
 describe('edit mode', () => {
   let calls: Array<{ url: string; body: Record<string, unknown> }>;
-  const mount = (handler: Handler): RugForm => {
+  const mount = (handler: Handler, confirmImpl?: (text: string) => boolean): RugForm => {
     document.body.innerHTML =
       stripStyles(editHtml) +
       dataBlock({
@@ -717,8 +717,105 @@ describe('edit mode', () => {
         driveScopeOk: null,
       });
     calls = [];
-    return initRugForm(document, { fetchImpl: fakeFetch(handler, calls) });
+    return initRugForm(document, {
+      fetchImpl: fakeFetch(handler, calls),
+      ...(confirmImpl ? { confirmImpl } : {}),
+    });
   };
+
+  describe('"Re-fetch cover" (owner, 2026-09-28)', () => {
+    const NEW = '1NEWcoverCCCCCCCCCCCCCCCCCCCCCCCC';
+    const refetched = {
+      status: 200,
+      body: {
+        ok: true,
+        rug: { ...rug, photos: [NEW], version: 'd'.repeat(16) },
+        cover: { id: NEW, previous: PHOTO, source: 'https://cdn.shopify.com/1.jpg', host: 'karavanrug.com' },
+        audit: { row: 2, action: 'rug.update' },
+      },
+    };
+    const press = async (form: RugForm): Promise<void> => {
+      (document.getElementById('btnCover') as HTMLButtonElement).click();
+      await vi.waitFor(() => expect(form.busy()).toBe(false));
+    };
+
+    it('swaps in the new cover and the new version, and leaves unsaved edits alone', async () => {
+      const asked: string[] = [];
+      const form = mount(
+        (url) => (url === '/api/admin/rugs/SL-021/cover' ? refetched : { status: 500, body: {} }),
+        (text) => (asked.push(text), true),
+      );
+      expect(document.getElementById('btnCover')?.textContent).toContain(
+        'Re-fetch cover from karavanrug.com',
+      );
+      set('f_name', 'An edit not saved yet');
+      await press(form);
+      expect(asked[0]).toContain('karavanrug.com');
+      expect(calls).toEqual([{ url: '/api/admin/rugs/SL-021/cover', body: {} }]);
+      // The cover and the version token move, so the next Save is neither refused nor stale…
+      expect(val('f_version')).toBe('d'.repeat(16));
+      expect(val('f_photos')).toBe(NEW);
+      expect(document.querySelector('#photoStrip img')?.getAttribute('src')).toBe(`/api/image/${NEW}?w=800`);
+      expect((document.querySelector('#photoStrip input[data-texture]') as HTMLInputElement).value).toBe(NEW);
+      // …and nothing else on the form does.
+      expect(val('f_name')).toBe('An edit not saved yet');
+      expect(cls('mCover')).toBe('msg on ok');
+      expect(text('mCover')).toContain('New cover from karavanrug.com saved');
+      expect(text('mCover')).toContain('The previous one stays in Drive');
+    });
+
+    it('asks first, and a "no" sends nothing', async () => {
+      const form = mount(
+        () => refetched,
+        () => false,
+      );
+      await press(form);
+      expect(calls).toHaveLength(0);
+      expect(val('f_photos')).toBe(PHOTO);
+    });
+
+    it("shows the server's reason and changes nothing when it cannot", async () => {
+      const form = mount(
+        () => ({
+          status: 422,
+          body: {
+            ok: false,
+            error: 'source_gone',
+            message: 'karavanrug.com no longer has this product’s page',
+          },
+        }),
+        () => true,
+      );
+      await press(form);
+      expect(cls('mCover')).toBe('msg on err');
+      expect(text('mCover')).toContain('no longer has');
+      expect(val('f_version')).toBe('b'.repeat(16));
+      expect(val('f_photos')).toBe(PHOTO);
+      expect(document.querySelector('#photoStrip img')?.getAttribute('src')).toContain(PHOTO);
+    });
+
+    const render = async (over: Partial<AdminRug>): Promise<string> =>
+      (await AstroContainer.create()).renderToString(RugFields, {
+        props: {
+          mode: 'edit',
+          rug: { ...rug, ...over },
+          collections,
+          tags,
+          roundStep: 5,
+          driveScopeOk: null,
+        },
+      });
+
+    it('is not offered for a product with nowhere to fetch from', async () => {
+      for (const over of [{ sourceUrl: '' }, { supplier: '', sourceUrl: 'https://example.com/rugs/winks' }]) {
+        expect(await render(over)).not.toContain('btnCover');
+      }
+    });
+
+    it('is offered on an older row whose Source Site is blank but whose link is Karavan’s', async () => {
+      expect(await render({ supplier: '' })).toContain('Re-fetch cover from karavanrug.com');
+    });
+  });
 
   it('renders the rug (id readonly, hidden version, pressed tag chips, photo thumbnails) and saves with the version', async () => {
     const form = mount((url) =>

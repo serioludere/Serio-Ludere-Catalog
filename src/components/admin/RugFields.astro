@@ -21,6 +21,7 @@ import { BADGE_TAG_NAMES } from '../../lib/view.ts';
 import { MATERIAL_OPTIONS, METHOD_OPTIONS, extraTerms, splitTerms } from '../../lib/terms.ts';
 import MultiSelect from '../ui/MultiSelect.astro';
 import { SHOPIFY_OPTIONS } from '../../lib/shopify-listing.ts';
+import { supplierOfRow } from '../../lib/scrape/detect.ts';
 
 interface Props {
   mode: 'add' | 'edit';
@@ -95,6 +96,14 @@ const termOptions = (
 };
 const materialOptions = termOptions(rug?.material, MATERIAL_OPTIONS);
 const methodOptions = termOptions(rug?.method, METHOD_OPTIONS);
+
+/* "Re-fetch cover" (owner, 2026-09-28): only for a product that came from a supplier and still says
+   where — owned stock and hand-made rows have nowhere to fetch it from. The supplier is read from the
+   link when an older row left its Source Site blank. */
+const coverHost =
+  edit && rug?.sourceUrl && supplierOfRow(rug.supplier, rug.sourceUrl)
+    ? new URL(rug.sourceUrl).hostname.replace(/^www\./, '')
+    : '';
 ---
 
 {
@@ -186,6 +195,20 @@ const methodOptions = termOptions(rug?.method, METHOD_OPTIONS);
       <input type="radio" name="texture" data-texture value="" checked={!rug?.textureId} />
       No texture photo
     </label>
+    {
+      /* Owner, 2026-09-28: a cover imported before the 2:3 crop (or the cut-out, or the turn) is
+         fetched from the supplier again and stored the way an import stores it today. The old file
+         stays in Drive. */
+      coverHost && (
+        <div class="cover-refetch">
+          <button class="chip" id="btnCover" type="button" data-host={coverHost}>
+            Re-fetch cover from {coverHost}
+          </button>
+          <span class="hint">Takes their first photo again and stores it as a new import would.</span>
+        </div>
+      )
+    }
+    <div id="mCover" class="msg"></div>
     <p class="hint" id="photoHint" hidden>
       Photo storage is not connected, so photos cannot be uploaded. Paste Google Drive links below instead.
     </p>
@@ -565,6 +588,13 @@ const methodOptions = termOptions(rug?.method, METHOD_OPTIONS);
   }
   .photos .tile input {
     width: auto;
+  }
+  .cover-refetch {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--stack-sm);
+    margin-top: var(--stack-sm);
   }
   .cnt-inline {
     color: var(--accent);

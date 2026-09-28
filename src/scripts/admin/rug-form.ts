@@ -8,7 +8,7 @@
 // tags, description, link, size, material + method, the rest — with what the supplier SAID at the
 // bottom. Material and Method are multi-select dropdowns over the closed lists in src/lib/terms.ts,
 // and the scrape is read into them rather than typed.
-import { extractDriveId } from '../../lib/images.ts';
+import { driveImageUrl, extractDriveId } from '../../lib/images.ts';
 import { MATERIAL_OPTIONS, METHOD_OPTIONS, joinTerms, splitTerms, termsFromScrape } from '../../lib/terms.ts';
 import { slugify } from '../../lib/text.ts';
 import {
@@ -367,6 +367,8 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
   const btnClear = maybe<HTMLButtonElement>('btnClear', doc);
   const btnDelete = maybe<HTMLButtonElement>('btnDelete', doc);
   const btnSave = maybe<HTMLButtonElement>('btnSave', doc);
+  const btnCover = maybe<HTMLButtonElement>('btnCover', doc);
+  const mCover = maybe('mCover', doc);
   const m2 = byId('m2', doc);
   // The Add dialog's footer (Cancel + Fetch) only matters before a fetch. Once the form is showing
   // what was fetched it carries its own Save product / Cancel, so the footer pair would be noise.
@@ -377,7 +379,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     if (dialogFooter) dialogFooter.hidden = !on;
   };
 
-  const actionButtons = [btnFetch, btnAdd, btnSave, btnNewTag].filter(
+  const actionButtons = [btnFetch, btnAdd, btnSave, btnNewTag, btnCover].filter(
     (b): b is HTMLButtonElement => b !== null,
   );
   let inflight = false;
@@ -938,6 +940,61 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
   };
 
   /**
+   * "Re-fetch cover" (owner, 2026-09-28): the supplier's first photo again, stored the way an import
+   * stores it today (turned, cut out, 2:3) and made the cover — by the server, at once, like the
+   * Shopify dropdown. Only the cover and the row's version token change here, so anything typed into
+   * the form and not yet saved stays as it is, and still saves.
+   */
+  const refetchCover = async (): Promise<void> => {
+    if (!btnCover || !mCover || inflight) return;
+    const host = btnCover.dataset.host || 'the supplier';
+    if (
+      !confirmImpl(
+        `Replace the cover with the first photo on ${host}, turned, cut out and cropped as a new import is?\n\n` +
+          `The current cover stays in Drive.`,
+      )
+    )
+      return;
+    setBusy(true);
+    msg(mCover, `Fetching the cover from ${host}…`, 'busy');
+    const r = await post<{
+      rug: RugLike;
+      cover: { id: string; previous: string };
+      audit?: { row: number; action?: string };
+    }>(`/api/admin/rugs/${encodeURIComponent(rugId)}/cover`, {}, { ...api, timeoutMs: PHOTOS_TIMEOUT_MS });
+    setBusy(false);
+    if (!r.ok) {
+      msg(mCover, r.message, 'err');
+      return;
+    }
+    const { cover, rug } = r.data;
+    f.version.value = rug.version;
+    // The cover takes the old one's place in "Photo links"; any other line typed there is kept.
+    const lines = f.photos.value.split('\n').map((l) => l.trim());
+    const at = lines.findIndex((l) => (extractDriveId(l) ?? l) === cover.previous);
+    if (at >= 0) lines[at] = cover.id;
+    else lines.unshift(cover.id);
+    f.photos.value = lines.filter(Boolean).join('\n');
+    // Its tile, found by the texture radio that carries its id.
+    const radio = [...photoStrip.querySelectorAll<HTMLInputElement>('input[data-texture]')].find(
+      (x) => x.value === cover.previous,
+    );
+    const img = radio?.closest('.tile')?.querySelector<HTMLImageElement>('img');
+    if (radio && img) {
+      img.src = driveImageUrl(cover.id, 800);
+      radio.value = cover.id;
+    }
+    msg(
+      mCover,
+      [
+        `New cover from ${host} saved${img ? '' : ' — reload the page to see it'}. The previous one stays in Drive.`,
+        ...auditLink(r.data.audit),
+      ],
+      'ok',
+    );
+  };
+
+  /**
    * Hard delete (owner, 2026-09-18): the row, its collection and tag bindings, and its Drive photos,
    * permanently. Confirms with the product named, because nothing here is recoverable.
    *
@@ -1087,6 +1144,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
   });
   btnSave?.addEventListener('click', () => void save());
   btnDelete?.addEventListener('click', () => void remove());
+  btnCover?.addEventListener('click', () => void refetchCover());
   doc.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       hideVisible(doc);

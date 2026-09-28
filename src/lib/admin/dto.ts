@@ -214,11 +214,6 @@ export const CoverPreviewQuery = z.object({
   supplier: z.enum(['ecarpetgallery', 'karavanrug', 'serioludere']),
 });
 export type CoverPreviewQueryT = z.infer<typeof CoverPreviewQuery>;
-/**
- * POST /api/admin/rugs/[id]/cover (owner, 2026-09-28) takes no input: the product's own Source URL
- * and supplier say where the cover comes from. The empty object still runs the cross-site checks.
- */
-export const CoverRefetch = z.object({});
 export const SettingsUpdate = z.object({
   key: z.enum([
     'retail_markup',

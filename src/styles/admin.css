@@ -722,6 +722,21 @@ td pre {
   transform: translate(-50%, -50%) rotate(90deg);
   transform-origin: center;
 }
+/* Owner, 2026-09-28, Karavan only (features.ts `coverFullHeight`): the photo at the plate's full
+   height, its width following its own shape, centred by the plate's flex — a wider photo runs past
+   both sides equally and is clipped there. The same rule as the customer card. */
+.card .ph[data-fit='height'] img {
+  flex: none;
+  width: auto;
+  max-width: none;
+  height: 100%;
+}
+/* Turned, the element's WIDTH is what the eye reads as height: it takes the plate's full height
+   (150% of a 2:3 plate's width) and its own height follows the photo's shape. */
+.card .ph[data-fit='height'] img.rot {
+  width: 150%;
+  height: auto;
+}
 .card .ph span {
   font-family: var(--body);
   font-size: var(--text-xs);

@@ -39,4 +39,22 @@ export const FEATURES = {
     ecarpetgallery: false,
     serioludere: false,
   } satisfies Record<Supplier, boolean>,
+
+  /**
+   * Shows a product's cover at the FULL HEIGHT of its 2:3 plate, never stretched (owner, 2026-09-28:
+   * "the image height set to 100% of its parent without distortion ... only for KV products"). The
+   * width follows the photo's own shape and the photo is centred: a 2:3 cover fills the plate
+   * exactly, a taller one leaves ivory at its sides, and a wider one — a Karavan square imported
+   * before the crop above existed — has its sides past the plate cut off, which on those photos is
+   * the white studio sweep around the rug. Per supplier, on the customer card and in the admin (the
+   * catalogue card, the edit form's photo tile, a client's liked rugs).
+   *
+   * Off: the cover is shown whole inside the plate (`contain`), as for every other supplier. Nothing
+   * in Drive or the sheet changes either way.
+   */
+  coverFullHeight: {
+    karavanrug: true,
+    ecarpetgallery: false,
+    serioludere: false,
+  } satisfies Record<Supplier, boolean>,
 } as const;

@@ -25,6 +25,7 @@ import { ADMIN_READ_RANGES, parseAdminSnapshot } from '../../../lib/admin/read.t
 import { SAVES_READ_RANGE, buildSavesReport, type ClientSaves } from '../../../lib/admin/saves.ts';
 import { VISITS_READ_RANGE, buildVisitsReport, type ClientVisits } from '../../../lib/admin/visits.ts';
 import { CLIENT_CODE_RE } from '../../../lib/admin/dto.ts';
+import { coverFillsHeight } from '../../../lib/cover-fit.ts';
 import { driveImageUrl } from '../../../lib/images.ts';
 import { getClient } from '../../../lib/runtime.ts';
 import { consoleLogger, serializeError } from '../../../lib/sheets/errors.ts';
@@ -43,6 +44,8 @@ let name = code;
 let status: 'active' | 'revoked' | undefined;
 let notReviewed = 0;
 let photoOf = new Map<string, string | undefined>();
+/** The rugs whose cover fills its plate's height (features.ts `coverFullHeight`). */
+let fillsHeight = new Set<string>();
 let sizeOf = new Map<string, string>();
 
 try {
@@ -73,6 +76,7 @@ try {
   notReviewed = Math.max(0, active.length - (saves?.liked.length ?? 0));
 
   photoOf = new Map(active.map((r) => [r.id, r.photos[0] ? driveImageUrl(r.photos[0], 800) : undefined]));
+  fillsHeight = new Set(active.filter((r) => coverFillsHeight(r.supplier, r.sourceUrl)).map((r) => r.id));
   sizeOf = new Map(active.map((r) => [r.id, dims(r.widthCm, r.lengthCm, 'cm')]));
 } catch (e) {
   const safe = serializeError(e);
@@ -145,7 +149,10 @@ const metaLong = [
         <div class="cust__grid">
           {liked.map((r) => (
             <article class="gcard">
-              <div class="gcard__image">
+              <div
+                class="gcard__image"
+                data-fit={photoOf.get(r.rugId) && fillsHeight.has(r.rugId) ? 'height' : undefined}
+              >
                 {photoOf.get(r.rugId) ? (
                   <img src={photoOf.get(r.rugId)} alt="" loading="lazy" />
                 ) : (
@@ -267,6 +274,19 @@ const metaLong = [
     width: 100%;
     height: 100%;
     object-fit: contain;
+  }
+  /* Karavan only (features.ts `coverFullHeight`), as on the catalogue card: the full height, the
+     width following the photo, centred. The badge and the empty label are positioned, so the photo
+     is the only flex item. */
+  .gcard__image[data-fit='height'] {
+    display: flex;
+    justify-content: center;
+  }
+  .gcard__image[data-fit='height'] img {
+    flex: none;
+    width: auto;
+    max-width: none;
+    height: 100%;
   }
   .gcard__empty {
     position: absolute;

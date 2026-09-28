@@ -1,4 +1,5 @@
 // Pure view helpers shared by pages and tested without Astro (docs/ADR.md D12).
+import { coverFillsHeight } from './cover-fit.ts';
 import type { RateTable } from './currency.ts';
 import { driveImageUrl } from './images.ts';
 import { dataRot } from './rotate.ts';
@@ -51,6 +52,11 @@ export interface CardView {
    * markers, as it did before.
    */
   textureUrl?: string;
+  /**
+   * The cover takes the full height of its 2:3 plate (features.ts `coverFullHeight`, a per-supplier
+   * switch). A yes/no only: the supplier itself never reaches a buyer's page.
+   */
+  fillHeight?: boolean;
 }
 
 export interface NavTab {
@@ -178,6 +184,7 @@ export function cardView(rug: Rug, catalogue: Catalogue): CardView {
     photoIds: rug.photos,
     altPhotoUrl: rug.photos[1] ? driveImageUrl(rug.photos[1], 800) : undefined,
     textureUrl: rug.textureId ? driveImageUrl(rug.textureId, 800) : undefined,
+    fillHeight: coverFillsHeight(rug.sourceSite, rug.sourceUrl) || undefined,
   };
 }
 

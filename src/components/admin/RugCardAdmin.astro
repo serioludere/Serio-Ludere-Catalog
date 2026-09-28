@@ -3,6 +3,7 @@
 // the rotate logic (`data-rot`, class added on load by rug-list.ts), count badge, name, meta, price,
 // status chip. The whole card links to the edit page. Filtering keys on the data attributes.
 import type { AdminRug } from '../../lib/admin/read.ts';
+import { coverFillsHeight } from '../../lib/cover-fit.ts';
 import { driveImageUrl } from '../../lib/images.ts';
 import { dataRot } from '../../lib/rotate.ts';
 import { dims } from '../../lib/units.ts';
@@ -48,7 +49,10 @@ const badges = badgesFor(rug.tags);
   data-attention={rug.commitStatus === 'pending' ? 'photos' : ''}
   data-search={search}
 >
-  <div class:list={['ph', { 'ph--empty': !photo }]}>
+  <div
+    class:list={['ph', { 'ph--empty': !photo }]}
+    data-fit={photo && coverFillsHeight(rug.supplier, rug.sourceUrl) ? 'height' : undefined}
+  >
     {photo ? <img src={photo} alt="" loading="lazy" data-rot={dataRot(rug.rotate)} /> : <span>no photo</span>}
     {rug.photos.length > 1 && <span class="cnt">{rug.photos.length}</span>}
     {likes > 0 && <span class="lk">♥ {likes}</span>}

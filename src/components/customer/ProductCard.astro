@@ -35,7 +35,7 @@ const likes = visibleLikes(card.likes);
 ---
 
 <article class="pv-card">
-  <div class="pv-card-image">
+  <div class="pv-card-image" data-fit={card.fillHeight ? 'height' : undefined}>
     {
       card.photoUrl ? (
         <img
@@ -112,6 +112,20 @@ const likes = visibleLikes(card.likes);
     width: 100%;
     height: 100%;
     object-fit: contain;
+  }
+  /* Owner, 2026-09-28, Karavan only (features.ts `coverFullHeight`): the photo at the plate's full
+     height, its width following its own shape, centred. A 2:3 cover fills the plate; a taller one
+     leaves ivory at its sides; a wider one runs past the plate's sides, which clip it. Every other
+     child of the plate is positioned, so the photo is the only flex item. */
+  .pv-card-image[data-fit='height'] {
+    display: flex;
+    justify-content: center;
+  }
+  .pv-card-image[data-fit='height'] img {
+    flex: none;
+    width: auto;
+    max-width: none;
+    height: 100%;
   }
   /* The storefront's own image hover, at a gentler amount: 600ms ease-out, 4% rather than 30%.
      Pointer devices only. */

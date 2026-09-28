@@ -16,6 +16,7 @@
 // The supplier's own measurement and price sit at the BOTTOM with the scrape warnings: they are
 // provenance for a number already in the form above, not a field to fill in.
 import type { AdminCollection, AdminRug, AdminTag } from '../../lib/admin/read.ts';
+import { coverFillsHeight } from '../../lib/cover-fit.ts';
 import { driveImageUrl } from '../../lib/images.ts';
 import { BADGE_TAG_NAMES } from '../../lib/view.ts';
 import { MATERIAL_OPTIONS, METHOD_OPTIONS, extraTerms, splitTerms } from '../../lib/terms.ts';
@@ -62,6 +63,8 @@ const day = (iso: string | undefined): string => {
 /** The read-only footer under the edit form, one string so it never wraps mid-phrase. */
 const metaLine = rug ? `${likes} ${likes === 1 ? 'like' : 'likes'} · added ${day(rug.scrapedAt)}` : '';
 const v = (s: string | number | undefined): string => (s === undefined ? '' : String(s));
+// The stored cover's tile fills its plate's height for a Karavan product, as its catalogue card does.
+const coverFills = rug ? coverFillsHeight(rug.supplier, rug.sourceUrl) : false;
 // The product's OWN tags (owner, 2026-09-18) — there is no registry to offer any more.
 const allTags = rug?.tags.filter((t) => t.trim()) ?? [];
 /* Markers are not tags (owner, 2026-09-21). They are stored in the same cell — that is what the
@@ -164,7 +167,8 @@ const methodOptions = termOptions(rug?.method, METHOD_OPTIONS);
       {
         rug?.photos.map((id, i) => (
           <label class="card tile">
-            <div class="ph">
+            {/* The cover, as the catalogue card shows it (features.ts `coverFullHeight`). */}
+            <div class="ph" data-fit={i === 0 && coverFills ? 'height' : undefined}>
               <img src={driveImageUrl(id, 800)} alt="" loading="lazy" />
             </div>
             <div class="mt">

@@ -1,1 +1,0 @@
-import{t as e}from"./rug-form.mapk8Oat.js";e();

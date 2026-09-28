@@ -11,6 +11,7 @@ import RugFields from '../../../src/components/admin/RugFields.astro';
 import type { AdminRug } from '../../../src/lib/admin/read.ts';
 import { jsonForScript } from '../../../src/lib/view.ts';
 import {
+  coverPreviewSrc,
   idFromSku,
   initRugForm,
   parsePhotoLines,
@@ -218,6 +219,26 @@ describe('parsePhotoLines', () => {
   });
 });
 
+describe('coverPreviewSrc', () => {
+  it('previews the cover of every vendor the scraper reads (owner, 2026-09-28)', () => {
+    for (const supplier of ['karavanrug', 'ecarpetgallery', 'serioludere']) {
+      const src = coverPreviewSrc('https://cdn.shopify.com/a.jpg?v=1&width=1600', supplier);
+      const url = new URL(src!, 'https://x.test');
+      expect(url.pathname).toBe('/api/admin/cover-preview');
+      // The whole photo URL survives the trip, query string included.
+      expect(url.searchParams.get('url')).toBe('https://cdn.shopify.com/a.jpg?v=1&width=1600');
+      expect(url.searchParams.get('supplier')).toBe(supplier);
+    }
+  });
+
+  it('shows the photo as it is when there is no vendor, or nothing the server could download', () => {
+    expect(coverPreviewSrc('https://cdn.shopify.com/a.jpg', '')).toBeUndefined();
+    expect(coverPreviewSrc('https://cdn.shopify.com/a.jpg', 'somewhere')).toBeUndefined();
+    expect(coverPreviewSrc('http://cdn.shopify.com/a.jpg', 'karavanrug')).toBeUndefined();
+    expect(coverPreviewSrc('data:image/png;base64,AAAA', 'karavanrug')).toBeUndefined();
+  });
+});
+
 describe('idFromSku', () => {
   it('passes a clean SKU through and reshapes the rest to the id format', () => {
     // dto.ts ID_RE is /^[A-Za-z0-9_-]{1,64}$/, and suppliers do not respect it.
@@ -408,9 +429,19 @@ describe('add mode', () => {
     expect(document.querySelectorAll('#warnings li')).toHaveLength(1);
     expect(document.querySelectorAll('#photoStrip input[data-url]')).toHaveLength(2);
     expect(text('photoCount')).toBe('2 of 2 selected');
-    expect(document.querySelector('#photoStrip img')?.getAttribute('src')).toBe(
+    // The cover is shown as it will be stored (owner, 2026-09-28); the others as the supplier has them.
+    const imgs = document.querySelectorAll<HTMLImageElement>('#photoStrip img');
+    expect(imgs[0]?.getAttribute('src')).toBe(
+      '/api/admin/cover-preview?url=https%3A%2F%2Fimages.ecarpetwholesale.com%2Fa.jpg&supplier=ecarpetgallery',
+    );
+    expect(imgs[1]?.getAttribute('src')).toBe('https://images.ecarpetwholesale.com/b.jpg');
+    // Only the picture changed: the photo the save imports is still the supplier's own.
+    expect(document.querySelector('#photoStrip input[data-url]')?.getAttribute('data-url')).toBe(
       'https://images.ecarpetwholesale.com/a.jpg',
     );
+    // A preview that cannot be made falls back to the supplier's photo, as before.
+    imgs[0]!.dispatchEvent(new Event('error'));
+    expect(imgs[0]?.getAttribute('src')).toBe('https://images.ecarpetwholesale.com/a.jpg');
     expect(document.body.innerHTML).not.toMatch(/\son[a-z]+=/i);
     // swap + round
     (document.getElementById('btnSwap') as HTMLButtonElement).click();

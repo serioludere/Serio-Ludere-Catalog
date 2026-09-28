@@ -6,7 +6,9 @@ import type { Supplier } from './scrape/types.ts';
 export const FEATURES = {
   /**
    * Background removal on a product's cover photo — the first one, the one the card shows — for
-   * both suppliers, applied as the photo is copied into Drive (src/lib/drive/transform.ts).
+   * every vendor (karavanrug, ecarpetgallery, and the studio's own serioludere.com since 2026-09-28),
+   * applied as the photo is copied into Drive (src/lib/drive/transform.ts). The add form previews
+   * the cover the same way before it is saved (/api/admin/cover-preview).
    *
    * Free and local: both suppliers shoot on a plain white studio backdrop, so the server flood-fills
    * that backdrop to transparent with sharp (already a dependency) and stores a PNG. No model, no

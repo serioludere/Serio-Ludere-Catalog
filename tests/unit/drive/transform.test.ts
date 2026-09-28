@@ -42,9 +42,12 @@ describe('transformsFor', () => {
     expect(transformsFor('ecarpetgallery', 0)).not.toContain('rotate90');
   });
 
-  it('asks for background removal on both suppliers first image', () => {
+  it('asks for background removal on every vendor’s first image, the own store included', () => {
     expect(transformsFor('karavanrug', 0)).toContain('removeBackground');
     expect(transformsFor('ecarpetgallery', 0)).toContain('removeBackground');
+    // Owner, 2026-09-28: "for all vendors".
+    expect(transformsFor('serioludere', 0)).toEqual(['removeBackground']);
+    expect(transformsFor('serioludere', 1)).toEqual([]);
   });
 
   it('drops background removal — and only that — when the feature is switched off', () => {
@@ -53,6 +56,7 @@ describe('transformsFor', () => {
     try {
       expect(transformsFor('karavanrug', 0)).toEqual(['rotate90', 'crop2x3']);
       expect(transformsFor('ecarpetgallery', 0)).toEqual([]);
+      expect(transformsFor('serioludere', 0)).toEqual([]);
     } finally {
       flags.backgroundRemoval = true;
     }
@@ -66,7 +70,7 @@ describe('transformsFor', () => {
 
   it('crops no other supplier until its switch is turned on', () => {
     expect(transformsFor('ecarpetgallery', 0)).not.toContain('crop2x3');
-    expect(transformsFor('serioludere', 0)).toEqual([]);
+    expect(transformsFor('serioludere', 0)).not.toContain('crop2x3');
     const crop = FEATURES.coverCrop2x3 as Record<string, boolean>;
     crop.ecarpetgallery = true;
     try {

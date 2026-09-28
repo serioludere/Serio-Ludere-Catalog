@@ -3,6 +3,7 @@
 //   "rotate first image by 90 degrees that is coming from https://karavanrug.com/"
 //   "remove background of the first image from both karavan and ecarpet gallery"
 //   "the first photo scraped from KV cropped to a 2:3 ratio after rotating -90 degrees" (2026-09-27)
+//   "apply the remove bg ... for all vendors" (2026-09-28): the studio's own store as well
 //
 // Applied to the BYTES at import, not with a CSS transform at display. The rug's photos are the
 // studio's own asset afterwards — they are re-used in exports, sent to buyers, and opened straight
@@ -14,6 +15,7 @@
 // in its plate"; this module answers "did the supplier hand us the file the wrong way up".
 
 import { FEATURES } from '../features.ts';
+import type { Supplier } from '../scrape/types.ts';
 
 /** What can be done to a supplier photo before it is stored. */
 export type ImageTransform = 'rotate90' | 'removeBackground' | 'crop2x3';
@@ -31,6 +33,13 @@ function bareMime(contentType: string | null | undefined): string {
 /** Formats sharp can decode and re-encode losslessly enough to be worth rewriting. */
 const TRANSFORMABLE = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/tiff']);
 
+/** The vendors whose cover gets its backdrop removed: all three the scraper reads. */
+const BACKGROUND_VENDORS: ReadonlySet<string> = new Set<Supplier>([
+  'karavanrug',
+  'ecarpetgallery',
+  'serioludere',
+]);
+
 /**
  * The transforms a given photo earns.
  *
@@ -41,10 +50,10 @@ export function transformsFor(supplier: string, index: number): ImageTransform[]
   if (index !== 0) return [];
   const out: ImageTransform[] = [];
   if (supplier === 'karavanrug') out.push('rotate90');
-  // Both suppliers' cover photos (owner, 2026-09-18). Switchable in src/lib/features.ts; off, the
-  // cover is stored exactly as the supplier sent it (rotation aside).
-  if (FEATURES.backgroundRemoval && (supplier === 'karavanrug' || supplier === 'ecarpetgallery'))
-    out.push('removeBackground');
+  // Every vendor's cover photo: both suppliers (owner, 2026-09-18) and the studio's own store
+  // (2026-09-28). Switchable in src/lib/features.ts; off, the cover is stored exactly as the supplier
+  // sent it (rotation aside). Owned stock and unknown hosts are never touched.
+  if (FEATURES.backgroundRemoval && BACKGROUND_VENDORS.has(supplier)) out.push('removeBackground');
   // Last, and after the backdrop is gone (owner, 2026-09-27): backdropOf needs most of the border to
   // be plain white, and a cover cropped tight first would lose exactly that border.
   if (coverCrops(supplier)) out.push('crop2x3');

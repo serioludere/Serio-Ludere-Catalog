@@ -22,7 +22,7 @@ import { join } from 'node:path';
 import { fetch as undiciFetch } from 'undici';
 import { createDriveClient, defaultDownload, type DriveClient } from './drive/index.ts';
 import { createPublicMediaReader } from './drive/media.ts';
-import type { MediaResult } from './drive/types.ts';
+import type { Downloader, MediaResult } from './drive/types.ts';
 import { GoogleConnection } from './google/connection.ts';
 import { createTokenStore, type GoogleTokenStore } from './google/store.ts';
 import { PhotoMonitor } from './photos-health.ts';
@@ -269,6 +269,12 @@ export interface AdminDeps {
    * the route so a test that mocks this module never reaches the network for an image.
    */
   publicImages: (fileId: string, width?: number) => Promise<MediaResult>;
+  /**
+   * The supplier-photo downloader the Drive import uses — https, the photo-host allow-list, image/*
+   * only, 5 MB — for the add form's cover preview (owner, 2026-09-28). Present in both auth modes:
+   * a preview stores nothing, so it needs no Drive.
+   */
+  downloadImage: Downloader;
 }
 
 /** Global-fetch-shaped wrapper over undici with the DNS-time BlockList agent (§4.3): image downloads only. */
@@ -328,13 +334,15 @@ export function getAdminDeps(): AdminDeps {
     // credentials and would throw before the owner has connected an account in the browser.
     const mode: 'service_account' | 'oauth_refresh' =
       GOOGLE_AUTH_MODE === 'oauth_refresh' ? 'oauth_refresh' : 'service_account';
+    const downloadImage: Downloader = (url) => defaultDownload(url, guardedFetch);
     adminDeps = {
       authMode: mode,
+      downloadImage,
       drive:
         mode === 'oauth_refresh'
           ? createDriveClient({
               getAccessToken: () => getTokens().getAccessToken(),
-              download: (url) => defaultDownload(url, guardedFetch),
+              download: downloadImage,
               folderId: GOOGLE_DRIVE_FOLDER_ID || undefined,
               logger: consoleLogger,
             })

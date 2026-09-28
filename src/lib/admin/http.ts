@@ -112,9 +112,6 @@ export const ADMIN_RATES = {
   scrape: { limit: 10, windowMs: 60_000 },
   scrapeGlobal: { limit: 30, windowMs: 10 * 60_000 },
   photos: { limit: 5, windowMs: 60_000 },
-  /* The add form's cover preview (owner, 2026-09-28): a download plus a second of sharp each, one per
-     Fetch — so well above the scrape budget, well below a plain read's. */
-  preview: { limit: 30, windowMs: 60_000 },
 } as const;
 export type AdminRateKind = Exclude<keyof typeof ADMIN_RATES, 'scrapeGlobal'>;
 
@@ -249,15 +246,12 @@ export function methodNotAllowed(allow: string): APIRoute {
   return () => noStore({ ok: false, error: 'method not allowed' }, 405, { allow });
 }
 
-/** GET endpoint: session, `read` rate limit (or a heavier `kind`), error mapping. */
-export function adminGet(
-  handler: (ctx: AdminCtx) => Promise<Response>,
-  kind: Extract<AdminRateKind, 'read' | 'preview'> = 'read',
-): APIRoute {
+/** GET endpoint: session, `read` rate limit, error mapping. */
+export function adminGet(handler: (ctx: AdminCtx) => Promise<Response>): APIRoute {
   return async (context) => {
     try {
       const ctx = adminContext(context);
-      const limited = sessionRateLimit(kind, ctx.session);
+      const limited = sessionRateLimit('read', ctx.session);
       if (limited) return limited;
       return await handler(ctx);
     } catch (e) {

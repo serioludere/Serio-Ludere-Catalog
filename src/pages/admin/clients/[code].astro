@@ -256,10 +256,9 @@ const metaLong = [
     background: var(--surface);
   }
 
-  /* The card's 2:3 plate, the photo whole at its full height (owner, 2026-09-28). */
   .gcard__image {
     position: relative;
-    aspect-ratio: 2 / 3;
+    height: 300px;
     background: var(--bg-inset);
     overflow: hidden;
   }
@@ -334,8 +333,11 @@ const metaLong = [
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: var(--stack-sm);
     }
-    /* No height of its own at this width any more: the plate is 2:3 everywhere (owner, 2026-09-28),
-       so a narrower card is a shorter one. */
+
+    /* The plate keeps its drawn 378 height at 175 wide — the card is narrower, not shorter. */
+    .gcard__image {
+      height: 300px;
+    }
   }
 </style>
 

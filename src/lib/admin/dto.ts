@@ -205,15 +205,6 @@ export const PhotoImportRequest = z.object({
   supplier: z.enum(['ecarpetgallery', 'karavanrug', 'serioludere', '']).default(''),
 });
 export type PhotoImportRequestT = z.infer<typeof PhotoImportRequest>;
-/**
- * GET /api/admin/cover-preview (owner, 2026-09-28): one supplier photo, and the vendor whose cover
- * fixes to preview on it. A vendor is required — owned stock has no fixes, so nothing to preview.
- */
-export const CoverPreviewQuery = z.object({
-  url: HttpsUrl,
-  supplier: z.enum(['ecarpetgallery', 'karavanrug', 'serioludere']),
-});
-export type CoverPreviewQueryT = z.infer<typeof CoverPreviewQuery>;
 export const SettingsUpdate = z.object({
   key: z.enum([
     'retail_markup',

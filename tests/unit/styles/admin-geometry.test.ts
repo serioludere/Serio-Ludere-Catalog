@@ -81,9 +81,8 @@ describe('F5 · Customer detail (Figma 52:1207)', () => {
     expect(rule(css, '.cust__grid')).toMatch(/gap:\s*var\(--stack-lg\)/);
   });
 
-  it('gives the plate the card’s 2:3, the photo whole (owner, 2026-09-28; drawn 300 tall)', () => {
-    expect(rule(css, '.gcard__image')).toMatch(/aspect-ratio:\s*2 \/ 3/);
-    expect(rule(css, '.gcard__image img')).toMatch(/object-fit:\s*contain/);
+  it('keeps the plate 300 tall, as drawn', () => {
+    expect(rule(css, '.gcard__image')).toMatch(/height:\s*300px/);
   });
 });
 

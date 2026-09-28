@@ -223,12 +223,11 @@ const specRowsOf = (card: CardView): Array<{ key: string; value: string }> => [
   .pv-modal__thumbs .pv-thumb.is-on {
     border: 2px solid var(--ink);
   }
-  /* `contain`, as on the detail page's strip (owner, 2026-09-28: the whole rug, always). */
   .pv-modal__thumbs .pv-thumb img {
     display: block;
     width: 100%;
     height: 100%;
-    object-fit: contain;
+    object-fit: cover;
   }
   .pv-modal__info {
     display: flex;

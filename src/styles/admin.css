@@ -686,39 +686,32 @@ td pre {
 }
 .card .ph {
   position: relative;
-  /* Owner, 2026-09-28: the customer card's 2:3 plate (it was a taller 3:5, which cut the sides off
-     a 2:3 cover), so the studio sees each rug exactly as the buyer does. */
-  aspect-ratio: 2 / 3;
-  /* The card's own ground, as on the customer card: a cover whose backdrop was removed floats on it
-     instead of sitting in a grey box (owner, 2026-09-28). */
-  background: var(--surface);
+  /* Owner, 2026-09-16: the tall 3:5 plate, filled rather than fitted. */
+  aspect-ratio: 3 / 5;
+  /* `--subtle` is the neutral one step off the card: a rug with no photo yet would otherwise be a
+     white box inside a white box. */
+  background: var(--subtle);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
 }
-/* `--subtle` stays for a rug with no photo yet, which would otherwise be a white box inside a white
-   box: the neutral one step off the card. */
-.card .ph.ph--empty {
-  background: var(--subtle);
-}
 /* No drop-shadow: that is the customer preview's lit-plate treatment and the admin is deliberately
-   flat. `contain`, not `cover` (owner, 2026-09-28): the whole rug at the plate's full height, never
-   its sides cut off. */
+   flat. */
 .card .ph img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
 }
-/* Rotated by 90°, so the element's width becomes the visual HEIGHT and vice versa: to still fill a
-   2:3 box the pair has to be the box's ratio inverted — 3/2 wide by 2/3 tall. These two numbers and
+/* Rotated by 90°, so the element's width becomes the visual HEIGHT and vice versa: to still cover a
+   3:5 box the pair has to be the box's ratio inverted — 5/3 wide by 3/5 tall. These two numbers and
    the aspect-ratio above move together. */
 .card .ph img.rot {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 150%;
-  height: 66.667%;
+  width: 166.667%;
+  height: 60%;
   transform: translate(-50%, -50%) rotate(90deg);
   transform-origin: center;
 }

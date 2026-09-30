@@ -180,6 +180,15 @@ describe('/admin/rugs', () => {
     expect(html).toMatch(
       /data-value="__none"[^>]*>\s*No collection\s*<span class="chip__count">\s*1<\/span>/,
     );
+    // In the buyer's order (owner, 2026-09-30): the studio's own order puts Tulu before Kilims, then
+    // "No collection", and "All" last — still the tab pressed on arrival.
+    const group = html.slice(html.indexOf('id="collectionChips"'), html.indexOf('id="count"'));
+    expect([...group.matchAll(/data-value="([^"]*)"/g)].map((m) => m[1])).toEqual([
+      'tulu',
+      'kilims',
+      '__none',
+      '*',
+    ]);
     // Drawn as the buyer's collection tabs (owner, 2026-09-30), and the grid view sized as theirs.
     expect(html).toContain('class="chips rugfilters"');
     expect(html).toContain('id="grid" class="grid rugs-grid"');

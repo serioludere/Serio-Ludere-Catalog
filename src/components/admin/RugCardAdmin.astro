@@ -55,7 +55,19 @@ const badges = badgesFor(rug.tags);
   >
     {photo ? <img src={photo} alt="" loading="lazy" data-rot={dataRot(rug.rotate)} /> : <span>no photo</span>}
     {rug.photos.length > 1 && <span class="cnt">{rug.photos.length}</span>}
-    {likes > 0 && <span class="lk">♥ {likes}</span>}
+    {
+      /* A red heart and the number in ink (owner, 2026-09-30: "more visible … the heart red, with a
+         number in black next to it, no container background"). */
+      likes > 0 && (
+        <span class="lk" title={`${likes} ${likes === 1 ? 'customer likes' : 'customers like'} this`}>
+          <svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true" focusable="false">
+            <path d="M8 13.4C8 13.4 2.6 10.2 2.6 6.6C2.40109 5.88392 2.49479 5.11814 2.86048 4.47114C3.22618 3.82414 3.83392 3.34891 4.55 3.15C5.26608 2.95109 6.03186 3.04479 6.67886 3.41048C7.32586 3.77618 7.80109 4.38392 8 5.1C8.19891 4.38392 8.67414 3.77618 9.32114 3.41048C9.96814 3.04479 10.7339 2.95109 11.45 3.15C12.1661 3.34891 12.7738 3.82414 13.1395 4.47114C13.5052 5.11814 13.5989 5.88392 13.4 6.6C13.4 10.2 8 13.4 8 13.4Z" />
+          </svg>
+          {likes}
+          <span class="sr-only">{likes === 1 ? 'like' : 'likes'}</span>
+        </span>
+      )
+    }
     {
       badges.length > 0 && (
         <ul class="badges">

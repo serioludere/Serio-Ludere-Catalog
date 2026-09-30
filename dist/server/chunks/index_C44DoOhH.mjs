@@ -3,7 +3,7 @@ import { F as maybeRenderHead, O as renderComponent, P as renderTemplate } from 
 import { t as createComponent } from "./compiler_CXPqD_v7.mjs";
 import { St as serializeError, i as getClient, xt as consoleLogger } from "./runtime_CDQUPEGE.mjs";
 import { i as fetchAdminSnapshot, n as adminCounts } from "./read_By9ZobhQ.mjs";
-import { t as $$AdminLayout } from "./AdminLayout_AqO-ixJ_.mjs";
+import { t as $$AdminLayout } from "./AdminLayout_DE7AFJTe.mjs";
 //#region src/pages/admin/index.astro
 var admin_exports = /* @__PURE__ */ __exportAll({
 	default: () => $$Index,

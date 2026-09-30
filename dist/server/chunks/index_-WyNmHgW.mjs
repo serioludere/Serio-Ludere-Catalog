@@ -9,12 +9,12 @@ import { t as coverFillsHeight } from "./cover-fit_BOZGaSq-.mjs";
 import { f as dataRot, o as jsonForScript, r as badgesFor } from "./view_hJ27IOw5.mjs";
 import { t as dims } from "./units_BFAJ7W-k.mjs";
 import { t as $$PageNav } from "./PageNav_B-pEwqJa.mjs";
-import { n as $$Icon, t as $$AdminLayout } from "./AdminLayout_AqO-ixJ_.mjs";
-import { t as $$Button } from "./Button_CWjTlj_m.mjs";
-import { n as $$Modal, t as $$EmptyState } from "./EmptyState_BtxfXFg4.mjs";
+import { n as $$Icon, t as $$AdminLayout } from "./AdminLayout_DE7AFJTe.mjs";
+import { t as $$Button } from "./Button_CPNRGc8b.mjs";
+import { n as $$Modal, t as $$EmptyState } from "./EmptyState_BjdxoZNg.mjs";
 import { t as $$RugFields } from "./RugFields_DgpJkctW.mjs";
 import { t as fetchAdminSnapshotWithLikes } from "./likes_MOk4JmEq.mjs";
-import { t as $$FetchModal } from "./FetchModal_Dv0Ya6hF.mjs";
+import { t as $$FetchModal } from "./FetchModal_zpWiOwYP.mjs";
 import { n as nextRugId } from "./ids_DksWEUUF.mjs";
 import { f as reservedIds, r as driveScope } from "./_shared_C51-IQWR.mjs";
 //#region src/components/admin/Chips.astro
@@ -45,7 +45,7 @@ var $$RugCardAdmin = createComponent(($$result, $$props, $$slots) => {
 		rug.supplier
 	].join(" ").toLowerCase().replace(/[<>]/g, " ");
 	const badges = badgesFor(rug.tags);
-	return renderTemplate`${maybeRenderHead($$result)}<a${addAttribute(`/admin/rugs/${encodeURIComponent(rug.id)}`, "href")} class="card" data-card${addAttribute(rug.id, "data-id")}${addAttribute(slug, "data-collection")}${addAttribute(slugs, "data-collections")}${addAttribute(rug.commitStatus === "pending" ? "photos" : "", "data-attention")}${addAttribute(search, "data-search")} data-astro-cid-lzhbdev7> <div${addAttribute(["ph", { "ph--empty": !photo }], "class:list")}${addAttribute(photo && coverFillsHeight(rug.supplier, rug.sourceUrl) ? "height" : void 0, "data-fit")} data-astro-cid-lzhbdev7> ${photo ? renderTemplate`<img${addAttribute(photo, "src")} alt="" loading="lazy"${addAttribute(dataRot(rug.rotate), "data-rot")} data-astro-cid-lzhbdev7>` : renderTemplate`<span data-astro-cid-lzhbdev7>no photo</span>`} ${rug.photos.length > 1 && renderTemplate`<span class="cnt" data-astro-cid-lzhbdev7>${rug.photos.length}</span>`} ${likes > 0 && renderTemplate`<span class="lk" data-astro-cid-lzhbdev7>♥ ${likes}</span>`} ${badges.length > 0 && renderTemplate`<ul class="badges" data-astro-cid-lzhbdev7> ${badges.map((b) => renderTemplate`<li class="badge-corner" data-astro-cid-lzhbdev7>${b}</li>`)} </ul>`} </div> <div class="nm" data-astro-cid-lzhbdev7>${rug.name}</div> <div class="mt" data-astro-cid-lzhbdev7> <span class="mono" data-astro-cid-lzhbdev7>${rug.id}</span> ${meta.map((m) => renderTemplate`<span class="line" data-astro-cid-lzhbdev7>${m}</span>`)} </div> ${price && renderTemplate`<div class="pr" data-astro-cid-lzhbdev7>${price}</div>`} ${rug.commitStatus === "pending" && renderTemplate`<div class="pending" data-astro-cid-lzhbdev7> <span class="status revoked" data-astro-cid-lzhbdev7>photos pending</span> </div>`} </a> ${rug.commitStatus === "pending" && renderTemplate`<button type="button" class="chip retry"${addAttribute(rug.id, "data-retry")} data-astro-cid-lzhbdev7>
+	return renderTemplate`${maybeRenderHead($$result)}<a${addAttribute(`/admin/rugs/${encodeURIComponent(rug.id)}`, "href")} class="card" data-card${addAttribute(rug.id, "data-id")}${addAttribute(slug, "data-collection")}${addAttribute(slugs, "data-collections")}${addAttribute(rug.commitStatus === "pending" ? "photos" : "", "data-attention")}${addAttribute(search, "data-search")} data-astro-cid-lzhbdev7> <div${addAttribute(["ph", { "ph--empty": !photo }], "class:list")}${addAttribute(photo && coverFillsHeight(rug.supplier, rug.sourceUrl) ? "height" : void 0, "data-fit")} data-astro-cid-lzhbdev7> ${photo ? renderTemplate`<img${addAttribute(photo, "src")} alt="" loading="lazy"${addAttribute(dataRot(rug.rotate), "data-rot")} data-astro-cid-lzhbdev7>` : renderTemplate`<span data-astro-cid-lzhbdev7>no photo</span>`} ${rug.photos.length > 1 && renderTemplate`<span class="cnt" data-astro-cid-lzhbdev7>${rug.photos.length}</span>`} ${likes > 0 && renderTemplate`<span class="lk"${addAttribute(`${likes} ${likes === 1 ? "customer likes" : "customers like"} this`, "title")} data-astro-cid-lzhbdev7> <svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true" focusable="false" data-astro-cid-lzhbdev7> <path d="M8 13.4C8 13.4 2.6 10.2 2.6 6.6C2.40109 5.88392 2.49479 5.11814 2.86048 4.47114C3.22618 3.82414 3.83392 3.34891 4.55 3.15C5.26608 2.95109 6.03186 3.04479 6.67886 3.41048C7.32586 3.77618 7.80109 4.38392 8 5.1C8.19891 4.38392 8.67414 3.77618 9.32114 3.41048C9.96814 3.04479 10.7339 2.95109 11.45 3.15C12.1661 3.34891 12.7738 3.82414 13.1395 4.47114C13.5052 5.11814 13.5989 5.88392 13.4 6.6C13.4 10.2 8 13.4 8 13.4Z" data-astro-cid-lzhbdev7></path> </svg> ${likes} <span class="sr-only" data-astro-cid-lzhbdev7>${likes === 1 ? "like" : "likes"}</span> </span>`} ${badges.length > 0 && renderTemplate`<ul class="badges" data-astro-cid-lzhbdev7> ${badges.map((b) => renderTemplate`<li class="badge-corner" data-astro-cid-lzhbdev7>${b}</li>`)} </ul>`} </div> <div class="nm" data-astro-cid-lzhbdev7>${rug.name}</div> <div class="mt" data-astro-cid-lzhbdev7> <span class="mono" data-astro-cid-lzhbdev7>${rug.id}</span> ${meta.map((m) => renderTemplate`<span class="line" data-astro-cid-lzhbdev7>${m}</span>`)} </div> ${price && renderTemplate`<div class="pr" data-astro-cid-lzhbdev7>${price}</div>`} ${rug.commitStatus === "pending" && renderTemplate`<div class="pending" data-astro-cid-lzhbdev7> <span class="status revoked" data-astro-cid-lzhbdev7>photos pending</span> </div>`} </a> ${rug.commitStatus === "pending" && renderTemplate`<button type="button" class="chip retry"${addAttribute(rug.id, "data-retry")} data-astro-cid-lzhbdev7>
 Finish photo import
 </button>`}`;
 }, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/components/admin/RugCardAdmin.astro", void 0);
@@ -138,14 +138,10 @@ var $$Index = createComponent(async ($$result, $$props, $$slots) => {
 		for (const key of slugs) counts.set(key, (counts.get(key) ?? 0) + 1);
 	}
 	const names = orderedCollectionNames(rugs.filter((r) => r.collections.length > 0), collections);
+	const bySortOrder = collections.slice().sort((a, b) => (a.sortOrder ?? 1e9) - (b.sortOrder ?? 1e9) || a.name.localeCompare(b.name)).map((c) => c.name);
 	const seen = /* @__PURE__ */ new Set();
-	const collectionChips = [{
-		value: "*",
-		label: "All",
-		count: rugs.length,
-		pressed: true
-	}];
-	for (const name of [...collections.map((c) => c.name), ...names]) {
+	const collectionChips = [];
+	for (const name of [...names, ...bySortOrder]) {
 		const slug = collectionSlug(name, collections);
 		if (seen.has(slug)) continue;
 		seen.add(slug);
@@ -160,6 +156,12 @@ var $$Index = createComponent(async ($$result, $$props, $$slots) => {
 		value: "__none",
 		label: "No collection",
 		count: counts.get("")
+	});
+	collectionChips.push({
+		value: "*",
+		label: "All",
+		count: rugs.length,
+		pressed: true
 	});
 	const pendingCount = rugs.filter((r) => r.commitStatus === "pending").length;
 	await driveScope();

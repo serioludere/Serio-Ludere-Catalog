@@ -807,18 +807,37 @@ td pre {
   font-size: var(--text-xs);
   padding: var(--corner-chip-pad);
 }
-/* The like count, bottom-right of the plate (owner, 2026-09-15): the same ink chip as the photo
-   count, so the plate carries at most three quiet corner marks. */
-.card .lk {
+/* The like count, in the plate's bottom-right corner (owner, 2026-09-15; "placed in the bottom right
+   of the image container", 2026-09-30). Made to read at a glance on 2026-09-30 (owner): a red heart —
+   the buyer's own liked red — and the number in black ink, 15px bold, with no chip behind them.
+   With no chip, a soft halo in the card's
+   ground keeps both legible where the corner falls on a dark rug; it is an edge, not a background.
+   `.ph` is in the selector on purpose: `.card .ph span` (the "no photo" label, 0,2,1) otherwise wins
+   and draws the count at 11px in grey. */
+.card .ph .lk {
   position: absolute;
   bottom: var(--stack-sm);
   right: var(--stack-sm);
-  background: var(--ink);
-  color: var(--paper);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--stack-xs);
+  color: var(--ink);
   font-family: var(--body);
-  font-size: var(--text-xs);
+  /* The admin's 15px step (`--h3` in admin mode): a notch above the card's own text. */
+  font-size: var(--h3);
+  font-weight: 700;
+  letter-spacing: normal;
   font-variant-numeric: tabular-nums;
-  padding: var(--corner-chip-pad);
+  line-height: 1;
+  text-shadow:
+    0 0 2px var(--surface),
+    0 0 4px var(--surface);
+}
+.card .ph .lk svg {
+  flex: none;
+  fill: var(--brand);
+  stroke: var(--brand);
+  filter: drop-shadow(0 0 1.5px var(--surface));
 }
 /* Signed / Antique corner badge (owner, 2026-09-13) — top-left, opposite the photo count, and
    styled exactly like it so the two corners read as one family rather than two ideas. */

@@ -6,9 +6,9 @@ import { St as serializeError, i as getClient, xt as consoleLogger } from "./run
 import { a as adminRuntime } from "./http_BTz_tJmk.mjs";
 import { i as fetchAdminSnapshot, m as roundStepOf } from "./read_By9ZobhQ.mjs";
 import { o as jsonForScript } from "./view_hJ27IOw5.mjs";
-import { t as $$AdminLayout } from "./AdminLayout_AqO-ixJ_.mjs";
+import { t as $$AdminLayout } from "./AdminLayout_DE7AFJTe.mjs";
 import { t as $$RugFields } from "./RugFields_DgpJkctW.mjs";
-import { t as $$FetchModal } from "./FetchModal_Dv0Ya6hF.mjs";
+import { t as $$FetchModal } from "./FetchModal_zpWiOwYP.mjs";
 import { n as nextRugId } from "./ids_DksWEUUF.mjs";
 import { f as reservedIds, r as driveScope } from "./_shared_C51-IQWR.mjs";
 //#region src/pages/admin/rugs/new.astro

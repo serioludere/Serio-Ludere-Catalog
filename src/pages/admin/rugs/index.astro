@@ -64,9 +64,18 @@ const names = orderedCollectionNames(
   rugs.filter((r) => r.collections.length > 0),
   collections,
 );
+/* The tabs in the buyer's order (owner, 2026-09-30: "reorder collection tabs just like they are in
+   the customer page"): first the collections that have rugs, ordered exactly as the customer page's
+   navTabs orders them (orderedCollectionNames — the studio's fixed order, then sort_order), then the
+   empty ones the buyer never sees, then "No collection", and "All" LAST, as the buyer's is. "All"
+   is still the tab pressed on arrival: the studio opens on the whole catalogue. */
+const bySortOrder = collections
+  .slice()
+  .sort((a, b) => (a.sortOrder ?? 1e9) - (b.sortOrder ?? 1e9) || a.name.localeCompare(b.name))
+  .map((c) => c.name);
 const seen = new Set<string>();
-const collectionChips: Chip[] = [{ value: '*', label: 'All', count: rugs.length, pressed: true }];
-for (const name of [...collections.map((c) => c.name), ...names]) {
+const collectionChips: Chip[] = [];
+for (const name of [...names, ...bySortOrder]) {
   const slug = collectionSlug(name, collections);
   if (seen.has(slug)) continue;
   seen.add(slug);
@@ -74,6 +83,7 @@ for (const name of [...collections.map((c) => c.name), ...names]) {
   collectionChips.push({ value: slug, label: canonical, count: counts.get(slug) ?? 0 });
 }
 if (counts.get('')) collectionChips.push({ value: '__none', label: 'No collection', count: counts.get('') });
+collectionChips.push({ value: '*', label: 'All', count: rugs.length, pressed: true });
 /* Owner, 2026-09-16: the status filter (Active / Draft / Archived / Any status) is gone, so the list
    opens on the whole catalogue whatever each row's status is. Status is still on every card and row,
    and the header still counts the rows whose photo import stopped half way. */

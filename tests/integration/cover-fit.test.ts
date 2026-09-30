@@ -110,3 +110,31 @@ describe('buyer’s card', () => {
     expect(await buyerCard({ fillHeight: true })).not.toMatch(/karavan/i);
   });
 });
+
+/* The like count on the admin grid card (owner, 2026-09-30: "make the like count of each item more
+   visible, make the heart red, with a number in black next to it and no need for the container
+   background"). The colours live in admin.css; the markup is what carries them. */
+describe('the admin card like count', () => {
+  const withLikes = async (likes: number): Promise<string> => {
+    const c = await AstroContainer.create();
+    return c.renderToString(RugCardAdmin, { props: { rug, collections, likes } });
+  };
+
+  it('draws a heart and the number, not the old text glyph in a chip', async () => {
+    const html = await withLikes(3);
+    const lk = html.slice(
+      html.indexOf('class="lk"'),
+      html.indexOf('</span>', html.indexOf('class="sr-only"')),
+    );
+    expect(lk).toContain('<svg viewBox="0 0 16 16"');
+    // The component's scoped style stamps a data-astro-cid-* attribute on every tag.
+    expect(lk).toMatch(/<\/svg>\s*3\s*<span class="sr-only"[^>]*>likes/);
+    expect(lk).not.toContain('♥');
+    expect(html).toContain('title="3 customers like this"');
+  });
+
+  it('says one like in the singular, and draws nothing at zero', async () => {
+    expect(await withLikes(1)).toContain('title="1 customer likes this"');
+    expect(await withLikes(0)).not.toContain('class="lk"');
+  });
+});

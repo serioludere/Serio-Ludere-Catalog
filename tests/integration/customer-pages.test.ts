@@ -355,6 +355,26 @@ describe('/{slug} — the signed-in catalog', () => {
     expect(html.match(/id="unitTog"/g)).toHaveLength(1);
   });
 
+  it('offers the name search left of the unit toggle, in both copies (owner, 2026-09-30)', async () => {
+    state.down = false;
+    const { html } = await render(CustomerCatalog, '/hala', { slug: 'hala' }, { customer: 'hala' });
+    const header = html.match(/<header[^>]*class="[^"]*pv-header[^"]*"[\s\S]*?<\/header>/)?.[0] ?? '';
+    // The phone copy and the page copy, each with its own field id, both before the unit toggle.
+    for (const [part, id] of [
+      [header, 'pvSearchHeader'],
+      [html.slice(html.indexOf('pv-title-row')), 'pvSearch'],
+    ] as const) {
+      const search = part.indexOf('data-search ');
+      expect(search).toBeGreaterThan(-1);
+      expect(search).toBeLessThan(part.indexOf('data-unit-toggle'));
+      expect(part).toMatch(new RegExp(`data-search-toggle[^>]*aria-controls="${id}"`));
+      expect(part).toMatch(new RegExp(`<input[^>]*id="${id}"[^>]*type="search"`));
+    }
+    expect(html).toMatch(/<button[^>]*data-search-toggle[^>]*aria-label="Search by name"/);
+    // Each card carries its name, which is what the search reads.
+    expect(html).toMatch(/data-card[^>]*data-name="Winks"/);
+  });
+
   it('prints the Canada/US WhatsApp line ending 5157, on the catalog and on a not-found page', async () => {
     state.down = false;
     const catalog = await render(CustomerCatalog, '/hala', { slug: 'hala' }, { customer: 'hala' });
@@ -499,6 +519,8 @@ describe('/{slug}/{productId} — the detail page', () => {
     expect(html).not.toContain('Enquire on WhatsApp');
     expect(html).not.toContain('Email the studio');
     expect(html).toContain('For some card/transfer payments prices are subject to 16% IVA');
+    // No grid here, so nothing to search.
+    expect(html).not.toContain('data-search-toggle');
   });
 
   it('sends a deep link into someone else’s preview back to their own gate', async () => {

@@ -4,7 +4,7 @@ import { t as createComponent } from "./compiler_CXPqD_v7.mjs";
 import { t as renderScript } from "./motion-spec_CFi9-3dQ.mjs";
 import { Q as money, _t as driveImageUrl, f as ratesFor, t as baseCurrency, u as loadCatalogue } from "./runtime_ze_g5m0z.mjs";
 import { i as findCustomer } from "./http_Cj4-WIIV.mjs";
-import { a as $$PreviewFooter, i as $$PreviewHeader, n as $$Reactions, o as $$PreviewControls, r as $$PreviewLayout, t as $$SpecTable } from "./SpecTable_U8f01EYb.mjs";
+import { a as $$PreviewFooter, i as $$PreviewHeader, n as $$Reactions, o as $$PreviewControls, r as $$PreviewLayout, t as $$SpecTable } from "./SpecTable_EhJK-fmr.mjs";
 import { a as catalogueRugs, i as cardView } from "./view_DOOWEoSU.mjs";
 import { t as $$Pager } from "./Pager_DEjVkYC7.mjs";
 import { t as dims } from "./units_BFAJ7W-k.mjs";

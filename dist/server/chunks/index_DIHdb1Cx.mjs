@@ -5,7 +5,7 @@ import { t as renderScript } from "./motion-spec_CFi9-3dQ.mjs";
 import { n as templateExit, t as templateEnter } from "./template-depth_DHN7yctw.mjs";
 import { Q as money, _t as driveImageUrl, f as ratesFor, t as baseCurrency, u as loadCatalogue } from "./runtime_ze_g5m0z.mjs";
 import { a as noteVisit, i as findCustomer } from "./http_Cj4-WIIV.mjs";
-import { a as $$PreviewFooter, i as $$PreviewHeader, n as $$Reactions, o as $$PreviewControls, r as $$PreviewLayout, t as $$SpecTable } from "./SpecTable_U8f01EYb.mjs";
+import { a as $$PreviewFooter, i as $$PreviewHeader, n as $$Reactions, o as $$PreviewControls, r as $$PreviewLayout, t as $$SpecTable } from "./SpecTable_EhJK-fmr.mjs";
 import { a as catalogueRugs, i as cardView, r as badgesFor, s as navTabs } from "./view_DOOWEoSU.mjs";
 import { n as visibleLikes } from "./likes_Bt2PBY3j.mjs";
 import { t as dims } from "./units_BFAJ7W-k.mjs";
@@ -144,6 +144,7 @@ var $$Index = createComponent(async ($$result, $$props, $$slots) => {
 	const shownFirst = (card) => activeFilter === "all" || card.collectionSlugs.includes(activeFilter);
 	const firstShown = new Map(cards.filter(shownFirst).map((card, i) => [card.id, i]));
 	const intro = collections.find((c) => c.slug === activeFilter)?.description ?? "";
+	const searchable = collections.length > 0;
 	return renderTemplate`${renderComponent($$result, "PreviewLayout", $$PreviewLayout, {
 		"title": "Serio Ludere",
 		"rates": rates,
@@ -158,6 +159,7 @@ var $$Index = createComponent(async ($$result, $$props, $$slots) => {
 	}, { "default": ($$result) => renderTemplate` ${renderComponent($$result, "PreviewControls", $$PreviewControls, {
 		"rates": rates,
 		"placement": "header",
+		"search": searchable,
 		"data-astro-cid-z2nrcivh": true
 	})} ` })} <main class="pv-main" data-astro-cid-z2nrcivh> <section class="pv-wrap pv-title" data-astro-cid-z2nrcivh> <div class="pv-title-row" data-astro-cid-z2nrcivh> ${collections.length > 0 && renderTemplate`${renderComponent($$result, "CollectionFilters", $$CollectionFilters, {
 		"collections": collections,
@@ -165,10 +167,11 @@ var $$Index = createComponent(async ($$result, $$props, $$slots) => {
 		"data-astro-cid-z2nrcivh": true
 	})}`} <span class="pv-spacer" aria-hidden="true" data-astro-cid-z2nrcivh></span> ${renderComponent($$result, "PreviewControls", $$PreviewControls, {
 		"rates": rates,
+		"search": searchable,
 		"data-astro-cid-z2nrcivh": true
 	})} </div>  <p class="pv-lede pv-collection-intro" data-collection-intro${addAttribute(!intro, "hidden")} data-astro-cid-z2nrcivh> ${intro} </p> <button class="pv-intro-more" type="button" data-intro-more aria-expanded="false" hidden data-astro-cid-z2nrcivh>
 read more
-</button> </section> <section class="pv-wrap" data-astro-cid-z2nrcivh> ${cards.length > 0 ? renderTemplate`<div class="pv-grid" data-astro-cid-z2nrcivh> ${cards.map((card) => renderTemplate`<div data-card${addAttribute(card.id, "data-rug")}${addAttribute(card.collectionSlugs.join(" "), "data-collections")}${addAttribute(visibleLikes(card.likes), "data-likes")}${addAttribute(!shownFirst(card), "hidden")} data-astro-cid-z2nrcivh> ${renderComponent($$result, "ProductCard", $$ProductCard, {
+</button> </section> <section class="pv-wrap" data-astro-cid-z2nrcivh> ${cards.length > 0 ? renderTemplate`<div class="pv-grid" data-astro-cid-z2nrcivh> ${cards.map((card) => renderTemplate`<div data-card${addAttribute(card.id, "data-rug")}${addAttribute(card.name, "data-name")}${addAttribute(card.collectionSlugs.join(" "), "data-collections")}${addAttribute(visibleLikes(card.likes), "data-likes")}${addAttribute(!shownFirst(card), "hidden")} data-astro-cid-z2nrcivh> ${renderComponent($$result, "ProductCard", $$ProductCard, {
 		"card": card,
 		"rates": rates,
 		"baseCurrency": baseCurrency,

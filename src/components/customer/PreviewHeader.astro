@@ -107,6 +107,8 @@ const controls = Astro.slots.has('default');
       padding-block: var(--stack-md);
       gap: var(--stack-sm);
       flex-wrap: wrap;
+      /* The open name search lies over this row, gutter to gutter (PreviewControls). */
+      position: relative;
     }
     .pv-header--controls .pv-spacer {
       min-width: 0;

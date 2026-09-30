@@ -31,9 +31,16 @@ interface Props {
    * both copies by their data attributes and keeps them in step. Never offers sort.
    */
   placement?: 'page' | 'header';
+  /**
+   * Offer the name search (owner, 2026-09-30): a magnifier left of the unit toggle that opens into
+   * a field. Only the grid has rugs to search, so the detail page leaves it out. Both copies carry
+   * it; src/scripts/customer/search.ts keeps them in step.
+   */
+  search?: boolean;
 }
-const { rates, sort = false, placement = 'page' } = Astro.props;
+const { rates, sort = false, placement = 'page', search = false } = Astro.props;
 const page = placement === 'page';
+const searchId = page ? 'pvSearch' : 'pvSearchHeader';
 const fromSheet = Object.keys(rates.rates).filter((c) => c in rates.symbols);
 const currencies = fromSheet.length
   ? ['USD', ...fromSheet.filter((c) => c !== 'USD')]
@@ -41,6 +48,50 @@ const currencies = fromSheet.length
 ---
 
 <div class:list={['pv-controls', { 'pv-controls--header': !page }]}>
+  {
+    search && (
+      <div class="pv-search" data-search role="search">
+        {/* The magnifier is the control's only face until pressed; open, it closes the search. */}
+        <button
+          type="button"
+          class="pv-search-toggle"
+          data-search-toggle
+          aria-expanded="false"
+          aria-controls={searchId}
+          aria-label="Search by name"
+        >
+          <svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true" focusable="false">
+            <circle cx="7" cy="7" r="4.75" stroke="currentColor" stroke-width="1.5" />
+            <path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          </svg>
+        </button>
+        <input
+          id={searchId}
+          class="pv-search-input"
+          type="search"
+          data-search-input
+          placeholder="Search by name"
+          aria-label="Search rugs by name"
+          autocomplete="off"
+          autocapitalize="off"
+          spellcheck="false"
+          enterkeyhint="search"
+          maxlength="80"
+          tabindex="-1"
+        />
+        <button type="button" class="pv-search-clear" data-search-clear aria-label="Clear search" hidden>
+          <svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true" focusable="false">
+            <path
+              d="M4.5 4.5L11.5 11.5M11.5 4.5L4.5 11.5"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
+      </div>
+    )
+  }
   <div class="pv-seg" id={page ? 'unitTog' : undefined} data-unit-toggle role="group" aria-label="Units">
     <button type="button" data-u="cm" class="on" aria-pressed="true">cm</button>
     <button type="button" data-u="ft" aria-pressed="false">ft</button>
@@ -156,6 +207,89 @@ const currencies = fromSheet.length
     pointer-events: none;
   }
 
+  /* The name search (owner, 2026-09-30). Closed it is a 36px square in the same bordered box as the
+     unit toggle beside it, holding only the magnifier; open, the field slides out of it to the right,
+     so the magnifier stays where the buyer pressed it and the controls after it are pushed along. */
+  .pv-search {
+    display: inline-flex;
+    /* Never squeezed: on a narrow row it is the tabs' strip that gives way (it wraps), not a field
+       the buyer is typing into. */
+    flex: none;
+    align-items: center;
+    height: 36px;
+    border: var(--rule-width) solid var(--border-control);
+    border-radius: var(--radius);
+    background: var(--surface);
+    overflow: hidden;
+  }
+  .pv-search-toggle,
+  .pv-search-clear {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .pv-search-toggle:hover,
+  .pv-search-clear:hover {
+    color: var(--brand);
+  }
+  .pv-search-clear[hidden] {
+    display: none;
+  }
+  /* Folded away, the field is zero wide AND invisible, so it is neither seen nor reachable; the
+     visibility waits for the width to finish closing, and comes back at once on opening. */
+  .pv-search-input {
+    width: 0;
+    min-width: 0;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    font-family: inherit;
+    font-size: var(--text-sm);
+    font-weight: 400;
+    color: var(--ink);
+    visibility: hidden;
+    transition:
+      width var(--motion-quick) var(--motion-ease),
+      visibility 0s linear var(--motion-quick);
+  }
+  .pv-search.is-open .pv-search-input {
+    width: 11rem;
+    padding-right: var(--stack-sm);
+    visibility: visible;
+    transition:
+      width var(--motion-quick) var(--motion-ease),
+      visibility 0s;
+  }
+  .pv-search-input::placeholder {
+    color: var(--ink-soft);
+    opacity: 1;
+  }
+  /* type=search brings its own clear cross in WebKit and Blink but not Firefox; ours is drawn the same
+     everywhere, so the native one is removed rather than shown twice. */
+  .pv-search-input::-webkit-search-cancel-button,
+  .pv-search-input::-webkit-search-decoration {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  /* One focus ring round the whole box, not one on the field inside its own border. */
+  .pv-search:has(:focus-visible) {
+    outline: var(--focus-ring);
+    outline-offset: var(--focus-offset);
+  }
+  .pv-search :focus-visible {
+    outline: none;
+  }
+
   /* The phone header's copy: a desktop has the page copy beside the tabs, so this one waits. */
   .pv-controls--header {
     display: none;
@@ -196,6 +330,34 @@ const currencies = fromSheet.length
       width: 12px;
       height: 12px;
     }
+    .pv-search {
+      height: 28px;
+    }
+    .pv-search-toggle,
+    .pv-search-clear {
+      width: 28px;
+    }
+    .pv-search svg {
+      width: 14px;
+      height: 14px;
+    }
+    /* 16px, not the 11px of the labels beside it: iOS zooms the whole page into any field set
+       smaller than 16px the moment it is focused, and does not zoom back out. */
+    .pv-search-input {
+      font-size: 16px;
+    }
+    /* There is no room beside the wordmark for a field, so on the phone header the open search lies
+       over the whole row, gutter to gutter, in the row's own place. The unit and currency controls
+       under it come back when it closes. */
+    .pv-controls--header .pv-search.is-open {
+      position: absolute;
+      z-index: 2;
+      inset-inline: var(--gutter);
+    }
+    .pv-controls--header .pv-search.is-open .pv-search-input {
+      flex: 1 1 auto;
+      width: auto;
+    }
   }
 </style>
 
@@ -207,4 +369,9 @@ const currencies = fromSheet.length
 <script>
   import { initSort } from '../../scripts/customer/sort.ts';
   initSort();
+</script>
+
+<script>
+  import { initSearch } from '../../scripts/customer/search.ts';
+  initSearch();
 </script>

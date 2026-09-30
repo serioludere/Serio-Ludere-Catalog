@@ -74,6 +74,10 @@ const shownFirst = (card: (typeof cards)[number]): boolean =>
 const firstShown = new Map(cards.filter(shownFirst).map((card, i) => [card.id, i]));
 const intro = collections.find((c) => c.slug === activeFilter)?.description ?? '';
 
+/* The name search (owner, 2026-09-30) filters through the collection tabs' script (filters.ts),
+   which only runs where the tab strip is rendered — so it is offered exactly where the tabs are. */
+const searchable = collections.length > 0;
+
 // Never the buyer's name (owner, 2026-09-14): the tab title is read over a shoulder, lands in
 // browser history, and is what a screen-share shows before anything else.
 const title = 'Serio Ludere';
@@ -111,7 +115,7 @@ const title = 'Serio Ludere';
         {/* On a phone the unit/currency controls sit on the wordmark's row (owner, 2026-09-23); the
             copy in the title row below serves every wider screen. */}
         <PreviewHeader home={`/${slug}`}>
-          <PreviewControls rates={rates} placement="header" />
+          <PreviewControls rates={rates} placement="header" search={searchable} />
         </PreviewHeader>
         <main class="pv-main">
           <section class="pv-wrap pv-title">
@@ -120,7 +124,7 @@ const title = 'Serio Ludere';
                 <CollectionFilters collections={collections} active={activeFilter} />
               )}
               <span class="pv-spacer" aria-hidden="true" />
-              <PreviewControls rates={rates} />
+              <PreviewControls rates={rates} search={searchable} />
             </div>
             {/* The selected collection's own description, as the intro to the cards below it (owner,
                 2026-09-18). filters.ts fills it from the pressed tab; blank under "All", and hidden
@@ -140,6 +144,7 @@ const title = 'Serio Ludere';
                   <div
                     data-card
                     data-rug={card.id}
+                    data-name={card.name}
                     data-collections={card.collectionSlugs.join(' ')}
                     data-likes={visibleLikes(card.likes)}
                     hidden={!shownFirst(card)}

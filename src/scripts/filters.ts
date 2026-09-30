@@ -9,6 +9,12 @@
 // and the chosen filter is written to `?collection=` so a reload and the Back button keep it. "All"
 // is written too (`?collection=all`): with no parameter the page opens on the first collection, so
 // leaving it out would send a buyer who chose "All" back to Classics.
+//
+// The name search (owner, 2026-09-30; the control is customer/search.ts) looks across EVERY
+// collection while there is a query: a buyer typing a rug's name wants that rug, not to be told it
+// is in another tab. No tab is pressed meanwhile, since none of them is what the grid shows; emptying
+// the field brings the tab back, and pressing a tab ends the search.
+import { SEARCH_EVENT, SEARCH_RESET_EVENT, nameMatches, type SearchDetail } from './customer/search.ts';
 import { initPager } from './ui/paginate.ts';
 
 const PARAM = 'collection';
@@ -67,7 +73,16 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
       })
     : undefined;
 
-  const matches = (card: HTMLElement): boolean => active === 'all' || collectionsOf(card).includes(active);
+  /** What the buyer typed in the name search; '' when not searching. */
+  let query = '';
+
+  const matches = (card: HTMLElement): boolean =>
+    query
+      ? nameMatches(card.dataset.name ?? '', query)
+      : active === 'all' || collectionsOf(card).includes(active);
+
+  const empty = doc.querySelector<HTMLElement>('[data-grid-empty]');
+  const emptyText = empty?.textContent ?? '';
 
   /* Written only when the number actually moves: re-setting identical text re-fires the live region,
      which is how a status line turns into a screen reader repeating itself. */
@@ -85,7 +100,8 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
     else for (const card of cards) card.hidden = !matches(card);
     let description = '';
     for (const chip of chips) {
-      const on = chip.dataset.filter === active;
+      // While searching no tab is pressed, so no description shows either.
+      const on = !query && chip.dataset.filter === active;
       chip.classList.toggle('is-on', on);
       chip.setAttribute('aria-pressed', on ? 'true' : 'false');
       if (on) description = chip.dataset.description ?? '';
@@ -112,8 +128,10 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
 
     // The RESULT, not the page: "3 rugs shown" while looking at page 2 of 3 would be a lie.
     const shown = cards.filter(matches).length;
-    const empty = doc.querySelector<HTMLElement>('[data-grid-empty]');
-    if (empty) empty.hidden = shown > 0;
+    if (empty) {
+      empty.hidden = shown > 0;
+      empty.textContent = query ? `Nothing matches “${query}”.` : emptyText;
+    }
     announce(shown);
   };
 
@@ -133,10 +151,23 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
   const onClick = (e: Event): void => {
     const chip = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-filter]');
     if (!chip?.dataset.filter) return;
+    // A tab pressed mid-search ends the search: the buyer has gone back to browsing.
+    if (query) {
+      query = '';
+      doc.dispatchEvent(new CustomEvent(SEARCH_RESET_EVENT));
+    }
     setActive(chip.dataset.filter);
   };
 
+  const onSearch = (e: Event): void => {
+    const next = ((e as CustomEvent<SearchDetail>).detail?.query ?? '').trim();
+    if (next === query) return;
+    query = next;
+    apply();
+  };
+
   nav.addEventListener('click', onClick);
+  doc.addEventListener(SEARCH_EVENT, onSearch);
 
   // A deep link wins over the default, but only if that chip is actually on the page.
   const wanted = win ? new URLSearchParams(win.location.search).get(PARAM) : null;
@@ -145,6 +176,7 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
 
   return () => {
     nav.removeEventListener('click', onClick);
+    doc.removeEventListener(SEARCH_EVENT, onSearch);
   };
 }
 

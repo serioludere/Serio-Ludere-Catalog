@@ -69,6 +69,8 @@ export interface FormData {
   collections: Array<{ id: string; slug: string; name: string }>;
   tags: Array<{ id: string; slug: string; name: string; color?: string }>;
   nextId?: string;
+  /** Every product id already in the sheet (add mode), so a typed id that is taken is caught before the photos upload. */
+  takenIds?: string[];
   roundStep: number;
   driveScopeOk: boolean | null;
 }
@@ -213,6 +215,14 @@ export function idFromSku(sku: string | undefined): string | undefined {
     .replace(/^-+|-+$/g, '')
     .slice(0, 64);
   return cleaned || undefined;
+}
+
+/** The id format the sheet accepts (dto.ts ID_RE), for an id the studio typed. */
+const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+
+/** A serioludere.com link — the studio's own store — with or without its scheme and `www.`. */
+export function isOwnStoreLink(link: string): boolean {
+  return /^(?:https?:\/\/)?(?:www\.)?serioludere\.com(?:[/?#]|$)/i.test(link.trim());
 }
 
 export function initRugForm(doc: Document = document, opts: RugFormOptions = {}): RugForm {
@@ -390,6 +400,36 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
   let lastManual: ManualLike | undefined;
   let scraped: Partial<ScrapedLike> | undefined;
   let rugId = data.rug?.id ?? '';
+
+  /* ---------- the product id (add) ---------- */
+
+  const idField = maybe('idField', doc);
+  /**
+   * Who put the id there: the server's allocation (the next SL-nnn), the form itself (a supplier's
+   * SKU, or blank until one arrives), or the studio, typing. Only the studio's own answer survives a
+   * later fetch or a change of supplier.
+   */
+  let idFrom: 'allocated' | 'form' | 'studio' = 'allocated';
+  const setId = (value: string, from: 'allocated' | 'form'): void => {
+    f.id.value = value;
+    idFrom = from;
+  };
+  const idTyped = (): boolean => idFrom === 'studio' && f.id.value.trim() !== '';
+  /** The studio's own store: the pasted link before a fetch, the Supplier being saved after one. */
+  const ownStore = (): boolean =>
+    preview.classList.contains('on') ? f.supplier.value === 'serioludere' : isOwnStoreLink(url?.value ?? '');
+  /**
+   * The id is the studio's to set for a Serio Ludere product (owner, 2026-09-30): the field shows,
+   * filled from the store's SKU and never from the SL-nnn sequence. For every other supplier it stays
+   * hidden and falls back to the allocated number, as it always has.
+   */
+  const syncIdField = (): void => {
+    if (edit || !idField) return;
+    const own = ownStore();
+    idField.hidden = !own;
+    if (own && idFrom === 'allocated') setId('', 'form');
+    else if (!own && !idTyped() && !f.id.value.trim()) setId(data.nextId ?? '', 'allocated');
+  };
 
   if (photoHint) photoHint.hidden = data.driveScopeOk !== false || edit;
 
@@ -644,8 +684,15 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     f.supplier.value = d.supplier ?? '';
     f.supplierRef.value = d.supplierRef ?? '';
     // The scraped SKU becomes the product id (owner, 2026-09-18). Only on add: an existing rug's id is
-    // its reference and never moves. Falls back to the allocated SL-nnn when the SKU is unusable.
-    if (!edit) f.id.value = idFromSku(d.supplierRef) ?? data.nextId ?? '';
+    // its reference and never moves. Falls back to the allocated SL-nnn when the SKU is unusable —
+    // except on the studio's own store (owner, 2026-09-30), where it is left for the studio to type.
+    // An id the studio already typed is theirs, and a fetch does not overwrite it.
+    if (!edit && !idTyped()) {
+      const sku = idFromSku(d.supplierRef);
+      if (sku) setId(sku, 'form');
+      else if (d.supplier === 'serioludere') setId('', 'form');
+      else setId(data.nextId ?? '', 'allocated');
+    }
     setHint(ftHint, d.sizeRaw ? `Supplier measurement: ${d.sizeRaw}` : null);
     if (d.seenPrice !== undefined) {
       const seen = `${money(d.seenPrice)}${d.seenCurrency && d.seenCurrency !== 'USD' ? ` ${d.seenCurrency}` : ''}`;
@@ -672,6 +719,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     warnings.hidden = (d.warnings ?? []).length === 0;
     renderPhotoStrip(d.photos ?? [], d.supplier ?? '');
     preview.classList.add('on');
+    syncIdField();
   };
 
   /**
@@ -733,7 +781,8 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     // The rug number keys the sheet row and names the Drive folder, so a scrape without one has
     // nowhere to land. It is the dialog's first field (P3 80:1480) and was previously checked only
     // on save — by which point the fetch had already run and the modal had already been reviewed.
-    if (!f.id.value.trim()) {
+    // A Serio Ludere product has no number yet on purpose: the fetch brings its SKU (owner, 2026-09-30).
+    if (!f.id.value.trim() && !isOwnStoreLink(link)) {
       msg(m1, 'Give the product a number first.', 'err');
       f.id.focus();
       return;
@@ -748,7 +797,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
       } catch {
         /* validated server-side; the stage label just reads less well */
       }
-      modal.fetching(f.id.value.trim() || data.nextId || 'this product', host);
+      modal.fetching(f.id.value.trim() || (isOwnStoreLink(link) ? '' : data.nextId) || 'this product', host);
       // The three stages are the shape of the request, not a progress bar: the scrape is one round
       // trip, so "parsing" begins when the response lands and there is nothing honest to report in
       // between. Marking them in order still tells the owner where it got to if it fails.
@@ -805,6 +854,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     warnings.hidden = true;
     renderPhotoStrip([]);
     preview.classList.add('on');
+    syncIdField();
     showFooter(false);
     if (m1) msg(m1, 'Manual entry — fill what you need, then Add. No photos will be saved.', 'busy');
     f.name.focus();
@@ -813,6 +863,23 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
   /* ---------- add / save / status ---------- */
 
   const validate = (): boolean => {
+    // A Serio Ludere product is saved under the id the studio gives it, and never without one (owner,
+    // 2026-09-30). Checked first, and before any photo is uploaded into a folder named after it.
+    if (!edit && ownStore()) {
+      const id = f.id.value.trim();
+      const problem = !id
+        ? 'Give this Serio Ludere product its ID in Product ID (SKU) at the top — the SKU on the store, or one you type.'
+        : !ID_RE.test(id)
+          ? 'The product ID may only use letters, digits, - and _ (up to 64 characters).'
+          : data.takenIds?.some((t) => t.toLowerCase() === id.toLowerCase())
+            ? `The ID "${id}" is already used by another product — give this one its own.`
+            : undefined;
+      if (problem) {
+        msg(m2, problem, 'err');
+        f.id.focus();
+        return false;
+      }
+    }
     if (multiSelectValues(collection).length === 0) {
       msg(m2, "Pick a collection first — without it the rug won't appear anywhere.", 'err');
       collection.querySelector<HTMLElement>('summary')?.focus();
@@ -926,6 +993,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     setBusy(false);
     if (!r.ok) {
       msg(m2, `${r.status === 400 ? issuesText(r) : r.message}${photoNote ? ` (${photoNote})` : ''}`, 'err');
+      if (r.error === 'id problem' && idField && !idField.hidden) f.id.focus();
       return;
     }
     const link = el('a', { href: `/admin/rugs/${encodeURIComponent(r.data.rug.id)}` }, r.data.rug.id, doc);
@@ -1057,13 +1125,14 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     f.shopify.value = '';
     f.rotate.value = 'false';
     f.featured.checked = false;
-    f.id.value = data.nextId ?? '';
+    setId(data.nextId ?? '', 'allocated');
     setHint(ftHint, null);
     setHint(priceHint, null);
     tagHint.hidden = true;
     warnings.hidden = true;
     renderPhotoStrip([]);
     preview.classList.remove('on');
+    syncIdField();
     showFooter(true);
     if (m1) hide(m1);
     url?.focus();
@@ -1079,6 +1148,12 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     }
   });
   btnSlug?.addEventListener('click', regenerateSlug);
+  // The id field follows the store the product comes from (Serio Ludere only), and a typed id is kept.
+  url?.addEventListener('input', syncIdField);
+  f.supplier.addEventListener('change', syncIdField);
+  f.id.addEventListener('input', () => {
+    idFrom = 'studio';
+  });
   f.name.addEventListener('input', () => {
     if (!edit && !f.slug.dataset.touched) regenerateSlug();
   });
@@ -1136,7 +1211,8 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
 
   if (edit && data.rug) fill(data.rug);
   else if (!edit) {
-    if (!f.id.value) f.id.value = data.nextId ?? '';
+    setId(f.id.value || data.nextId || '', 'allocated');
+    syncIdField();
   }
 
   // P5-P9. Built last so every handler it closes over already exists.

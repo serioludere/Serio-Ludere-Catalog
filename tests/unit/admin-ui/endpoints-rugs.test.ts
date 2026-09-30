@@ -285,6 +285,34 @@ describe('POST /api/admin/rugs (rug.create)', () => {
     const third = await createPost(ctx({ path: '/api/admin/rugs', method: 'POST', body: baseInput }));
     expect((await third.json()).rug).toMatchObject({ id: 'SL-031', slug: 'khal-mohammadi-2' });
   });
+  it('files a Serio Ludere product under the id it is given, and refuses one without an id (owner, 2026-09-30)', async () => {
+    const sl = {
+      ...baseInput,
+      sourceUrl: 'https://serioludere.com/products/nepal-silk-touch-rug',
+      supplier: 'serioludere',
+      supplierRef: '349281',
+    };
+    const writesBefore = sheet.writes.length;
+    const none = await createPost(ctx({ path: '/api/admin/rugs', method: 'POST', body: sl }));
+    expect(none.status).toBe(422);
+    expect(await none.json()).toMatchObject({ error: 'id problem' });
+    // Never numbered SL-030 behind the studio's back: nothing was written at all.
+    expect(sheet.writes).toHaveLength(writesBefore);
+    const ok = await createPost(
+      ctx({ path: '/api/admin/rugs', method: 'POST', body: { ...sl, id: '349281' } }),
+    );
+    expect(ok.status).toBe(201);
+    expect((await ok.json()).rug).toMatchObject({
+      id: '349281',
+      supplier: 'serioludere',
+      sourceUrl: 'https://serioludere.com/products/nepal-silk-touch-rug',
+    });
+    // The same id twice is still a duplicate.
+    const dup = await createPost(
+      ctx({ path: '/api/admin/rugs', method: 'POST', body: { ...sl, id: '349281' } }),
+    );
+    expect(dup.status).toBe(409);
+  });
   it('refuses an unknown collection with 422 and writes nothing; any tag is accepted as typed', async () => {
     const c = await createPost(
       ctx({ path: '/api/admin/rugs', method: 'POST', body: { ...baseInput, collections: ['Nope'] } }),

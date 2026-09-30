@@ -46,6 +46,8 @@ const data = {
   collections: collections.map((c) => ({ id: c.id, slug: c.slug, name: c.name })),
   tags: tags.map((t) => ({ id: t.id, slug: t.slug, name: t.name, color: t.color ?? '' })),
   nextId,
+  // A typed Serio Ludere id that is already taken is caught on the form, before its photos upload.
+  takenIds: snapshot?.rugs.map((r) => r.id) ?? [],
   roundStep,
   driveScopeOk,
   adminHeaders: snapshot?.report.adminHeaders ?? 'ok',

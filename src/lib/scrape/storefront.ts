@@ -21,6 +21,42 @@ import { parseSize } from './size.ts';
 /** What the form shows when the studio's store lists a rug at 0.00 — its "not priced yet". */
 export const NO_STORE_PRICE = 'the store shows no price for this rug (0.00) — enter the retail price by hand';
 
+/** The studio's store is priced in US dollars; every other currency it shows is a conversion. */
+export const STORE_CURRENCY = 'USD';
+
+/**
+ * The US market, asked for on every request to the studio's store (owner, 2026-09-30: "it always says
+ * the price was given in EUR then it gets converted to USD … the store's default currency is USD").
+ *
+ * The store sells in USD, EUR, GBP, CAD, MXN, AED and SAR (Shopify Markets; the country selector on
+ * every page lists them), and Shopify picks the market from the visitor's IP address. The site's
+ * server is not in the US, so Shopify showed it a European market: the `.js` payload's price was
+ * already converted into euros, the page's JSON-LD said EUR, and the scraper then converted that
+ * back with the Rates tab — two conversions away from the store's own figure.
+ *
+ * These are the cookies Shopify itself sets when a visitor picks "United States (USD $)" in that
+ * selector, so the server is answered as a US visitor is, in the store's own prices.
+ */
+export const STORE_MARKET_COOKIE = `localization=US; cart_currency=${STORE_CURRENCY}`;
+
+/**
+ * `Shopify.currency = {"active":"EUR","rate":"0.9246"}`, which every Shopify theme prints: the
+ * currency the page is priced in, and the rate Shopify converted the store's own prices with.
+ * Undefined when the page does not say.
+ */
+export function storefrontCurrency(html: string | undefined): { active: string; rate: number } | undefined {
+  const m = /Shopify\.currency\s*=\s*(\{[^}]*\})/.exec(html ?? '');
+  if (!m?.[1]) return undefined;
+  try {
+    const parsed = JSON.parse(m[1]) as { active?: unknown; rate?: unknown };
+    const active = typeof parsed.active === 'string' ? parsed.active.trim().toUpperCase() : '';
+    const rate = Number(parsed.rate);
+    return /^[A-Z]{3}$/.test(active) && Number.isFinite(rate) && rate > 0 ? { active, rate } : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export interface StorefrontSpecs {
   /** The measurement: `Dimensions`, else a `Size` line that parses as one ("170 cm x 259 cm"). */
   dimensions?: string;

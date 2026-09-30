@@ -142,7 +142,7 @@ const HttpsUrl = z
 export const Version = z.string().regex(/^[a-f0-9]{16}$/);
 
 export const RugInput = z.object({
-  id: Id.optional(), // create only; absent → server allocates the next SL-nnn
+  id: Id.optional(), // create only; absent → server allocates the next SL-nnn (required for serioludere)
   slug: Slug.optional(), // absent → derived from name (create) / kept (update)
   name: z.string().trim().min(1).max(120),
   description: Text(4000),

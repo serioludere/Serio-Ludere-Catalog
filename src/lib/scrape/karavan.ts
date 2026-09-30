@@ -27,7 +27,9 @@ import {
 import { parseSize } from './size.ts';
 import {
   NO_STORE_PRICE,
+  STORE_CURRENCY,
   proseFacts,
+  storefrontCurrency,
   storefrontSpecs,
   type ProseFacts,
   type StorefrontSpecs,
@@ -184,6 +186,22 @@ export function parseKaravan(
   if (own && seenPrice !== undefined && !(seenPrice > 0)) {
     seenPrice = undefined;
     warnings.push(NO_STORE_PRICE);
+  }
+  /* The studio's store answered in another market's currency although the scrape asked for the US
+     one (STORE_MARKET_COOKIE, storefront.ts). The page says what Shopify did — `Shopify.currency`
+     is the rate it converted the store's USD price with — so the price is read back with that same
+     rate rather than converted a second time with the Rates tab. Flagged: Shopify rounds a converted
+     price, so the figure can be a little out. */
+  if (own && seenPrice !== undefined && seenCurrency !== STORE_CURRENCY) {
+    const shown = storefrontCurrency(src.html);
+    if (shown?.active === seenCurrency) {
+      const usd = Math.round((seenPrice / shown.rate) * 100) / 100;
+      warnings.push(
+        `the store answered in ${seenCurrency} (${seenPrice}), not its own USD; read back to USD ${usd} with the store's rate (${shown.rate}) — check it against Shopify`,
+      );
+      seenPrice = usd;
+      seenCurrency = STORE_CURRENCY;
+    }
   }
 
   const stockCode = specs.get('stock code');

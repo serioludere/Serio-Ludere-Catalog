@@ -27,7 +27,7 @@ import { pricingRuleName, supplierRetail } from '../price.ts';
 import { RobotsCache, defaultRobotsCache, isPathAllowed, robotsAllows, type RobotsRules } from './robots.ts';
 import { looksLikeJson, parseShopifyProduct, shopifyRung, shouldProbeShopify } from './shopify.ts';
 import { dropStorefrontSession, storefrontSession, unlockStorefront } from './store-password.ts';
-import { NO_STORE_PRICE } from './storefront.ts';
+import { NO_STORE_PRICE, STORE_MARKET_COOKIE } from './storefront.ts';
 import { HostThrottle, defaultHostThrottle } from './throttle.ts';
 import {
   ScrapeError,
@@ -112,6 +112,13 @@ interface Ctx {
   unlock?: () => Promise<string | undefined>;
   /** What that sign-in did, for the message when the shop still answers 401. */
   storefront?: 'opened' | 'refused';
+  /** Cookies every request to the shop carries, signed in or not (the studio's store: its US market). */
+  cookie?: string;
+}
+
+/** One `Cookie` header out of its parts, blanks dropped. */
+function joinCookies(...parts: Array<string | undefined>): string {
+  return parts.filter(Boolean).join('; ');
 }
 
 /**
@@ -322,7 +329,7 @@ async function scrapeShopifyFirst(det: DetectedKaravan, ctx: Ctx): Promise<Attem
       }
       ctx.storefront = cookie ? 'opened' : 'refused';
       if (cookie) {
-        ctx.fetchOpts.headers = { ...ctx.fetchOpts.headers, Cookie: cookie };
+        ctx.fetchOpts.headers = { ...ctx.fetchOpts.headers, Cookie: joinCookies(ctx.cookie, cookie) };
         try {
           js = await fetchText(det.jsUrl, 'impit', { ...ctx.fetchOpts, kind: 'json' });
         } catch (e) {
@@ -477,9 +484,13 @@ export async function scrapeRug(input: string, opts: ScrapeOptions = {}): Promis
   };
   // The studio's own storefront, when it is behind its password (owner, 2026-09-29): an hour-old
   // sign-in goes on from the first request, and the password is there to sign in again on a 401.
+  // Every request asks for the store's US market, so its prices arrive in its own USD (2026-09-30).
   if (det.supplier === 'serioludere') {
-    const session = storefrontSession(det.sourceUrl);
-    if (session) fetchOpts.headers = { ...fetchOpts.headers, Cookie: session };
+    ctx.cookie = STORE_MARKET_COOKIE;
+    fetchOpts.headers = {
+      ...fetchOpts.headers,
+      Cookie: joinCookies(ctx.cookie, storefrontSession(det.sourceUrl)),
+    };
     const password = opts.storefrontPassword;
     if (password) {
       ctx.unlock = () => {

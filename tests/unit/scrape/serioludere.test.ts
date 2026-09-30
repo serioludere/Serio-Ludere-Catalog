@@ -9,7 +9,11 @@ import { describe, expect, it } from 'vitest';
 import { ScrapeCache } from '../../../src/lib/scrape/cache.ts';
 import { scrapeRug } from '../../../src/lib/scrape/index.ts';
 import { parseKaravan } from '../../../src/lib/scrape/karavan.ts';
-import { NO_STORE_PRICE } from '../../../src/lib/scrape/storefront.ts';
+import {
+  NO_STORE_PRICE,
+  STORE_MARKET_COOKIE,
+  storefrontCurrency,
+} from '../../../src/lib/scrape/storefront.ts';
 import {
   fakeTransport,
   fixture,
@@ -26,6 +30,31 @@ const src = (handle: string) => ({
   json: fixture(`sl-${handle}.json`),
   html: fixture(`sl-${handle}.html`),
 });
+
+/**
+ * The Nepal rug as a server outside the US was shown it (owner, 2026-09-30): Shopify Markets placed
+ * it in the EUR market, so the payload's price is the store's $1,315 converted at 0.9 (€1,183.50),
+ * and the page says EUR in its meta, its JSON-LD and `Shopify.currency`.
+ */
+const inEuros = (rate = '0.9') => {
+  const s = src(NEPAL);
+  return {
+    js: s.js.replaceAll('131500', '118350'),
+    json: s.json
+      .replaceAll('"1315.00"', '"1183.50"')
+      .replaceAll('"price_currency":"USD"', '"price_currency":"EUR"'),
+    html: s.html
+      .replace(
+        '<meta property="product:price:currency" content="USD">',
+        '<meta property="product:price:currency" content="EUR">',
+      )
+      .replaceAll('"priceCurrency":"USD"', '"priceCurrency":"EUR"')
+      .replace(
+        'Shopify.currency = {"active":"USD","rate":"1.0"}',
+        `Shopify.currency = {"active":"EUR","rate":"${rate}"}`,
+      ),
+  };
+};
 
 function routes(handle: string, overrides: Record<string, FakeRoute> = {}): Record<string, FakeRoute> {
   const s = src(handle);
@@ -115,12 +144,31 @@ describe('parseKaravan on serioludere.com pages', () => {
     expect(rug.pile).toBeUndefined();
   });
 
+  it('reads a page Shopify priced in euros back to the store’s own USD, with Shopify’s own rate', () => {
+    const rug = parseKaravan(NEPAL, inEuros(), 'serioludere')!;
+    expect(rug).toMatchObject({ seenPrice: 1315, seenCurrency: 'USD', currencyAssumed: false });
+    expect(rug.warnings.some((w) => w.includes('answered in EUR (1183.5)') && w.includes('0.9'))).toBe(true);
+  });
+
+  it('leaves a euro price alone when the page does not say what rate made it', () => {
+    const eur = inEuros();
+    const html = eur.html.replace(/Shopify\.currency = \{[^}]*\}/, '');
+    const rug = parseKaravan(NEPAL, { ...eur, html }, 'serioludere')!;
+    // Nothing to read it back with: the Rates tab converts it downstream, and says so.
+    expect(rug).toMatchObject({ seenPrice: 1183.5, seenCurrency: 'EUR' });
+  });
+
   it('leaves a karavanrug.com page exactly as it was — the store reading is serioludere’s alone', () => {
     const rug = parseKaravan(NEPAL, src(NEPAL), 'karavanrug')!;
     expect(rug.pile).toBeUndefined();
     expect(rug.shape).toBeUndefined();
     expect(rug.supplierRef).toBe('349281');
     expect(rug.warnings).not.toContain('On the store: vendor ECG, type Carpets');
+    // A supplier's euro price is its price: converted by the Rates tab, never read back.
+    expect(parseKaravan(NEPAL, inEuros(), 'karavanrug')).toMatchObject({
+      seenPrice: 1183.5,
+      seenCurrency: 'EUR',
+    });
   });
 });
 
@@ -153,6 +201,28 @@ describe('scrapeRug: serioludere.com end to end', () => {
     // Only the ECG-only estimate is missing; everything the store states is there.
     expect(missing).toEqual(['retailEstimate']);
     expect(calls.map((c) => c.url)).toEqual([`${base(NEPAL)}.js`, base(NEPAL)]);
+    // Every request asks for the store's US market, so Shopify answers in its own USD.
+    expect(calls.every((c) => c.headers.Cookie === STORE_MARKET_COOKIE)).toBe(true);
+  });
+
+  it('prices at the store’s USD even when Shopify answers in euros — no Rates-tab round trip', async () => {
+    const eur = inEuros();
+    const r = await scrapeRug(base(NEPAL), {
+      fetchImpl: fakeTransport(
+        routes(NEPAL, {
+          [`${base(NEPAL)}.js`]: { body: eur.js, contentType: 'text/javascript; charset=utf-8' },
+          [base(NEPAL)]: { body: eur.html },
+        }),
+      ),
+      cache: new ScrapeCache(),
+      ...guards(),
+      // A Rates tab that disagrees with Shopify, to prove it is not what priced the rug.
+      convertToUsd: (amount, currency) => (currency === 'EUR' ? amount * 1.2 : undefined),
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.data).toMatchObject({ seenCurrency: 'USD', priceUsd: 1315, suggestedRetailUsd: 1315 });
+    expect(r.data.warnings.some((w) => w.includes('Rates tab'))).toBe(false);
   });
 
   it('succeeds on an unpriced rug and asks for the price, instead of failing the scrape', async () => {
@@ -206,5 +276,25 @@ describe('scrapeRug: serioludere.com end to end', () => {
       ...guards(),
     });
     expect(r).toMatchObject({ ok: false, code: 'not_found' });
+  });
+});
+
+describe('storefrontCurrency', () => {
+  it('reads the currency a Shopify page is priced in, and the rate that made it', () => {
+    expect(storefrontCurrency(fixture(`sl-${NEPAL}.html`))).toEqual({ active: 'USD', rate: 1 });
+    expect(
+      storefrontCurrency('<script>Shopify.currency = {"active":"eur","rate":"0.9246"};</script>'),
+    ).toEqual({
+      active: 'EUR',
+      rate: 0.9246,
+    });
+  });
+
+  it('says nothing rather than guess', () => {
+    expect(storefrontCurrency(undefined)).toBeUndefined();
+    expect(storefrontCurrency('<p>no script</p>')).toBeUndefined();
+    expect(storefrontCurrency('Shopify.currency = {"active":"EUR","rate":"0"}')).toBeUndefined();
+    expect(storefrontCurrency('Shopify.currency = {"active":"EUR","rate":')).toBeUndefined();
+    expect(storefrontCurrency('Shopify.currency = {"active":"EURO","rate":"1.0"}')).toBeUndefined();
   });
 });

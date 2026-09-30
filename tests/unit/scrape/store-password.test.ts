@@ -7,6 +7,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ScrapeCache } from '../../../src/lib/scrape/cache.ts';
 import { scrapeRug } from '../../../src/lib/scrape/index.ts';
+import { STORE_MARKET_COOKIE } from '../../../src/lib/scrape/storefront.ts';
 import {
   resetStorefrontSessionsForTests,
   storefrontSession,
@@ -17,6 +18,8 @@ import { KV_OUSHAK_HANDLE, fixture, guards } from '../../fixtures/scrape/index.t
 
 const PASSWORD = 'open sesame';
 const DIGEST = 'f00dfeed1234';
+/** What every signed-in request to the studio's store carries: its US market, then the sign-in. */
+const SIGNED_IN = `${STORE_MARKET_COOKIE}; storefront_digest=${DIGEST}`;
 const slBase = `https://serioludere.com/products/${KV_OUSHAK_HANDLE}`;
 const kvJs = fixture(`kv-${KV_OUSHAK_HANDLE}.js.json`);
 const kvJson = fixture(`kv-${KV_OUSHAK_HANDLE}.json`);
@@ -65,7 +68,8 @@ function lockedShop(calls: Call[], origin = 'https://serioludere.com'): Transpor
       }
       return answer(302, '', { location: `${origin}/password` });
     }
-    if (init.headers.Cookie !== `storefront_digest=${DIGEST}`) return answer(401);
+    const jar = (init.headers.Cookie ?? '').split(/;\s*/);
+    if (!jar.includes(`storefront_digest=${DIGEST}`)) return answer(401);
     if (url === `${base}.js`) return answer(200, kvJs, { 'content-type': 'text/javascript; charset=utf-8' });
     if (url === `${base}.json`) return answer(200, kvJson, { 'content-type': 'application/json' });
     if (url === base) return answer(200, kvHtml);
@@ -98,8 +102,9 @@ describe('scrapeRug: the studio’s store behind its password', () => {
     expect(new URLSearchParams(post.body).get('form_type')).toBe('storefront_password');
     expect(new URLSearchParams(post.body).get('password')).toBe(PASSWORD);
     expect(post.client).toBe('impit');
-    // Every request after the sign-in carries the cookie.
-    expect(calls.slice(2).every((c) => c.cookie === `storefront_digest=${DIGEST}`)).toBe(true);
+    // Every request after the sign-in carries the cookie, beside the US market it asked for first.
+    expect(calls[0]?.cookie).toBe(STORE_MARKET_COOKIE);
+    expect(calls.slice(2).every((c) => c.cookie === SIGNED_IN)).toBe(true);
   });
 
   it('remembers the sign-in, so the next fetch goes straight in', async () => {
@@ -110,7 +115,7 @@ describe('scrapeRug: the studio’s store behind its password', () => {
     const r = await scrapeRug(slBase, { ...opts, force: true, fetchImpl: lockedShop(calls) });
     expect(r.ok).toBe(true);
     expect(calls.some((c) => c.method === 'POST')).toBe(false);
-    expect(calls[0]?.cookie).toBe(`storefront_digest=${DIGEST}`);
+    expect(calls[0]?.cookie).toBe(SIGNED_IN);
   });
 
   it('says the password was refused, and tries it only once', async () => {
@@ -153,6 +158,8 @@ describe('scrapeRug: the studio’s store behind its password', () => {
     });
     expect(r.ok).toBe(false);
     expect(calls.some((c) => c.method === 'POST' || (c.body ?? '').includes(PASSWORD))).toBe(false);
+    // …nor the studio's market cookies: a supplier's shop is read as it answers.
+    expect(calls.every((c) => c.cookie === undefined)).toBe(true);
   });
 });
 

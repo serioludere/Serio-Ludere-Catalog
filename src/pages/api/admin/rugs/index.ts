@@ -50,6 +50,16 @@ export const POST = adminPost(RugInput, async ({ context, body }) => {
   requireAdminHeaders(snapshot);
   const allIds = snapshot.rugs.map((r) => r.id);
   const reserved = reservedIds(snapshot);
+  /* A Serio Ludere product is filed under the id the studio gives it — the store's SKU as fetched,
+     or one typed in its place (owner, 2026-09-30) — so one without an id is refused, never numbered
+     SL-nnn behind the studio's back. */
+  if (body.supplier === 'serioludere' && !body.id) {
+    throw new AdminError(
+      422,
+      'id problem',
+      'A Serio Ludere product needs its ID — the SKU on the store, or one you type in Product ID (SKU).',
+    );
+  }
   let id: string;
   if (body.id) {
     const problem = idProblem(body.id, allIds, reserved);

@@ -767,6 +767,155 @@ describe('add mode', () => {
   });
 });
 
+describe('add mode: the Serio Ludere product id (owner, 2026-09-30)', () => {
+  /* Serio Ludere's product id is its SKU, and the studio sets it: filled from the store's own SKU,
+     editable, and required — never the next SL-nnn. ECG and KV keep the hidden, automatic id. */
+  let calls: Array<{ url: string; body: Record<string, unknown> }>;
+  const SL_LINK = 'https://serioludere.com/products/nepal-silk-touch-rug';
+  const slScrape = {
+    ...scraped,
+    supplier: 'serioludere',
+    supplierRef: '349281',
+    sourceUrl: SL_LINK,
+    supplierTitle: 'Nepal Silk Touch Rug',
+    seenPrice: 1315,
+    priceUsd: 1315,
+    suggestedRetailUsd: 1315,
+    markupApplied: undefined,
+    pricingRule: "serioludere: the store's own price",
+  };
+  const mount = (handler: Handler): RugForm => {
+    document.body.innerHTML =
+      stripStyles(addHtml) +
+      dataBlock({
+        mode: 'add',
+        collections,
+        tags: tags.map((t) => ({ ...t, color: '' })),
+        nextId: 'SL-030',
+        takenIds: ['SL-021', 'SL-029', '1389'],
+        roundStep: 5,
+        driveScopeOk: true,
+      });
+    calls = [];
+    return initRugForm(document, { fetchImpl: fakeFetch(handler, calls) });
+  };
+  const idField = (): HTMLElement => document.getElementById('idField')!;
+  /** Types into the id field the way a person does, so the form knows the answer is the studio's. */
+  const typeId = (v: string): void => {
+    const id = document.getElementById('f_id') as HTMLInputElement;
+    id.value = v;
+    id.dispatchEvent(new Event('input', { bubbles: true }));
+  };
+  const typeLink = (v: string): void => {
+    const url = document.getElementById('url') as HTMLInputElement;
+    url.value = v;
+    url.dispatchEvent(new Event('input', { bubbles: true }));
+  };
+
+  it('shows the id for a serioludere.com link only — empty, never the next SL-nnn', () => {
+    mount(() => ({ status: 500, body: {} }));
+    expect(idField().hidden).toBe(true);
+    expect(val('f_id')).toBe('SL-030');
+    typeLink('www.serioludere.com/products/armenian-rug');
+    expect(idField().hidden).toBe(false);
+    expect(val('f_id')).toBe('');
+    expect(document.querySelector('label[for="f_id"]')?.textContent).toBe('Product ID (SKU)');
+    // Back to a supplier: hidden again, and the allocated number returns.
+    typeLink('https://ecarpetgallery.com/us_en/red-5x8-andelz-area-rugs-380114');
+    expect(idField().hidden).toBe(true);
+    expect(val('f_id')).toBe('SL-030');
+  });
+
+  it('fetches a serioludere.com link with no id yet, and fills it from the store’s SKU', async () => {
+    const form = mount(() => ({
+      status: 200,
+      body: { ok: true, data: slScrape, via: 'impit', cached: false, ms: 5 },
+    }));
+    typeLink(SL_LINK);
+    await form.fetchUrl();
+    // Not "Give the product a number first": the fetch is what brings the number.
+    expect(calls.map((c) => c.url)).toEqual(['/api/admin/scrape']);
+    expect(idField().hidden).toBe(false);
+    expect(val('f_id')).toBe('349281');
+    // Editable, and what the studio types is what is saved.
+    typeId('SL-349281');
+    expect(form.collect().id).toBe('SL-349281');
+    // A later fetch does not overwrite an id the studio typed.
+    form.applyScrape({ ...slScrape, supplierRef: '999999' });
+    expect(val('f_id')).toBe('SL-349281');
+  });
+
+  it('will not save a Serio Ludere product without a valid, unused id, and saves the one typed', async () => {
+    const form = mount((url) => {
+      if (url === '/api/admin/scrape')
+        return {
+          status: 200,
+          body: { ok: true, data: { ...slScrape, supplierRef: '' }, via: 'impit', cached: false, ms: 5 },
+        };
+      if (url === '/api/admin/rugs')
+        return {
+          status: 201,
+          body: { ok: true, rug: { id: 'SL-ARM-7' }, row: 31, audit: { row: 2, action: 'rug.create' } },
+        };
+      return { status: 500, body: {} };
+    });
+    typeLink('https://serioludere.com/products/armenian-rug');
+    await form.fetchUrl();
+    // The store has no SKU for this rug: the field is blank, and waits for the studio.
+    expect(val('f_id')).toBe('');
+    pickCollection('Kilims');
+    (document.getElementById('savePhotos') as HTMLInputElement).checked = false;
+
+    await form.add();
+    expect(cls('m2')).toBe('msg on err');
+    expect(text('m2')).toContain('Give this Serio Ludere product its ID');
+    expect(document.activeElement).toBe(document.getElementById('f_id'));
+
+    typeId('SL ARM 7');
+    await form.add();
+    expect(text('m2')).toContain('letters, digits, - and _');
+
+    typeId('1389');
+    await form.add();
+    expect(text('m2')).toContain('"1389" is already used');
+    // Nothing reached the server while the id was wrong.
+    expect(calls.map((c) => c.url)).toEqual(['/api/admin/scrape']);
+
+    typeId('SL-ARM-7');
+    await form.add();
+    const create = calls.find((c) => c.url === '/api/admin/rugs');
+    expect(create?.body).toMatchObject({ id: 'SL-ARM-7', supplier: 'serioludere', sourceUrl: SL_LINK });
+    expect(text('m1')).toContain('Product saved successfully');
+    // reset: hidden, and back on the allocated number for the next product.
+    expect(idField().hidden).toBe(true);
+    expect(val('f_id')).toBe('SL-030');
+  });
+
+  it('follows the Supplier on the review: choosing Serio Ludere asks for the id', () => {
+    const form = mount(() => ({ status: 500, body: {} }));
+    form.manualEntry();
+    expect(idField().hidden).toBe(true);
+    const supplier = document.getElementById('f_supplier') as HTMLSelectElement;
+    supplier.value = 'serioludere';
+    supplier.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(idField().hidden).toBe(false);
+    expect(val('f_id')).toBe('');
+    supplier.value = 'karavanrug';
+    supplier.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(idField().hidden).toBe(true);
+    expect(val('f_id')).toBe('SL-030');
+  });
+
+  it('leaves ECG and KV exactly as they were: hidden, the SKU or the allocated number', () => {
+    const form = mount(() => ({ status: 500, body: {} }));
+    form.applyScrape(scraped);
+    expect(idField().hidden).toBe(true);
+    expect(val('f_id')).toBe('380114');
+    form.applyScrape({ ...scraped, supplier: 'karavanrug', supplierRef: '' });
+    expect(val('f_id')).toBe('SL-030');
+  });
+});
+
 describe('edit mode', () => {
   let calls: Array<{ url: string; body: Record<string, unknown> }>;
   const mount = (handler: Handler): RugForm => {

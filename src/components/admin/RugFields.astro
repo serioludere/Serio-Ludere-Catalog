@@ -107,18 +107,13 @@ const methodOptions = termOptions(rug?.method, METHOD_OPTIONS);
 }
 <div class="addform">
   {
-    /* Owner, 2026-09-16: adding a product no longer asks for the number. The server has already
-      allocated the next one, nobody typed it, and a field you cannot usefully change is noise at the
-      top of the form — so on add it rides along hidden and rug-form.ts reads it exactly as before.
-      Editing still shows it, read-only: there it is the row's reference, not an input. */
-    edit ? (
+    /* Editing shows the number read-only: there it is the row's reference, not an input. */
+    edit && (
       <div class="f">
         <label for="f_id">Product number</label>
         <input id="f_id" value={rug?.id ?? ''} readonly autocomplete="off" />
         <p class="hint">Must be unique — it becomes the product's reference number.</p>
       </div>
-    ) : (
-      <input type="hidden" id="f_id" value={nextId ?? ''} />
     )
   }
   {
@@ -141,6 +136,23 @@ const methodOptions = termOptions(rug?.method, METHOD_OPTIONS);
               </button>
             )}
           </div>
+        </div>
+        {/* Owner, 2026-09-16: adding a product does not ask for the number — the server allocates
+            the next SL-nnn, or the scrape brings the supplier's SKU — so for ECG and KV this field
+            stays hidden and rug-form.ts fills it in behind the scenes.
+
+            Serio Ludere is the exception (owner, 2026-09-30): its product id is its SKU and the
+            studio sets it. rug-form.ts shows this field as soon as the link, or the Supplier below,
+            is serioludere.com, fills it from the store's SKU, never from the SL-nnn sequence, and
+            will not save the product until it holds an id. The admin table links that id to the
+            product's source page, as it does for every supplier. */}
+        <div class="f" id="idField" hidden>
+          <label for="f_id">Product ID (SKU)</label>
+          <input id="f_id" value={nextId ?? ''} autocomplete="off" spellcheck="false" maxlength="64" />
+          <p class="hint">
+            Required for Serio Ludere products. Filled from the store's SKU — change it if you need to.
+            Letters, digits, - and _ only; must be unique.
+          </p>
         </div>
         <div id="m1" class="msg" />
       </>

@@ -33,32 +33,6 @@ export function bindProductDialog(opts: ProductDialogBindings = {}): () => void 
   /** Where the grid was before the dialog took over the address bar; restored on close. */
   let returnTo: string | undefined;
 
-  /* The enlarged texture photograph (owner, 2026-09-29): one overlay in the dialog, filled from the
-     texture button that was tapped. Esc and a tap anywhere on it close it, and only it. */
-  const zoom = dialog.querySelector<HTMLElement>('[data-zoom]');
-  const zoomImg = zoom?.querySelector<HTMLImageElement>('[data-zoom-img]');
-  let zoomFrom: HTMLElement | undefined;
-
-  const openZoom = (trigger: HTMLElement): void => {
-    if (!zoom || !zoomImg) return;
-    zoomImg.src = trigger.dataset.textureZoom ?? '';
-    zoomImg.alt = trigger.dataset.textureAlt ?? '';
-    zoom.hidden = false;
-    zoomFrom = trigger;
-    zoom.querySelector<HTMLElement>('[data-zoom-close]')?.focus();
-  };
-
-  /** Closes the overlay if it is open; says whether it was. */
-  const closeZoom = (restoreFocus = true): boolean => {
-    if (!zoom || zoom.hidden) return false;
-    zoom.hidden = true;
-    // Dropped, so the next rug's texture never flashes this one's while it loads.
-    zoomImg?.removeAttribute('src');
-    if (restoreFocus && zoomFrom && doc.contains(zoomFrom)) zoomFrom.focus();
-    zoomFrom = undefined;
-    return true;
-  };
-
   const open = (id: string, href: string): boolean => {
     const template = doc.querySelector<HTMLTemplateElement>(`template[data-detail="${CSS.escape(id)}"]`);
     if (!template) return false; // no content for this rug: let the link navigate as it always did
@@ -94,7 +68,6 @@ export function bindProductDialog(opts: ProductDialogBindings = {}): () => void 
   };
 
   const onClose = (): void => {
-    closeZoom(false);
     releaseGallery?.();
     releaseGallery = undefined;
     body.replaceChildren();
@@ -111,29 +84,8 @@ export function bindProductDialog(opts: ProductDialogBindings = {}): () => void 
     }
   };
 
-  // Esc with the texture enlarged puts the rug back rather than closing the dialog. Caught on keydown,
-  // before the dialog's own close request: Chrome lets a `cancel` be prevented only after a fresh user
-  // gesture, so the cancel handler alone could close both at once. It stays as the fallback.
-  const onKeyDown = (e: KeyboardEvent): void => {
-    if (e.key !== 'Escape' || !closeZoom()) return;
-    e.preventDefault();
-    e.stopPropagation();
-  };
-  const onCancel = (e: Event): void => {
-    if (closeZoom()) e.preventDefault();
-  };
-
   const onDialogClick = (e: MouseEvent): void => {
     const target = e.target as HTMLElement;
-    if (zoom && !zoom.hidden && zoom.contains(target)) {
-      closeZoom();
-      return;
-    }
-    const zoomTrigger = target.closest<HTMLElement>('[data-texture-zoom]');
-    if (zoomTrigger) {
-      openZoom(zoomTrigger);
-      return;
-    }
     if (target.closest('[data-product-close]')) {
       dialog.close();
       return;
@@ -147,16 +99,12 @@ export function bindProductDialog(opts: ProductDialogBindings = {}): () => void 
 
   doc.addEventListener('click', onClick);
   dialog.addEventListener('click', onDialogClick);
-  dialog.addEventListener('keydown', onKeyDown);
-  dialog.addEventListener('cancel', onCancel);
   dialog.addEventListener('close', onClose);
   view?.addEventListener('popstate', onPopState);
 
   return () => {
     doc.removeEventListener('click', onClick);
     dialog.removeEventListener('click', onDialogClick);
-    dialog.removeEventListener('keydown', onKeyDown);
-    dialog.removeEventListener('cancel', onCancel);
     dialog.removeEventListener('close', onClose);
     view?.removeEventListener('popstate', onPopState);
     releaseGallery?.();

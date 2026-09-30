@@ -47,45 +47,29 @@ const specRowsOf = (card: CardView): Array<{ key: string; value: string }> => [
           {/* The rug and its weave, side by side (owner, 2026-09-21). The texture used to sit under
               the title in the facts column, where it read as an afterthought to the price; beside
               the hero it does the job it is for — the whole piece from across a room, and the knot
-              in the hand, in one look. */}
+              in the hand, in one look.
+
+              Two equal pictures (owner, 2026-09-30: "the same dimensions and size, ratio as the main
+              thumbnail next to it, these 2 should look equal, even if we had to extend the popup
+              width"): the texture takes the exact size and shape of the rug photograph beside it
+              (the styles below say how), and the rug is shown whole, as everywhere. A plain picture,
+              no longer a button that enlarges it (owner, same day: "no need for the zoom"). */}
           <div class:list={['pv-modal__plates', { 'has-texture': Boolean(card.textureUrl) }]}>
             {photos[0] ? (
               <img class="pv-modal__photo" src={photos[0]} alt={card.name} data-hero-img decoding="async" />
             ) : (
               <span class="pv-modal__empty">Photo to come</span>
             )}
-            {/* The whole photograph, never a slice of it (owner, 2026-09-29: "the texture photo still
-                shows a thin slice, we need full photo, perhaps pop up larger"), and a button: a tap
-                opens it at 1600px over the whole dialog (product-dialog.ts). */}
             {card.textureUrl && (
-              <button
-                type="button"
-                class="pv-modal__texture"
-                data-texture-zoom={card.textureZoomUrl ?? card.textureUrl}
-                data-texture-alt={`${card.name}, the weave up close`}
-              >
+              <figure class="pv-modal__texture">
                 <img
                   src={card.textureUrl}
                   alt={`${card.name}, the weave up close`}
                   loading="lazy"
                   decoding="async"
                 />
-                <span class="pv-modal__texture-label">
-                  texture
-                  <svg
-                    viewBox="0 0 16 16"
-                    width="12"
-                    height="12"
-                    fill="none"
-                    aria-hidden="true"
-                    focusable="false"
-                  >
-                    <circle cx="7" cy="7" r="4.5" stroke="currentColor" />
-                    <path d="M10.5 10.5L14 14M5 7h4M7 5v4" stroke="currentColor" stroke-linecap="round" />
-                  </svg>
-                  <span class="sr-only">, tap to enlarge</span>
-                </span>
-              </button>
+                <figcaption class="pv-modal__texture-label">texture</figcaption>
+              </figure>
             )}
           </div>
           {photos.length > 1 && (
@@ -142,19 +126,6 @@ const specRowsOf = (card: CardView): Array<{ key: string; value: string }> => [
     </svg>
   </button>
   <div class="pv-modal__body" data-product-body></div>
-  {
-    /* The enlarged texture (owner, 2026-09-29): one overlay for every rug, filled by the script from
-       the texture button that was tapped. It covers the whole dialog; a tap anywhere, the close
-       button or Esc puts the rug back. */
-  }
-  <div class="pv-zoom" data-zoom hidden>
-    <img class="pv-zoom__img" data-zoom-img alt="" decoding="async" />
-    <button type="button" class="pv-zoom__close" data-zoom-close aria-label="Close the enlarged photograph">
-      <svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true" focusable="false">
-        <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" stroke-linecap="round"></path>
-      </svg>
-    </button>
-  </div>
 </dialog>
 
 <script>
@@ -165,19 +136,32 @@ const specRowsOf = (card: CardView): Array<{ key: string; value: string }> => [
 <style>
   /* Split view: photo left, facts right. `--pv-modal-*` are only used here. */
   .pv-modal {
+    /* How large the rug and its texture can be (owner, 2026-09-30): as tall as the media column
+       allows — the dialog's height less the column's padding — and, for the card's 2:3, two-thirds as
+       wide. `--pv-pair-w` is the column that holds the two side by side. */
+    --pv-modal-h: min(760px, calc(100dvh - var(--gutter) * 2));
+    --pv-thumb-h: 80px;
+    --pv-plate-h: calc(var(--pv-modal-h) - var(--stack-lg) * 2);
+    --pv-plate-w: calc(var(--pv-plate-h) * 2 / 3);
+    --pv-pair-w: calc(var(--pv-plate-w) * 2 + var(--stack-md) + var(--stack-lg) * 2);
+    --pv-info-w: 400px;
     /* A flex column, so the body can be told to fill what is left and scroll INSIDE the dialog.
        Without it the two columns size to their content and run off the bottom of the dialog. */
     display: flex;
     flex-direction: column;
     width: min(1100px, calc(100vw - var(--gutter) * 2));
     max-width: none;
-    max-height: min(760px, calc(100dvh - var(--gutter) * 2));
+    max-height: var(--pv-modal-h);
     padding: 0;
     border: var(--rule-width) solid var(--rule);
     border-radius: var(--radius);
     background: var(--surface);
     color: var(--ink);
     overflow: hidden;
+  }
+  /* A rug with more than one photograph has the strip under the plates; its height comes off theirs. */
+  .pv-modal:has(.pv-modal__thumbs) {
+    --pv-plate-h: calc(var(--pv-modal-h) - var(--stack-lg) * 2 - var(--pv-thumb-h) - var(--stack-md));
   }
   .pv-modal:not([open]) {
     display: none;
@@ -194,9 +178,22 @@ const specRowsOf = (card: CardView): Array<{ key: string; value: string }> => [
     grid-template-columns: 1.15fr 1fr;
     align-items: stretch;
   }
+  /* Wider when the rug has a texture, so the two pictures side by side stay close to the size a rug
+     alone gets: the pair's column plus the facts column, as far as the screen allows. Narrower than
+     that, the facts keep 380px and the two pictures shrink together, still equal. */
+  @media (min-width: 768px) {
+    .pv-modal:has(.pv-modal__plates.has-texture) {
+      width: min(calc(var(--pv-pair-w) + var(--pv-info-w)), calc(100vw - var(--gutter) * 2));
+    }
+    .pv-modal__body:has(.pv-modal__plates.has-texture) {
+      grid-template-columns: minmax(0, var(--pv-pair-w)) minmax(380px, 1fr);
+    }
+  }
   .pv-modal__media {
     display: flex;
     flex-direction: column;
+    /* The plates and the strip under them sit in the middle when the facts column is the taller. */
+    justify-content: center;
     gap: var(--stack-md);
     min-width: 0;
     min-height: 0;
@@ -204,9 +201,7 @@ const specRowsOf = (card: CardView): Array<{ key: string; value: string }> => [
     background: var(--bg-inset);
     border-right: var(--rule-width) solid var(--rule);
   }
-  /* Hero and texture share the media column's height; the texture takes a third of its width, so a
-     rug still reads as the subject and the weave as the detail. Without a texture the hero simply
-     has the row to itself and nothing about the old layout changes. */
+  /* Without a texture the hero has the row to itself, as tall as the column. */
   .pv-modal__plates {
     flex: 1 1 auto;
     display: flex;
@@ -222,8 +217,35 @@ const specRowsOf = (card: CardView): Array<{ key: string; value: string }> => [
     /* `contain`, like the card: a rug is never cropped to fit a box (ADR D6). */
     object-fit: contain;
   }
+  /* With one, the hero and the texture are two equal pictures (owner, 2026-09-30): the texture takes
+     the exact width, height and shape of the rug photograph beside it.
+
+     How: two equal grid columns, and a grid only as wide as it needs to be. The hero is the one item
+     with a size of its own — its photograph's shape, as large as the plate height and the column
+     allow — so it sets the column width, and the other column matches it. The texture's picture is
+     taken out of the flow, so the figure contributes no size and simply stretches to the row the
+     hero sets. A rug of any shape — 2:3, 3:4, a runner — gets a texture exactly its size, and the
+     rug itself is never cropped. */
+  .pv-modal__plates.has-texture {
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-self: center;
+    width: fit-content;
+    max-width: 100%;
+  }
   .pv-modal__plates.has-texture .pv-modal__photo {
+    justify-self: center;
     width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: var(--pv-plate-h);
+  }
+  /* No photograph yet: a 2:3 placeholder, the card's own shape, for the texture to match. */
+  .pv-modal__plates.has-texture .pv-modal__empty {
+    width: var(--pv-plate-w);
+    max-width: 100%;
+    aspect-ratio: 2 / 3;
   }
   .pv-modal__empty {
     display: grid;
@@ -245,7 +267,7 @@ const specRowsOf = (card: CardView): Array<{ key: string; value: string }> => [
   .pv-modal__thumbs .pv-thumb {
     flex: 0 0 auto;
     width: 64px;
-    height: 80px;
+    height: var(--pv-thumb-h);
     padding: 0;
     border: var(--rule-width) solid var(--rule);
     background: none;
@@ -281,93 +303,36 @@ const specRowsOf = (card: CardView): Array<{ key: string; value: string }> => [
     padding: 0;
     list-style: none;
   }
-  /* The texture plate: a column beside the hero holding the WHOLE photograph (owner, 2026-09-29).
-     It was `cover` in a full-height column, which cut a square close-up down to a thin upright
-     slice; now the picture keeps its own shape, centred in the column, and a tap enlarges it. */
+  /* The texture plate (owner, 2026-09-30): the photograph fills the box the rug's picture sets, so the
+     pair reads as two equal pictures. A close-up of the weave is the same weave edge to edge, so
+     filling that shape loses nothing a buyer is looking for — which is why it need not enlarge any
+     more. Absolutely placed, so its own size never widens the column or heightens the row. */
   .pv-modal__texture {
-    flex: 0 0 32%;
-    align-self: center;
-    display: flex;
-    flex-direction: column;
-    gap: var(--stack-xs);
+    position: relative;
     min-width: 0;
-    max-height: 100%;
     margin: 0;
-    padding: 0;
-    border: 0;
-    background: none;
-    color: inherit;
-    font: inherit;
-    cursor: zoom-in;
+    overflow: hidden;
   }
   .pv-modal__texture img {
-    display: block;
-    width: 100%;
-    height: auto;
-    min-height: 0;
-    object-fit: contain;
-    border: var(--rule-width) solid var(--rule);
-  }
-  .pv-modal__texture:hover img {
-    border-color: var(--ink-soft);
-  }
-  .pv-modal__texture:focus-visible {
-    outline: var(--border-width-focus) solid var(--border-focus);
-    outline-offset: 2px;
-  }
-  .pv-modal__texture-label {
-    flex: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--stack-xs);
-    font-family: var(--body);
-    font-size: var(--text-xs);
-    color: var(--ink-muted);
-    text-align: center;
-  }
-  /* The enlarged texture: over the whole dialog, the photograph as large as it fits, never cropped. */
-  .pv-zoom {
     position: absolute;
     inset: 0;
-    z-index: 3;
-    display: flex;
-    padding: var(--stack-lg);
-    background: var(--surface);
-    cursor: zoom-out;
-  }
-  .pv-zoom[hidden] {
-    display: none;
-  }
-  /* The element fills the overlay's box and `contain` fits the picture inside it, whatever its shape.
-     A max-height on an auto-sized image let a tall 1600px photo run past the dialog and be cropped by
-     it — the very slice this view exists to avoid. */
-  .pv-zoom__img {
     display: block;
-    flex: 1 1 auto;
     width: 100%;
     height: 100%;
-    min-width: 0;
-    min-height: 0;
-    object-fit: contain;
+    object-fit: cover;
   }
-  .pv-zoom__close {
+  /* The word, in the plate's corner rather than under it: a caption below would make this plate
+     taller than the rug's. Drawn like the markers, on the panel's own ground so it reads on any weave. */
+  .pv-modal__texture-label {
     position: absolute;
-    inset-block-start: var(--stack-sm);
-    inset-inline-end: var(--stack-sm);
-    display: grid;
-    place-items: center;
-    width: 32px;
-    height: 32px;
-    padding: 0;
+    inset-inline-start: var(--stack-sm);
+    inset-block-end: var(--stack-sm);
+    padding: var(--corner-chip-pad, 2px 6px);
     border: var(--rule-width) solid var(--rule);
-    border-radius: 100%;
     background: var(--surface);
-    color: var(--ink);
-    cursor: pointer;
-  }
-  .pv-zoom__close:hover {
-    color: var(--brand);
+    font-family: var(--body);
+    font-size: var(--text-xs);
+    color: var(--ink-soft);
   }
   .pv-modal__marker {
     padding: var(--corner-chip-pad, 2px 6px);
@@ -449,20 +414,10 @@ const specRowsOf = (card: CardView): Array<{ key: string; value: string }> => [
     .pv-modal__photo {
       max-height: 46dvh;
     }
-    /* Side by side still — the pair IS the point — but the weave gives up width first, and the row
-       keeps the hero's height so neither plate stretches. */
+    /* With a texture the pair still sits side by side — the pair IS the point — at most half the
+       screen's width each, and no taller than a rug alone is here. */
     .pv-modal__plates.has-texture .pv-modal__photo {
-      max-height: 34dvh;
-    }
-    .pv-modal__texture {
-      flex-basis: 34%;
-    }
-    .pv-modal__texture img {
-      max-height: 34dvh;
-    }
-    /* On a phone the dialog scrolls as one, so the overlay is pinned to the screen instead. */
-    .pv-zoom {
-      position: fixed;
+      max-height: 46dvh;
     }
     .pv-modal__info {
       overflow: visible;

@@ -1,6 +1,6 @@
 import { t as __exportAll } from "./rolldown-runtime_BBjsoOtd.mjs";
 import { _t as driveImageUrl, u as loadCatalogue } from "./runtime_CDQUPEGE.mjs";
-import { a as catalogueRugs } from "./view_hJ27IOw5.mjs";
+import { a as catalogueRugs } from "./view_BHYKgXwv.mjs";
 import { n as visibleLikes } from "./likes_Bt2PBY3j.mjs";
 //#region src/lib/votes/dto.ts
 function catalogueDto(snapshot) {

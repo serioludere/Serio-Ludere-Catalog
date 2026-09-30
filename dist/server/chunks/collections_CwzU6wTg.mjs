@@ -4,7 +4,7 @@ import { t as createComponent } from "./compiler_CXPqD_v7.mjs";
 import { t as renderScript } from "./motion-spec_B_iedmP_.mjs";
 import { St as serializeError, i as getClient, xt as consoleLogger } from "./runtime_CDQUPEGE.mjs";
 import { S as COLLECTION_DESCRIPTION_MAX, i as fetchAdminSnapshot, u as syncLabel } from "./read_By9ZobhQ.mjs";
-import { o as jsonForScript } from "./view_hJ27IOw5.mjs";
+import { o as jsonForScript } from "./view_BHYKgXwv.mjs";
 import { t as $$AdminLayout } from "./AdminLayout_DgXAG4w3.mjs";
 import { t as $$Button } from "./Button_D3R2GZyF.mjs";
 import { n as $$Modal, t as $$EmptyState } from "./EmptyState_DIjBohuJ.mjs";

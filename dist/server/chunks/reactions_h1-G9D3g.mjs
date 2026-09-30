@@ -4,7 +4,7 @@ import { a as limiter, c as requestIpHash, g as visitorHash, h as visitorCookieN
 import { i as isReservedSlug, n as SLUG_RE, r as customerCookieName, s as verifyCustomerToken } from "./auth_BwU9HN3t.mjs";
 import { r as insertReactionRows } from "./write_Dwc7Iaq_.mjs";
 import { r as customerRuntime } from "./http_DXMM9fS5.mjs";
-import "./view_hJ27IOw5.mjs";
+import "./view_BHYKgXwv.mjs";
 import { n as visibleLikes } from "./likes_Bt2PBY3j.mjs";
 import * as z from "zod";
 //#region src/lib/votes/handler.ts

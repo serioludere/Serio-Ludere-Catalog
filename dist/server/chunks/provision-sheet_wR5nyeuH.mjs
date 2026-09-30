@@ -1,5 +1,5 @@
 import { A as slugify, B as REFERENCE_COLLECTION_ORDER, C as sizeLabelOf, F as PRODUCT_COLS, H as TABS, I as PRODUCT_HEADER_LABELS, M as SheetsClient, N as HEADERS, P as LEGACY_COLLECTIONS_HEADERS, R as PRODUCT_WIDTH, S as sizeBandOf, V as SETTINGS_SEED, _ as columnLetter, a as getGoogleConnection, c as getSheetIdStore, l as getTokens, m as sheetIdIfAny, p as resetSheetClient, vt as extractDriveId, w as canonicalCollection, xt as consoleLogger, z as RATES_SEED } from "./runtime_CDQUPEGE.mjs";
-import { t as BADGE_TAG_NAMES } from "./view_hJ27IOw5.mjs";
+import { t as BADGE_TAG_NAMES } from "./view_BHYKgXwv.mjs";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 //#region scripts/lib/seed.ts

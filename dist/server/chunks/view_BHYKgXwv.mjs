@@ -108,8 +108,7 @@ function cardView(rug, catalogue) {
 		featured: rug.featured,
 		photoIds: rug.photos,
 		altPhotoUrl: rug.photos[1] ? driveImageUrl(rug.photos[1], 800) : void 0,
-		textureUrl: rug.textureId ? driveImageUrl(rug.textureId, 800) : void 0,
-		textureZoomUrl: rug.textureId ? driveImageUrl(rug.textureId, 1600) : void 0,
+		textureUrl: rug.textureId ? driveImageUrl(rug.textureId, 1600) : void 0,
 		fillHeight: coverFillsHeight(rug.sourceSite, rug.sourceUrl) || void 0
 	};
 }

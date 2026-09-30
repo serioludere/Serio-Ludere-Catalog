@@ -22,8 +22,10 @@ const GRID = `
   <template data-detail="SL-021">
     <div class="pv-modal__media">
       <img data-hero-img src="/a.jpg" alt="Khal Mohammadi" />
-      <button type="button" class="pv-modal__texture" data-texture-zoom="/api/image/TEX?w=1600"
-        data-texture-alt="Khal Mohammadi, the weave up close"><img src="/api/image/TEX?w=800" alt="" /></button>
+      <figure class="pv-modal__texture">
+        <img src="/api/image/TEX?w=1600" alt="Khal Mohammadi, the weave up close" />
+        <figcaption class="pv-modal__texture-label">texture</figcaption>
+      </figure>
     </div>
     <div class="pv-modal__info">
       <h2>Khal Mohammadi</h2>
@@ -35,10 +37,6 @@ const GRID = `
   <dialog class="pv-modal" data-product-dialog>
     <button type="button" data-product-close></button>
     <div class="pv-modal__body" data-product-body></div>
-    <div class="pv-zoom" data-zoom hidden>
-      <img class="pv-zoom__img" data-zoom-img alt="" />
-      <button type="button" data-zoom-close aria-label="Close the enlarged photograph"></button>
-    </div>
   </dialog>`;
 
 /** happy-dom has no top layer; `open` is what the module and the CSS both read. */
@@ -125,81 +123,18 @@ describe('product dialog', () => {
     expect(dialog.querySelector('[data-product-body]')!.children).toHaveLength(0);
   });
 
-  /* The texture photograph (owner, 2026-09-29: "still shows a thin slice, we need full photo,
-     perhaps pop up larger"): a tap opens it large over the dialog; Esc, a tap or the close button
-     put the rug back — and only the rug, the dialog stays open. */
-  describe('the enlarged texture', () => {
-    const zoom = (): HTMLElement => document.querySelector<HTMLElement>('[data-zoom]')!;
-    const zoomImg = (): HTMLImageElement => document.querySelector<HTMLImageElement>('[data-zoom-img]')!;
-    const texture = (): HTMLButtonElement =>
-      document.querySelector<HTMLButtonElement>('[data-product-body] [data-texture-zoom]')!;
-
-    it('opens the whole photograph at 1600px, and moves focus to its close button', () => {
-      stubDialog();
-      unbind = bindProductDialog();
-      clickCard('SL-021');
-      expect(zoom().hidden).toBe(true);
-      texture().click();
-      expect(zoom().hidden).toBe(false);
-      expect(zoomImg().getAttribute('src')).toBe('/api/image/TEX?w=1600');
-      expect(zoomImg().alt).toBe('Khal Mohammadi, the weave up close');
-      expect(document.activeElement).toBe(document.querySelector('[data-zoom-close]'));
-    });
-
-    it('Esc closes the enlargement, not the dialog; a second Esc closes the dialog as always', () => {
-      const dialog = stubDialog();
-      unbind = bindProductDialog();
-      clickCard('SL-021');
-      texture().click();
-      const first = new Event('cancel', { cancelable: true });
-      dialog.dispatchEvent(first);
-      expect(first.defaultPrevented).toBe(true);
-      expect(zoom().hidden).toBe(true);
-      expect(dialog.hasAttribute('open')).toBe(true);
-      expect(document.activeElement).toBe(texture()); // back where the buyer was
-      const second = new Event('cancel', { cancelable: true });
-      dialog.dispatchEvent(second);
-      expect(second.defaultPrevented).toBe(false);
-    });
-
-    it('catches Esc on keydown, before the browser’s own close request can close both', () => {
-      // Chrome only lets a `cancel` be prevented after a fresh user gesture; the key itself can be.
-      const dialog = stubDialog();
-      unbind = bindProductDialog();
-      clickCard('SL-021');
-      texture().click();
-      const esc = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
-      document.querySelector<HTMLElement>('[data-zoom-close]')!.dispatchEvent(esc);
-      expect(esc.defaultPrevented).toBe(true);
-      expect(zoom().hidden).toBe(true);
-      expect(dialog.hasAttribute('open')).toBe(true);
-      // With nothing enlarged, Esc is left to the dialog as always.
-      const next = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
-      dialog.dispatchEvent(next);
-      expect(next.defaultPrevented).toBe(false);
-    });
-
-    it('a tap anywhere on it, or its close button, puts the rug back', () => {
-      const dialog = stubDialog();
-      unbind = bindProductDialog();
-      clickCard('SL-021');
-      texture().click();
-      zoomImg().click();
-      expect(zoom().hidden).toBe(true);
-      expect(zoomImg().hasAttribute('src')).toBe(false); // the next rug never flashes this one
-      texture().click();
-      document.querySelector<HTMLButtonElement>('[data-zoom-close]')!.click();
-      expect(zoom().hidden).toBe(true);
-      expect(dialog.hasAttribute('open')).toBe(true);
-    });
-
-    it('closing the dialog closes the enlargement with it', () => {
-      const dialog = stubDialog();
-      unbind = bindProductDialog();
-      clickCard('SL-021');
-      texture().click();
-      dialog.close();
-      expect(zoom().hidden).toBe(true);
-    });
+  /* The texture photograph is a plain picture beside the rug (owner, 2026-09-30: "no need for the
+     zoom or open texture image functionality"): a tap on it does nothing, and Esc is the dialog's. */
+  it('leaves the texture a plain picture: a tap on it neither enlarges it nor closes the dialog', () => {
+    const dialog = stubDialog();
+    unbind = bindProductDialog();
+    clickCard('SL-021');
+    const texture = dialog.querySelector<HTMLElement>('[data-product-body] .pv-modal__texture')!;
+    texture.querySelector('img')!.click();
+    expect(dialog.hasAttribute('open')).toBe(true);
+    expect(dialog.querySelector('[data-zoom], [data-texture-zoom]')).toBeNull();
+    const cancel = new Event('cancel', { cancelable: true });
+    dialog.dispatchEvent(cancel);
+    expect(cancel.defaultPrevented).toBe(false); // Esc closes the dialog, as it always did
   });
 });

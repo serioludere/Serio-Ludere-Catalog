@@ -3,7 +3,7 @@ import { t as createComponent } from "./compiler_CXPqD_v7.mjs";
 import { t as renderScript } from "./motion-spec_B_iedmP_.mjs";
 import { Q as money, Z as SUPPORTED_CURRENCIES, t as baseCurrency } from "./runtime_CDQUPEGE.mjs";
 import { a as STUDIO_NAME, n as STUDIO_EMAIL, t as prepaint_default } from "./prepaint_o8VLPcue.mjs";
-import { o as jsonForScript, r as badgesFor } from "./view_hJ27IOw5.mjs";
+import { o as jsonForScript, r as badgesFor } from "./view_BHYKgXwv.mjs";
 import { t as likesText } from "./likes_Bt2PBY3j.mjs";
 import { t as dims } from "./units_BFAJ7W-k.mjs";
 //#region src/components/Footer.astro

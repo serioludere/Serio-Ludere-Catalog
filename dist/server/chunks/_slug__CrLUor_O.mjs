@@ -2,8 +2,8 @@ import { t as __exportAll } from "./rolldown-runtime_BBjsoOtd.mjs";
 import { F as maybeRenderHead, L as addAttribute, O as renderComponent, P as renderTemplate, W as createAstro, k as Fragment } from "./runtime_skv-YCY6.mjs";
 import { t as createComponent } from "./compiler_CXPqD_v7.mjs";
 import { f as ratesFor, u as loadCatalogue } from "./runtime_CDQUPEGE.mjs";
-import { a as catalogueRugs, i as cardView, l as rugsWithTag, n as SLUG_PARAM_RE } from "./view_hJ27IOw5.mjs";
-import { i as $$Header, o as $$Footer, r as $$Layout, t as $$RugCard } from "./RugCard_DdZ1qdtV.mjs";
+import { a as catalogueRugs, i as cardView, l as rugsWithTag, n as SLUG_PARAM_RE } from "./view_BHYKgXwv.mjs";
+import { i as $$Header, o as $$Footer, r as $$Layout, t as $$RugCard } from "./RugCard_Bpqldis_.mjs";
 //#region src/components/RugGrid.astro
 createAstro("https://astro.build");
 var $$RugGrid = createComponent(($$result, $$props, $$slots) => {

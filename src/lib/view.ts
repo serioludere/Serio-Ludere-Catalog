@@ -47,13 +47,11 @@ export interface CardView {
   /** =w800 of the second photo, for a hover quick view. */
   altPhotoUrl?: string;
   /**
-   * =w800 of the texture photograph the studio chose (owner, 2026-09-20), shown in the product popup
-   * in place of the marker chips. Absent when the row names none, and the popup then shows the
-   * markers, as it did before.
+   * =w1600 of the texture photograph the studio chose (owner, 2026-09-20), shown in the product popup
+   * beside the hero and at the hero's own size (owner, 2026-09-30), so at the hero's resolution too.
+   * Absent when the row names none.
    */
   textureUrl?: string;
-  /** =w1600 of the same texture photograph, for the popup's enlarged view (owner, 2026-09-29). */
-  textureZoomUrl?: string;
   /**
    * The cover takes the full height of its 2:3 plate (features.ts `coverFullHeight`, a per-supplier
    * switch). A yes/no only: the supplier itself never reaches a buyer's page.
@@ -185,8 +183,7 @@ export function cardView(rug: Rug, catalogue: Catalogue): CardView {
     featured: rug.featured,
     photoIds: rug.photos,
     altPhotoUrl: rug.photos[1] ? driveImageUrl(rug.photos[1], 800) : undefined,
-    textureUrl: rug.textureId ? driveImageUrl(rug.textureId, 800) : undefined,
-    textureZoomUrl: rug.textureId ? driveImageUrl(rug.textureId, 1600) : undefined,
+    textureUrl: rug.textureId ? driveImageUrl(rug.textureId, 1600) : undefined,
     fillHeight: coverFillsHeight(rug.sourceSite, rug.sourceUrl) || undefined,
   };
 }

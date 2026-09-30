@@ -4,8 +4,8 @@ import { t as createComponent } from "./compiler_CXPqD_v7.mjs";
 import { t as renderScript } from "./motion-spec_B_iedmP_.mjs";
 import { Q as money, _t as driveImageUrl, f as ratesFor, t as baseCurrency, u as loadCatalogue } from "./runtime_CDQUPEGE.mjs";
 import { i as findCustomer } from "./http_DXMM9fS5.mjs";
-import { a as $$PreviewFooter, i as $$PreviewHeader, n as $$Reactions, o as $$PreviewControls, r as $$PreviewLayout, t as $$SpecTable } from "./SpecTable_CSKj0JW5.mjs";
-import { a as catalogueRugs, i as cardView } from "./view_hJ27IOw5.mjs";
+import { a as $$PreviewFooter, i as $$PreviewHeader, n as $$Reactions, o as $$PreviewControls, r as $$PreviewLayout, t as $$SpecTable } from "./SpecTable_B2Z8gfYB.mjs";
+import { a as catalogueRugs, i as cardView } from "./view_BHYKgXwv.mjs";
 import { t as $$Pager } from "./Pager_DL27wwLv.mjs";
 import { t as dims } from "./units_BFAJ7W-k.mjs";
 //#region src/pages/[slug]/[productId].astro

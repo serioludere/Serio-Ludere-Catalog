@@ -6,7 +6,7 @@ import { n as templateExit, t as templateEnter } from "./template-depth_DHN7yctw
 import { St as serializeError, i as getClient, xt as consoleLogger } from "./runtime_CDQUPEGE.mjs";
 import { a as adminRuntime } from "./http_BTz_tJmk.mjs";
 import { h as clientLink, i as fetchAdminSnapshot, u as syncLabel, y as withoutSecrets } from "./read_By9ZobhQ.mjs";
-import { o as jsonForScript } from "./view_hJ27IOw5.mjs";
+import { o as jsonForScript } from "./view_BHYKgXwv.mjs";
 import { n as $$Icon, t as $$AdminLayout } from "./AdminLayout_DgXAG4w3.mjs";
 import { t as $$CopyButton } from "./CopyButton_C83T979Z.mjs";
 import { t as $$Button } from "./Button_D3R2GZyF.mjs";

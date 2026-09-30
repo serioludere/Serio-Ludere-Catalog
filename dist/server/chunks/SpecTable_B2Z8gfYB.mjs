@@ -3,7 +3,7 @@ import { t as createComponent } from "./compiler_CXPqD_v7.mjs";
 import { t as renderScript } from "./motion-spec_B_iedmP_.mjs";
 import { Z as SUPPORTED_CURRENCIES } from "./runtime_CDQUPEGE.mjs";
 import { c as STUDIO_SITE, d as STUDIO_WHATSAPP_2, i as STUDIO_INSTAGRAM_LABEL, l as STUDIO_SITE_LABEL, n as STUDIO_EMAIL, o as STUDIO_PHONE_LABEL, r as STUDIO_INSTAGRAM, s as STUDIO_PHONE_LABEL_2, t as prepaint_default, u as STUDIO_WHATSAPP } from "./prepaint_o8VLPcue.mjs";
-import { o as jsonForScript } from "./view_hJ27IOw5.mjs";
+import { o as jsonForScript } from "./view_BHYKgXwv.mjs";
 //#region src/components/customer/PreviewControls.astro
 createAstro("https://astro.build");
 var $$PreviewControls = createComponent(($$result, $$props, $$slots) => {

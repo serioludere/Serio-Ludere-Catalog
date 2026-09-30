@@ -3,7 +3,7 @@ import { t as createComponent } from "./compiler_CXPqD_v7.mjs";
 import { _t as driveImageUrl } from "./runtime_CDQUPEGE.mjs";
 import { B as SHOPIFY_OPTIONS } from "./read_By9ZobhQ.mjs";
 import { t as coverFillsHeight } from "./cover-fit_BOZGaSq-.mjs";
-import { t as BADGE_TAG_NAMES } from "./view_hJ27IOw5.mjs";
+import { t as BADGE_TAG_NAMES } from "./view_BHYKgXwv.mjs";
 //#region src/lib/terms.ts
 /** What the rug is made of. */
 var MATERIAL_OPTIONS = [

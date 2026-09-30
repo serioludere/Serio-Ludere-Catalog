@@ -244,11 +244,14 @@ describe('/{slug} — the signed-in catalog', () => {
     expect(plates).toContain('pv-modal__texture');
     // The hero comes first, so the rug is the subject and the weave the detail beside it.
     expect(plates.indexOf('pv-modal__photo')).toBeLessThan(plates.indexOf('pv-modal__texture'));
-    /* Owner, 2026-09-29: "the texture photo still shows a thin slice, we need full photo, perhaps pop
-       up larger". It is a button now, carrying the 1600px copy the tap enlarges. */
-    expect(plates).toMatch(/<button type="button" class="pv-modal__texture"/);
-    expect(plates).toContain('data-texture-zoom="/api/image/1TeXtUrE0000000000000000000000000?w=1600"');
-    expect(plates).toContain('tap to enlarge');
+    /* Owner, 2026-09-30: the texture is as large as the hero beside it, so it is loaded at the hero's
+       1600px — and it is a plain picture now, not a button that enlarges it ("no need for the zoom"). */
+    expect(plates).toMatch(/<figure class="pv-modal__texture"/);
+    expect(plates).toContain('src="/api/image/1TeXtUrE0000000000000000000000000?w=1600"');
+    expect(plates).toContain('>texture</figcaption>');
+    expect(plates).not.toContain('data-texture-zoom');
+    expect(plates).not.toContain('tap to enlarge');
+    expect(html).not.toContain('data-zoom');
 
     const withMarkers = templateFor('SL-022');
     expect(withMarkers).not.toContain('pv-modal__texture');

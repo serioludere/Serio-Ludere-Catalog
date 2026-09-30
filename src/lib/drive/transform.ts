@@ -217,7 +217,7 @@ export async function removeBackground(bytes: Uint8Array): Promise<Uint8Array> {
   const share = clearBackdrop(data, w, h, bg) / (w * h);
   if (share < 0.01 || share > 0.97) return bytes;
   // WebP, not PNG: it keeps the transparency at a fraction of the size — a 2048px Karavan cover is
-  // ~6 MB as PNG, over the 5 MB upload cap. Alpha is stored losslessly so the soft edge survives.
+  // ~6 MB as PNG. Alpha is stored losslessly so the soft edge survives.
   const out = await sharp(data, { raw: { width: w, height: h, channels: 4 } })
     .webp({ quality: 90, alphaQuality: 100 })
     .toBuffer();

@@ -62,7 +62,8 @@ export const POST = adminPost(RugInput, async ({ context, body }) => {
   }
   let id: string;
   if (body.id) {
-    const problem = idProblem(body.id, allIds, reserved);
+    // The studio's SKU is checked for live duplicates only, never against the SL-nnn sequence.
+    const problem = idProblem(body.id, allIds, reserved, { sequence: body.supplier !== 'serioludere' });
     if (problem) {
       throw new AdminError(problem.includes('already exists') ? 409 : 422, 'id problem', problem, {
         id: body.id,

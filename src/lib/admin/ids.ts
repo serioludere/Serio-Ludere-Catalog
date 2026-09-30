@@ -31,17 +31,23 @@ export function nextRugId(rugIds: Iterable<string>, reservedIds: Iterable<string
 /**
  * An owner-typed id is refused when it reuses the sequence below the current maximum (`SL-012`
  * when `SL-029` exists) or already exists (case-insensitive) in `existingIds`.
+ *
+ * `sequence: false` drops the first rule, for a Serio Ludere product (owner, 2026-09-30): its id is
+ * the studio's own SKU, which merely LOOKS like our `SL-nnn` — `SL-01314` is the studio's number, not
+ * one this catalogue handed out — so where it falls against the sequence means nothing, and a product
+ * deleted and added again must be able to come back under its SKU. Only a live duplicate is refused.
  */
 export function idProblem(
   id: string,
   existingIds: Iterable<string>,
   reservedIds: Iterable<string> = [],
+  opts: { sequence?: boolean } = {},
 ): string | undefined {
   const wanted = id.trim();
   const lower = wanted.toLowerCase();
   for (const e of existingIds)
     if (String(e).trim().toLowerCase() === lower) return `id "${wanted}" already exists`;
-  const m = /^SL-(\d+)$/.exec(wanted);
+  const m = opts.sequence === false ? null : /^SL-(\d+)$/.exec(wanted);
   if (m) {
     const max = Math.max(maxSequence(existingIds), maxSequence(reservedIds));
     if (Number(m[1]) <= max) return `id "${wanted}" is below the current sequence (SL-${zeroPad(max)})`;

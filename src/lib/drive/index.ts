@@ -71,7 +71,8 @@ export {
   DOWNLOAD_HOSTS,
   DRIVE_FILE_SCOPE,
   DRIVE_FULL_SCOPE,
-  MAX_UPLOAD_BYTES,
+  MAX_DOWNLOAD_BYTES,
+  MULTIPART_MAX_BYTES,
   PHOTOS_FOLDER_NAME,
 } from './types.ts';
 export type { ImageProxyDeps } from './proxy.ts';

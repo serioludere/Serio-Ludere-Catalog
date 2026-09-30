@@ -180,8 +180,9 @@ describe('POST /api/admin/rugs/[id]/retry — finishing the import', () => {
     const drive = driveWith({
       list: () =>
         new Map([
-          ['01-primary', PRIMARY],
-          ['winks-02', '1OLDfile02EEEEEEEEEEEEEEEEEEEEEE'],
+          // As Drive holds them: the upload adds the extension its bytes turned out to be.
+          ['01-primary.webp', PRIMARY],
+          ['winks-02.jpg', '1OLDfile02EEEEEEEEEEEEEEEEEEEEEE'],
         ]),
     });
     state.drive = drive.client;
@@ -204,9 +205,9 @@ describe('POST /api/admin/rugs/[id]/retry — finishing the import', () => {
 
   it('is idempotent: pressing it again uploads nothing and still reads complete', async () => {
     const all = new Map([
-      ['01-primary', PRIMARY],
-      ['winks-02', '1OLDfile02EEEEEEEEEEEEEEEEEEEEEE'],
-      ['winks-03', '1OLDfile03FFFFFFFFFFFFFFFFFFFFFF'],
+      ['01-primary.png', PRIMARY],
+      ['winks-02.jpg', '1OLDfile02EEEEEEEEEEEEEEEEEEEEEE'],
+      ['winks-03.jpg', '1OLDfile03FFFFFFFFFFFFFFFFFFFFFF'],
     ]);
     const drive = driveWith({ list: () => all });
     state.drive = drive.client;
@@ -215,6 +216,31 @@ describe('POST /api/admin/rugs/[id]/retry — finishing the import', () => {
     expect(drive.uploads).toEqual([]);
     expect(out).toMatchObject({ ok: true, imported: 0, reused: 3, complete: true });
     expect(sheet.row('Products', 2)[PRODUCT_COLS.commitStatus]).toBe('complete');
+  });
+
+  it('puts a primary that failed the first time back in front of the card (owner, 2026-09-30)', async () => {
+    // Aile: the 5 MB cover was refused, so photo 2 stood in as the card image.
+    const STAND_IN = '1OLDfile02EEEEEEEEEEEEEEEEEEEEEE';
+    sheet = fakeSheet({ rugs: [pendingRow({ photos: STAND_IN })] });
+    state.sheet = sheet;
+    const drive = driveWith({
+      list: () =>
+        new Map([
+          ['winks-02.jpg', STAND_IN],
+          ['winks-03.png', '1OLDfile03FFFFFFFFFFFFFFFFFFFFFF'],
+        ]),
+    });
+    state.drive = drive.client;
+
+    const out = await (await call()).json();
+    expect(drive.uploads).toEqual([
+      ['https://images.karavanrug.com/1.jpg', '01-primary', FOLDERS.allImagesId],
+    ]);
+    expect(out).toMatchObject({ ok: true, imported: 1, reused: 2, complete: true });
+    const row = sheet.row('Products', 2);
+    expect(String(row[PRODUCT_COLS.imageSrc])).toContain('1NEWfile01');
+    expect(String(row[PRODUCT_COLS.imageSrc])).not.toContain(STAND_IN);
+    expect(row[PRODUCT_COLS.commitStatus]).toBe('complete');
   });
 
   it('leaves the row pending when a photo still fails, so the button stays available', async () => {

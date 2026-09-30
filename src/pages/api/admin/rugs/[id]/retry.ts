@@ -112,8 +112,14 @@ export const POST = adminPost(RugCommit.partial({ version: true }), async ({ con
   );
   const uploaded = commit.photos.filter((p) => p.id && !p.reused).length;
 
-  // The row keeps its own primary first, so finishing an import never reshuffles the card image.
-  const photos = [...new Set([...rug.photos, ...commit.ids].map((p) => extractDriveId(p) ?? p))].slice(0, 12);
+  // The row keeps its own primary first, so finishing an import never reshuffles the card image —
+  // unless the primary is what was missing (owner, 2026-09-30). When the first photo failed, the
+  // second stood in as the card image; the first, landing now, takes its place back.
+  const first = commit.photos[0];
+  const primaryLanded = first?.id && !first.error && !first.reused ? [first.id] : [];
+  const photos = [
+    ...new Set([...primaryLanded, ...rug.photos, ...commit.ids].map((p) => extractDriveId(p) ?? p)),
+  ].slice(0, 12);
   const complete = commit.complete;
   const fields = {
     ...fieldsOfRug(rug),

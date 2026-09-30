@@ -37,12 +37,21 @@ export interface DriveRequest {
    * DELETE is `files.delete` — PERMANENT, not the bin (owner, 2026-09-18, for the product hard
    * delete). It answers 204 with no body, which `once()` already reads as an empty object.
    */
-  method: 'GET' | 'POST' | 'DELETE';
-  /** Absolute URL without a query string (`DRIVE_API`/`DRIVE_UPLOAD_API` + path). */
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  /**
+   * Absolute URL (`DRIVE_API`/`DRIVE_UPLOAD_API` + path). Its own query string is kept when `query`
+   * is absent — a resumable upload's session URI carries its `upload_id` there.
+   */
   url: string;
   query?: Array<[string, string]>;
+  /** Extra request headers, e.g. `x-upload-content-length` when a resumable upload is opened. */
+  headers?: Record<string, string>;
   body?: { json: unknown } | { raw: Uint8Array<ArrayBuffer>; contentType: string };
   policy: RetryPolicy;
+  /** Overrides the 30 s timeout — sending a heavy photo's bytes can take longer. */
+  timeoutMs?: number;
+  /** Called with the response headers of a successful call (a resumable session's `location`). */
+  onHeaders?: (headers: Headers) => void;
 }
 
 export interface DriveHttp {
@@ -92,7 +101,7 @@ interface GoogleErrorBody {
 }
 
 async function once<T>(fetchImpl: typeof fetch, url: URL, opts: DriveRequest, token: string): Promise<T> {
-  const headers: Record<string, string> = { authorization: `Bearer ${token}` };
+  const headers: Record<string, string> = { ...opts.headers, authorization: `Bearer ${token}` };
   let body: string | Uint8Array<ArrayBuffer> | undefined;
   if (opts.body && 'raw' in opts.body) {
     headers['content-type'] = opts.body.contentType;
@@ -105,7 +114,7 @@ async function once<T>(fetchImpl: typeof fetch, url: URL, opts: DriveRequest, to
     method: opts.method,
     headers,
     body,
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    signal: AbortSignal.timeout(opts.timeoutMs ?? REQUEST_TIMEOUT_MS),
   });
   const text = await res.text();
   let json: unknown = {};
@@ -124,6 +133,7 @@ async function once<T>(fetchImpl: typeof fetch, url: URL, opts: DriveRequest, to
       err?.status ?? err?.errors?.[0]?.reason,
     );
   }
+  opts.onHeaders?.(res.headers);
   return json as T;
 }
 

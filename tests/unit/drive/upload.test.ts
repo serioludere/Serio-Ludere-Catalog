@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { DRIVE_UPLOAD_API, createDriveHttp } from '../../../src/lib/drive/client.ts';
 import { DownloadError, createUploader, defaultDownload } from '../../../src/lib/drive/upload.ts';
-import { MAX_UPLOAD_BYTES, type Downloader } from '../../../src/lib/drive/types.ts';
+import { MAX_DOWNLOAD_BYTES, MULTIPART_MAX_BYTES, type Downloader } from '../../../src/lib/drive/types.ts';
 import { silentLogger } from '../../../src/lib/sheets/errors.ts';
 
 const FOLDER = '1B97RZtgjHCLNePWf40j2a1h8vPtaU6ee';
 const FILE_ID = '1U8FwNPCdm-n8RUvSNRcJLBA_27u-Pjkb';
 const UPLOAD_URL = `${DRIVE_UPLOAD_API}/files?uploadType=multipart&fields=id%2Cname%2CmimeType`;
+const OPEN_URL = `${DRIVE_UPLOAD_API}/files?uploadType=resumable&fields=id%2Cname%2CmimeType`;
 const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]);
 
 interface Call {
@@ -139,24 +140,35 @@ describe('defaultDownload', () => {
     });
   });
 
-  it('caps at 5 MB by content-length and while streaming', async () => {
+  it('stops only at the safety ceiling, by content-length and while streaming', async () => {
     const declared = mockFetch(() =>
-      image(JPEG, 'image/jpeg', { 'content-length': String(MAX_UPLOAD_BYTES + 1) }),
+      image(JPEG, 'image/jpeg', { 'content-length': String(MAX_DOWNLOAD_BYTES + 1) }),
     );
     await expect(defaultDownload('https://cdn.shopify.com/a.jpg', declared.fn)).rejects.toMatchObject({
       code: 'too_large',
     });
 
-    const big = new Uint8Array(MAX_UPLOAD_BYTES + 1);
-    const streamed = mockFetch(() => image(big));
+    // A server that never stops sending: the same 1 MB chunk over and over, past the ceiling.
+    const chunk = new Uint8Array(1024 * 1024);
+    let sent = 0;
+    const endless = new ReadableStream<Uint8Array>({
+      pull(c) {
+        sent += chunk.byteLength;
+        if (sent > MAX_DOWNLOAD_BYTES + chunk.byteLength) c.close();
+        else c.enqueue(chunk);
+      },
+    });
+    const streamed = mockFetch(() => image(endless as unknown as ArrayBuffer));
     await expect(defaultDownload('https://cdn.shopify.com/a.jpg', streamed.fn)).rejects.toMatchObject({
       code: 'too_large',
     });
+  });
 
-    const exact = new Uint8Array(MAX_UPLOAD_BYTES);
-    const fits = mockFetch(() => image(exact));
-    const out = await defaultDownload('https://cdn.shopify.com/a.jpg', fits.fn);
-    expect(out.bytes.byteLength).toBe(MAX_UPLOAD_BYTES);
+  it('has no photo size limit: the studio’s 7 MB cut-out cover comes in whole (owner, 2026-09-30)', async () => {
+    const heavy = new Uint8Array(7 * 1024 * 1024);
+    const m = mockFetch(() => image(heavy, 'image/png', { 'content-length': String(heavy.byteLength) }));
+    const out = await defaultDownload('https://cdn.shopify.com/a.png', m.fn);
+    expect(out.bytes.byteLength).toBe(heavy.byteLength);
   });
 
   it('wraps network failures as download_failed with a scrubbed message', async () => {
@@ -209,10 +221,59 @@ describe('uploadFromUrl', () => {
     });
   });
 
-  it('guards size and type even when the injected downloader is lenient', async () => {
+  it('stores a photo over the 5 MB multipart limit whole, as a resumable upload (owner, 2026-09-30)', async () => {
+    // Aile's cover: a 5.02 MB PNG, refused outright before. It must land byte for byte.
+    const png = new Uint8Array(MULTIPART_MAX_BYTES + 20_000);
+    for (let i = 0; i < png.length; i++) png[i] = (i * 31) & 0xff;
+    const SESSION = `${DRIVE_UPLOAD_API}/files?uploadType=resumable&upload_id=ABC123`;
+    let put: { bytes: Uint8Array; type: string; auth: string } | undefined;
+    const m = mockFetch((c) => {
+      const h = c.init.headers as Record<string, string>;
+      if (c.method === 'POST' && c.url === OPEN_URL) {
+        expect(h['x-upload-content-type']).toBe('image/png');
+        expect(h['x-upload-content-length']).toBe(String(png.byteLength));
+        expect(JSON.parse(String(c.init.body))).toEqual({
+          name: 'aile-01.png',
+          parents: [FOLDER],
+          mimeType: 'image/png',
+        });
+        return new Response(null, { status: 200, headers: { location: SESSION } });
+      }
+      if (c.method === 'PUT' && c.url === SESSION) {
+        put = { bytes: c.init.body as Uint8Array, type: h['content-type']!, auth: h.authorization! };
+        return json(200, { id: FILE_ID, name: 'aile-01.png', mimeType: 'image/png' });
+      }
+      return json(500, { error: { message: `unexpected ${c.method} ${c.url}` } });
+    });
+    const heavy: Downloader = async () => ({ bytes: png, contentType: 'image/png' });
+    const out = await uploader(m.fn, { download: heavy })('https://cdn.shopify.com/a.png', 'aile-01');
+    expect(out).toEqual({ id: FILE_ID, name: 'aile-01.png' });
+    expect(m.calls.map((c) => c.method)).toEqual(['POST', 'PUT']);
+    expect(put!.type).toBe('image/png');
+    expect(put!.auth).toBe('Bearer tok');
+    expect(Buffer.from(put!.bytes).equals(Buffer.from(png))).toBe(true);
+  });
+
+  it('never sends the bytes, or the token, to a resumable session outside Drive', async () => {
+    const m = mockFetch((c) =>
+      c.method === 'POST'
+        ? new Response(null, { status: 200, headers: { location: 'https://evil.example/upload' } })
+        : json(200, { id: FILE_ID }),
+    );
+    const heavy: Downloader = async () => ({
+      bytes: new Uint8Array(MULTIPART_MAX_BYTES + 1),
+      contentType: 'image/png',
+    });
+    expect(await uploader(m.fn, { download: heavy })('https://cdn.shopify.com/a.png', 'a')).toMatchObject({
+      error: 'upload_failed',
+    });
+    expect(m.calls.map((c) => c.method)).toEqual(['POST']);
+  });
+
+  it('guards the safety ceiling and type even when the injected downloader is lenient', async () => {
     const m = mockFetch(() => json(500, {}));
     const big: Downloader = async () => ({
-      bytes: new Uint8Array(MAX_UPLOAD_BYTES + 1),
+      bytes: new Uint8Array(MAX_DOWNLOAD_BYTES + 1),
       contentType: 'image/jpeg',
     });
     expect(await uploader(m.fn, { download: big })('https://cdn.shopify.com/a.jpg', 'a.jpg')).toMatchObject({

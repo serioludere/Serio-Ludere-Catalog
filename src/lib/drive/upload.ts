@@ -1,7 +1,8 @@
-// Photo upload (docs/ADMIN_SPEC.md §5.2): download through the injected guarded client, guard the
-// bytes again (image/*, ≤ 5 MB — the multipart cap), `POST upload/drive/v3/files?uploadType=multipart`
-// with a hand-built `multipart/related` body. The id Drive returns is accepted as is. `uploadFromUrl`
-// never throws.
+// Photo upload (docs/ADMIN_SPEC.md §5.2): download through the injected guarded client (image/*,
+// any size a photo comes in), apply the supplier fixes, then `POST upload/drive/v3/files` — one
+// hand-built `multipart/related` body up to Drive's 5 MB multipart limit, a resumable upload above
+// it (owner, 2026-09-30: no size limit on photos). The id Drive returns is accepted as is.
+// `uploadFromUrl` never throws.
 //
 // It used to HEAD the lh3 rendition until it answered, retrying with 2 s sleeps — often 6 s or more per
 // photo, and a slow lh3 threw away a photo that had in fact landed. Pages no longer read lh3 at all
@@ -15,7 +16,8 @@ import { DRIVE_API, DRIVE_UPLOAD_API, DriveApiError, describeDriveError, type Dr
 import { applyTransforms } from './transform.ts';
 import {
   DOWNLOAD_HOSTS,
-  MAX_UPLOAD_BYTES,
+  MAX_DOWNLOAD_BYTES,
+  MULTIPART_MAX_BYTES,
   type DeleteResult,
   type DownloadResult,
   type Downloader,
@@ -158,7 +160,8 @@ async function readCapped(res: Response, max: number): Promise<Uint8Array> {
 
 /**
  * Interim downloader until the scraper's guarded undici client is wired in: https + host allow-list,
- * manual redirects re-validated per hop, `image/*` only, 5 MB cap enforced while streaming.
+ * manual redirects re-validated per hop, `image/*` only. No photo size limit; only the
+ * MAX_DOWNLOAD_BYTES safety ceiling, enforced while streaming.
  * Not DNS-pinned (the allow-listed hosts are constants, so no user-influenced name reaches DNS).
  */
 export async function defaultDownload(
@@ -201,11 +204,11 @@ export async function defaultDownload(
       throw new DownloadError('not_image', contentType || 'missing content-type');
     }
     const declared = Number(res.headers.get('content-length') ?? 0);
-    if (Number.isFinite(declared) && declared > MAX_UPLOAD_BYTES) {
+    if (Number.isFinite(declared) && declared > MAX_DOWNLOAD_BYTES) {
       await res.body?.cancel().catch(() => {});
-      throw new DownloadError('too_large', `content-length ${declared} > ${MAX_UPLOAD_BYTES}`);
+      throw new DownloadError('too_large', `content-length ${declared} > ${MAX_DOWNLOAD_BYTES}`);
     }
-    const bytes = await readCapped(res, MAX_UPLOAD_BYTES);
+    const bytes = await readCapped(res, MAX_DOWNLOAD_BYTES);
     return { bytes, contentType };
   }
   throw new DownloadError('download_failed', 'too many redirects');
@@ -226,6 +229,91 @@ function classifyDriveError(
     return { error: 'drive_not_authorised', detail };
   }
   return { error: fallback, detail };
+}
+
+type DriveFileMeta = { name: string; parents: string[]; mimeType: string };
+type CreatedFile = { id?: string; name?: string };
+
+/** One `multipart/related` request: metadata and bytes together. Drive takes up to 5 MB this way. */
+function uploadMultipart(
+  http: DriveHttp,
+  metadata: DriveFileMeta,
+  bytes: Uint8Array,
+  mime: string,
+): Promise<CreatedFile> {
+  const part = buildMultipartBody({ metadata, bytes, mimeType: mime });
+  return http.request<CreatedFile>({
+    method: 'POST',
+    url: `${DRIVE_UPLOAD_API}/files`,
+    query: [
+      ['uploadType', 'multipart'],
+      ['fields', 'id,name,mimeType'],
+    ],
+    body: { raw: part.body, contentType: part.contentType },
+    policy: 'write',
+  });
+}
+
+/** A resumable session must be on Google's own upload endpoint, so the token goes nowhere else. */
+function isDriveSession(uri: string): boolean {
+  try {
+    const u = new URL(uri);
+    const host = u.hostname.toLowerCase();
+    return (
+      u.protocol === 'https:' &&
+      !u.username &&
+      !u.password &&
+      (host === 'googleapis.com' || host.endsWith('.googleapis.com')) &&
+      u.pathname.startsWith('/upload/drive/')
+    );
+  } catch {
+    return false;
+  }
+}
+/** Sending the bytes of a heavy photo gets longer than the usual 30 s. */
+const RESUMABLE_PUT_TIMEOUT_MS = 180_000;
+
+/**
+ * A resumable upload, for a photo over the multipart limit (owner, 2026-09-30: no size limit): the
+ * metadata opens a session, and the bytes go to the session's URI in a single PUT. Neither call is
+ * replayed after a network error, like every write here — a replay could store the photo twice.
+ */
+async function uploadResumable(
+  http: DriveHttp,
+  metadata: DriveFileMeta,
+  bytes: Uint8Array,
+  mime: string,
+): Promise<CreatedFile> {
+  let session = '';
+  await http.request<unknown>({
+    method: 'POST',
+    url: `${DRIVE_UPLOAD_API}/files`,
+    query: [
+      ['uploadType', 'resumable'],
+      ['fields', 'id,name,mimeType'],
+    ],
+    headers: { 'x-upload-content-type': mime, 'x-upload-content-length': String(bytes.byteLength) },
+    body: { json: metadata },
+    policy: 'write',
+    onHeaders: (h) => {
+      session = h.get('location') ?? '';
+    },
+  });
+  if (!isDriveSession(session)) {
+    throw new DriveApiError(
+      502,
+      session ? 'resumable session on an unexpected host' : 'no resumable session URI',
+    );
+  }
+  const raw = new Uint8Array(bytes.byteLength);
+  raw.set(bytes);
+  return http.request<CreatedFile>({
+    method: 'PUT',
+    url: session,
+    body: { raw, contentType: mime },
+    policy: 'write',
+    timeoutMs: RESUMABLE_PUT_TIMEOUT_MS,
+  });
 }
 
 export function createUploader(
@@ -277,26 +365,18 @@ export function createUploader(
 
     const size = downloaded.bytes.byteLength;
     if (size === 0) return { error: 'download_failed', detail: 'empty body' };
-    if (size > MAX_UPLOAD_BYTES) return { error: 'too_large', detail: `${size} bytes > ${MAX_UPLOAD_BYTES}` };
+    // The ceiling only, for a downloader injected without one; there is no photo size limit.
+    if (size > MAX_DOWNLOAD_BYTES)
+      return { error: 'too_large', detail: `${size} bytes > ${MAX_DOWNLOAD_BYTES}` };
 
     const fileName = fileNameFor(name, mime);
-    const part = buildMultipartBody({
-      metadata: { name: fileName, parents: [folderId], mimeType: mime },
-      bytes: downloaded.bytes,
-      mimeType: mime,
-    });
+    const metadata = { name: fileName, parents: [folderId], mimeType: mime };
     let created: { id?: string; name?: string };
     try {
-      created = await http.request<{ id?: string; name?: string }>({
-        method: 'POST',
-        url: `${DRIVE_UPLOAD_API}/files`,
-        query: [
-          ['uploadType', 'multipart'],
-          ['fields', 'id,name,mimeType'],
-        ],
-        body: { raw: part.body, contentType: part.contentType },
-        policy: 'write',
-      });
+      created =
+        size <= MULTIPART_MAX_BYTES
+          ? await uploadMultipart(http, metadata, downloaded.bytes, mime)
+          : await uploadResumable(http, metadata, downloaded.bytes, mime);
     } catch (e) {
       const out = classifyDriveError(e, 'upload_failed');
       http.logger.error('photo import: upload failed', { error: describeDriveError(e) });

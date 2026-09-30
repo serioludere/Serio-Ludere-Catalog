@@ -665,9 +665,12 @@ mimeType='application/vnd.google-apps.folder' and trashed=false"` (under `drive.
   visible, so the name lookup is unambiguous); else `files.create` `{ name, mimeType: application/vnd.google-apps.folder }`
   then `permissions.create` `{ type: 'anyone', role: 'reader' }` (`allowFileDiscovery: false`) once on the folder —
   files inherit it, so no per-file permission call. The id is logged with the advice to set `GOOGLE_DRIVE_FOLDER_ID`.
-- `uploadFromUrl(url, name, intoFolderId?)`: guarded undici download (host allow-list §4.5, `image/*`, ≤ 5 MB — the multipart cap;
-  ECG full images are ~0.9 MB, KV `?width=1600` ~0.4 MB) → `POST https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType`
-  with `multipart/related` (metadata part `{ name: '<prefix>-<n>.jpg', parents: [folderId], mimeType }` + media part)
+- `uploadFromUrl(url, name, intoFolderId?)`: guarded undici download (host allow-list §4.5, `image/*`, **no photo size
+  limit** — owner, 2026-09-30; only a 150 MB safety ceiling on one download. ECG full images are ~0.9 MB, KV
+  `?width=1600` ~0.4 MB, the studio's own cut-out PNG covers 2-7 MB) → up to 5 MB, `POST https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType`
+  with `multipart/related` (metadata part `{ name: '<prefix>-<n>.jpg', parents: [folderId], mimeType }` + media part);
+  above 5 MB (Drive's multipart limit) a resumable upload — `POST …/files?uploadType=resumable` with the metadata and
+  `X-Upload-Content-Type/-Length`, then one `PUT` of the bytes, unchanged, to the session URI in its `Location`
   → `HEAD https://lh3.googleusercontent.com/d/<id>=w800` with up to 3 retries × 2 s before the id is accepted
   (lh3 propagation delay for fresh files is unverified) → returns `{ id }` or `{ error }`.
   `intoFolderId` targets a rug's own folder; omitted, the photo lands in the flat root.

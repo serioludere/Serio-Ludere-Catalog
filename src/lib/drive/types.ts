@@ -13,8 +13,21 @@ export const DRIVE_FULL_SCOPE = 'https://www.googleapis.com/auth/drive';
 export const PHOTOS_FOLDER_NAME = 'Serio Ludere catalogue photos';
 export const FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
 
-/** Multipart upload cap (§5.2): ECG full images are ~0.9 MB, KV `?width=1600` ~0.4 MB. */
-export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+/**
+ * The largest file Drive takes in one multipart upload (§5.2). NOT a limit on photos (owner,
+ * 2026-09-30: "we have no size limit of the image"): anything heavier goes up as a resumable upload
+ * instead, byte for byte as the supplier sent it. It used to refuse the photo outright, and the
+ * studio's own store serves its covers as cut-out PNGs of 5-7 MB — so the product was saved with its
+ * SECOND photo as the card image.
+ */
+export const MULTIPART_MAX_BYTES = 5 * 1024 * 1024;
+
+/**
+ * A safety ceiling on one download, not a photo rule: a server that streamed without end would
+ * otherwise fill the site's memory. Twenty times anything a supplier has sent (the heaviest so far is
+ * a 7 MB PNG), so no real photograph comes near it.
+ */
+export const MAX_DOWNLOAD_BYTES = 150 * 1024 * 1024;
 
 /** Hosts the default (interim) downloader accepts (§4.5); the scraper's guarded client replaces it. */
 export const DOWNLOAD_HOSTS: readonly string[] = [

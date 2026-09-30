@@ -277,8 +277,8 @@ export interface AdminDeps {
   publicImages: (fileId: string, width?: number) => Promise<MediaResult>;
   /**
    * The supplier-photo downloader the Drive import uses — https, the photo-host allow-list, image/*
-   * only, 5 MB — for the add form's cover preview (owner, 2026-09-28). Present in both auth modes:
-   * a preview stores nothing, so it needs no Drive.
+   * only, no photo size limit — for the add form's cover preview (owner, 2026-09-28). Present in
+   * both auth modes: a preview stores nothing, so it needs no Drive.
    */
   downloadImage: Downloader;
 }

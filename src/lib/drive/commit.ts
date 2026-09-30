@@ -70,6 +70,11 @@ export function photoName(prefix: string, index: number, primary: boolean): stri
   return primary ? `${n}-primary` : `${prefix}-${n}`;
 }
 
+/** A Drive file name without the extension the upload gave it: `santo-02.jpg` → `santo-02`. */
+export function fileStem(name: string): string {
+  return name.replace(/\.[a-z0-9]{1,5}$/i, '');
+}
+
 /** How many photos transfer at once. Drive 429/503s are retried with backoff by drive/client.ts. */
 export const UPLOAD_CONCURRENCY = 4;
 
@@ -100,10 +105,16 @@ export async function commitPhotos(input: CommitPhotosInput, deps: CommitDeps): 
 
   // What a previous, interrupted run already managed to upload. A failure to list is not fatal: the
   // worst case is the duplicate this lookup exists to avoid, which is better than refusing the retry.
-  let existing = new Map<string, string>();
+  // Keyed by the name WITHOUT its extension: the upload adds the one its bytes turned out to be
+  // (`santo-02.jpg`, `01-primary.png`), while `photoName` is the bare stem. Matched on the full name,
+  // nothing ever matched, and "Finish photo import" uploaded every photo a second time (2026-09-30).
+  const existing = new Map<string, string>();
   if (input.reuseExisting) {
     try {
-      existing = await deps.drive.listFolder(folders.allImagesId);
+      for (const [name, id] of await deps.drive.listFolder(folders.allImagesId)) {
+        const stem = fileStem(name);
+        if (!existing.has(stem)) existing.set(stem, id);
+      }
     } catch (e) {
       deps.logger?.warn('photo commit: could not list All Images', { error: serializeError(e) });
     }

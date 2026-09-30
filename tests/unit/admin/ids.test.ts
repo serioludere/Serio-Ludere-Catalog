@@ -27,6 +27,13 @@ describe('nextRugId (ADMIN_SPEC §3.4)', () => {
     expect(idProblem('SL-029', ['SL-001'], ['SL-029'])).toMatch(/below the current sequence/);
     expect(idProblem('KV-60-years', existing)).toBeUndefined();
   });
+  it('idProblem lets a Serio Ludere SKU below the sequence through, but never a live duplicate (2026-09-30)', () => {
+    // The studio's SKU SL-01314, refused because SL-02324 had once been created and deleted.
+    const studio = { sequence: false };
+    expect(idProblem('SL-01314', ['430734'], ['SL-01314', 'SL-02324'])).toMatch(/below the current sequence/);
+    expect(idProblem('SL-01314', ['430734'], ['SL-01314', 'SL-02324'], studio)).toBeUndefined();
+    expect(idProblem('sl-01314', ['SL-01314'], [], studio)).toMatch(/already exists/);
+  });
 });
 
 describe('uniqueSlug', () => {

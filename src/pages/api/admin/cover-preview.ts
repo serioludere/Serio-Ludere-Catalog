@@ -9,7 +9,8 @@
 //
 // It stores nothing and writes no audit row: nothing changes until the form is saved, and the save
 // runs the import exactly as before. The download is the Drive import's own (https, the photo-host
-// allow-list, image/*, 5 MB), so this cannot be pointed anywhere the import could not already reach.
+// allow-list, image/*, no photo size limit), so this cannot be pointed anywhere the import could not
+// already reach.
 export const prerender = false;
 
 import { CoverPreviewQuery } from '../../../lib/admin/dto.ts';

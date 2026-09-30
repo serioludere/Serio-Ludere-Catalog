@@ -313,6 +313,33 @@ describe('POST /api/admin/rugs (rug.create)', () => {
     );
     expect(dup.status).toBe(409);
   });
+  it("takes the studio's SL-style SKU even below the SL-nnn sequence, where any other supplier's is refused", async () => {
+    // Its own session: every test file shares one, and the mutation window is 30 a minute.
+    const own = newSession('owner', Date.now());
+    const ctx = (init: Parameters<typeof apiContext>[0]): APIContext =>
+      apiContext({ session: own, ...init }) as unknown as APIContext;
+    // SL-029 exists, so SL-012 is "below the current sequence" — for our own numbering only.
+    const kv = await createPost(
+      ctx({ path: '/api/admin/rugs', method: 'POST', body: { ...baseInput, id: 'SL-012', slug: 'kv-low' } }),
+    );
+    expect(kv.status).toBe(422);
+    expect(await kv.json()).toMatchObject({ error: 'id problem' });
+    const sl = {
+      ...baseInput,
+      id: 'SL-012',
+      slug: 'sl-low',
+      sourceUrl: 'https://serioludere.com/products/teimani-rug-1',
+      supplier: 'serioludere',
+      supplierRef: 'SL-012',
+    };
+    const ok = await createPost(ctx({ path: '/api/admin/rugs', method: 'POST', body: sl }));
+    expect(ok.status).toBe(201);
+    expect((await ok.json()).rug).toMatchObject({ id: 'SL-012', supplier: 'serioludere' });
+    const dup = await createPost(
+      ctx({ path: '/api/admin/rugs', method: 'POST', body: { ...sl, slug: 'sl-low-2' } }),
+    );
+    expect(dup.status).toBe(409);
+  });
   it('refuses an unknown collection with 422 and writes nothing; any tag is accepted as typed', async () => {
     const c = await createPost(
       ctx({ path: '/api/admin/rugs', method: 'POST', body: { ...baseInput, collections: ['Nope'] } }),

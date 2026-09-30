@@ -846,11 +846,11 @@ Applied:
 - **Before the fetch** (owner, 2026-09-21) the strip asks ONE question: `#url` + **Fetch**, and `#m1`. The name, the
   collections and the tags moved into the review below, where they are answered against what came back — the old
   `#yourName` and the `#supplierTitle` hint ("Supplier calls it: …") were the same string twice over, and the scrape
-  now FILLS the name instead of printing it beside an empty box. On edit the strip carries `Product number`, read-only.
+  now FILLS the name instead of printing it beside an empty box. On edit the strip carries `SKU/ID` (the product id), read-only.
 - **The review** (`.preview.on` after Fetch or manual entry) reads the way the studio reads a rug:
   photos · `Product name` + `Collections` · tags · `Description` · `Supplier link` · `Width (cm)` + `Length (cm)`
   (+ swap) · `Material` + `Method` · `Age` + `Origin` · `Retail price (USD)` (+ **Round to N**) + `Supplier` ·
-  `Supplier ref` (and `Web address` on edit only) · `Notes`. `Rotate` and `Featured` ride along hidden.
+  `SKU/ID` (the supplier ref; and `Web address` on edit only) · `Notes`. `Rotate` and `Featured` ride along hidden.
 - **Markers are their own control** (owner, 2026-09-21): Signed / Antique sit under a `Markers` legend with
   "Shown to the customer on the card and in the product popup", above the tag box, which says "The studio's own
   filing. Never shown to the customer." They still travel in the one Tags CELL — `badgesFor()` reads the buyer's

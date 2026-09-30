@@ -117,6 +117,6 @@ describe('the table head', () => {
     const html = await c.renderToString(RugTable, { props: { rugs: [base], collections } });
     const head = html.slice(html.indexOf('rugtable__head'), html.indexOf('class="irow"'));
     const names = [...head.matchAll(/role="columnheader">([^<]*)</g)].map((m) => m[1]);
-    expect(names).toEqual(['ID', 'Title', 'Collection', 'Size', 'Price', 'Likes', 'Shopify', '']);
+    expect(names).toEqual(['SKU/ID', 'Title', 'Collection', 'Size', 'Price', 'Likes', 'Shopify', '']);
   });
 });

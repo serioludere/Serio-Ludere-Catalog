@@ -57,7 +57,7 @@ export const POST = adminPost(RugInput, async ({ context, body }) => {
     throw new AdminError(
       422,
       'id problem',
-      'A Serio Ludere product needs its ID — the SKU on the store, or one you type in Product ID (SKU).',
+      'A Serio Ludere product needs its SKU/ID — the SKU on the store, or one you type.',
     );
   }
   let id: string;

@@ -819,7 +819,7 @@ describe('add mode: the Serio Ludere product id (owner, 2026-09-30)', () => {
     typeLink('www.serioludere.com/products/armenian-rug');
     expect(idField().hidden).toBe(false);
     expect(val('f_id')).toBe('');
-    expect(document.querySelector('label[for="f_id"]')?.textContent).toBe('Product ID (SKU)');
+    expect(document.querySelector('label[for="f_id"]')?.textContent).toBe('SKU/ID');
     // Back to a supplier: hidden again, and the allocated number returns.
     typeLink('https://ecarpetgallery.com/us_en/red-5x8-andelz-area-rugs-380114');
     expect(idField().hidden).toBe(true);
@@ -868,7 +868,7 @@ describe('add mode: the Serio Ludere product id (owner, 2026-09-30)', () => {
 
     await form.add();
     expect(cls('m2')).toBe('msg on err');
-    expect(text('m2')).toContain('Give this Serio Ludere product its ID');
+    expect(text('m2')).toContain('Give this Serio Ludere product its SKU/ID');
     expect(document.activeElement).toBe(document.getElementById('f_id'));
 
     typeId('SL ARM 7');

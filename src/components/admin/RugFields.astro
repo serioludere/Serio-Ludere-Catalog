@@ -110,7 +110,7 @@ const methodOptions = termOptions(rug?.method, METHOD_OPTIONS);
     /* Editing shows the number read-only: there it is the row's reference, not an input. */
     edit && (
       <div class="f">
-        <label for="f_id">Product number</label>
+        <label for="f_id">SKU/ID</label>
         <input id="f_id" value={rug?.id ?? ''} readonly autocomplete="off" />
         <p class="hint">Must be unique — it becomes the product's reference number.</p>
       </div>
@@ -147,7 +147,7 @@ const methodOptions = termOptions(rug?.method, METHOD_OPTIONS);
             will not save the product until it holds an id. The admin table links that id to the
             product's source page, as it does for every supplier. */}
         <div class="f" id="idField" hidden>
-          <label for="f_id">Product ID (SKU)</label>
+          <label for="f_id">SKU/ID</label>
           <input id="f_id" value={nextId ?? ''} autocomplete="off" spellcheck="false" maxlength="64" />
           <p class="hint">
             Required for Serio Ludere products. Filled from the store's SKU — change it if you need to.
@@ -417,7 +417,7 @@ const methodOptions = termOptions(rug?.method, METHOD_OPTIONS);
       )
     }
     <div class="f">
-      <label for="f_supplierRef">Supplier ref</label>
+      <label for="f_supplierRef">SKU/ID</label>
       <input id="f_supplierRef" value={rug?.supplierRef ?? ''} autocomplete="off" />
     </div>
     {

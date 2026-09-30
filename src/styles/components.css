@@ -954,6 +954,10 @@
   flex-direction: column;
   width: min(960px, calc(100vw - var(--gutter) * 2));
   max-height: min(880px, calc(100dvh - var(--gutter) * 2));
+  /* The body scrolls, never the dialog (owner, 2026-09-30: "a double scroll, one of them is
+     useless"). The UA gives a modal <dialog> `overflow: auto`, so anything reaching past its edge
+     drew a second scrollbar around the header and the body's own. */
+  overflow: hidden;
   background: var(--surface);
 }
 /* `display: flex` above out-ranks the UA's `display: none` on a closed dialog, exactly as it does
@@ -962,6 +966,11 @@
   display: none;
 }
 .modal--wide .modal__body {
+  /* The positioning box for everything in the form. Without it an absolutely placed element — the
+     visually hidden "New tags" label, 1,486px down a fetched product — was placed against the DIALOG,
+     escaped the body's scrolling, and stretched the dialog to that height: the useless outer
+     scrollbar. Positioned here, it scrolls with the rest of the form. */
+  position: relative;
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;

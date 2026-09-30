@@ -868,7 +868,7 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     if (!edit && ownStore()) {
       const id = f.id.value.trim();
       const problem = !id
-        ? 'Give this Serio Ludere product its ID in Product ID (SKU) at the top — the SKU on the store, or one you type.'
+        ? 'Give this Serio Ludere product its SKU/ID at the top — the SKU on the store, or one you type.'
         : !ID_RE.test(id)
           ? 'The product ID may only use letters, digits, - and _ (up to 64 characters).'
           : data.takenIds?.some((t) => t.toLowerCase() === id.toLowerCase())

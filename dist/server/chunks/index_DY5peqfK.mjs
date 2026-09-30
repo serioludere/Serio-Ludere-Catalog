@@ -30,7 +30,7 @@ var POST = adminPost(RugInput, async ({ context, body }) => {
 	requireAdminHeaders(snapshot);
 	const allIds = snapshot.rugs.map((r) => r.id);
 	const reserved = reservedIds(snapshot);
-	if (body.supplier === "serioludere" && !body.id) throw new AdminError(422, "id problem", "A Serio Ludere product needs its ID — the SKU on the store, or one you type in Product ID (SKU).");
+	if (body.supplier === "serioludere" && !body.id) throw new AdminError(422, "id problem", "A Serio Ludere product needs its SKU/ID — the SKU on the store, or one you type.");
 	let id;
 	if (body.id) {
 		const problem = idProblem(body.id, allIds, reserved);

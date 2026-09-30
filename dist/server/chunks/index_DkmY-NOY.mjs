@@ -1,7 +1,7 @@
 import { t as __exportAll } from "./rolldown-runtime_BBjsoOtd.mjs";
 import { F as maybeRenderHead, H as unescapeHTML, L as addAttribute, O as renderComponent, P as renderTemplate, W as createAstro, j as renderSlot } from "./runtime_skv-YCY6.mjs";
 import { t as createComponent } from "./compiler_CXPqD_v7.mjs";
-import { t as renderScript } from "./motion-spec_B_iedmP_.mjs";
+import { t as renderScript } from "./motion-spec_CFi9-3dQ.mjs";
 import { E as collectionSlugs, St as serializeError, T as collectionSlug, _t as driveImageUrl, i as getClient, v as orderedCollectionNames, xt as consoleLogger } from "./runtime_CDQUPEGE.mjs";
 import { a as adminRuntime } from "./http_BTz_tJmk.mjs";
 import { B as SHOPIFY_OPTIONS, m as roundStepOf, u as syncLabel } from "./read_By9ZobhQ.mjs";
@@ -9,12 +9,12 @@ import { t as coverFillsHeight } from "./cover-fit_BOZGaSq-.mjs";
 import { f as dataRot, o as jsonForScript, r as badgesFor } from "./view_BHYKgXwv.mjs";
 import { t as dims } from "./units_BFAJ7W-k.mjs";
 import { t as $$PageNav } from "./PageNav_Cvw3NuwJ.mjs";
-import { n as $$Icon, t as $$AdminLayout } from "./AdminLayout_DgXAG4w3.mjs";
-import { t as $$Button } from "./Button_D3R2GZyF.mjs";
-import { n as $$Modal, t as $$EmptyState } from "./EmptyState_DIjBohuJ.mjs";
-import { t as $$RugFields } from "./RugFields_BGKmA97O.mjs";
+import { n as $$Icon, t as $$AdminLayout } from "./AdminLayout_CwTv_yyV.mjs";
+import { t as $$Button } from "./Button_F6BR5zMj.mjs";
+import { n as $$Modal, t as $$EmptyState } from "./EmptyState_CEweL-mU.mjs";
+import { t as $$RugFields } from "./RugFields_CbptDeNS.mjs";
 import { t as fetchAdminSnapshotWithLikes } from "./likes_MOk4JmEq.mjs";
-import { t as $$FetchModal } from "./FetchModal_BkmIXg4_.mjs";
+import { t as $$FetchModal } from "./FetchModal_B3wMNKtd.mjs";
 import { n as nextRugId } from "./ids_DksWEUUF.mjs";
 import { f as reservedIds, r as driveScope } from "./_shared_C51-IQWR.mjs";
 //#region src/components/admin/Chips.astro
@@ -90,7 +90,7 @@ var $$RugTable = createComponent(($$result, $$props, $$slots) => {
 	const Astro = $$result.createAstro($$props, $$slots);
 	Astro.self = $$RugTable;
 	const { rugs, collections, likesById } = Astro.props;
-	return renderTemplate`${maybeRenderHead($$result)}<div class="rugtable" role="table" aria-label="Products"> <div class="rugtable__head" role="row"> <span class="irow__id" role="columnheader">ID</span> <span class="irow__title" role="columnheader">Title</span> <span class="irow__collection" role="columnheader">Collection</span> <span class="irow__size" role="columnheader">Size</span> <span class="irow__price" role="columnheader">Price</span> <span class="irow__likes" role="columnheader">Likes</span> <span class="irow__shopify" role="columnheader">Shopify</span>  <span class="irow__spacer" role="presentation"></span> <span class="irow__action" role="columnheader"><span class="sr-only">Actions</span></span> </div> ${rugs.map((rug) => renderTemplate`${renderComponent($$result, "RugRow", $$RugRow, {
+	return renderTemplate`${maybeRenderHead($$result)}<div class="rugtable" role="table" aria-label="Products"> <div class="rugtable__head" role="row"> <span class="irow__id" role="columnheader">SKU/ID</span> <span class="irow__title" role="columnheader">Title</span> <span class="irow__collection" role="columnheader">Collection</span> <span class="irow__size" role="columnheader">Size</span> <span class="irow__price" role="columnheader">Price</span> <span class="irow__likes" role="columnheader">Likes</span> <span class="irow__shopify" role="columnheader">Shopify</span>  <span class="irow__spacer" role="presentation"></span> <span class="irow__action" role="columnheader"><span class="sr-only">Actions</span></span> </div> ${rugs.map((rug) => renderTemplate`${renderComponent($$result, "RugRow", $$RugRow, {
 		"rug": rug,
 		"collections": collections,
 		"likes": likesById?.get(rug.id) ?? 0

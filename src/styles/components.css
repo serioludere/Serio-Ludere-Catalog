@@ -511,10 +511,10 @@
 /* ═══ Inline Row ═══════════════════════════════════════════════════════════════════════════════
    Set 78:325. Click a cell to edit in place; Enter commits, Esc reverts, Tab moves on. NOT used on
    mobile — editing a cell in place on a phone is a worse tool than a form. Columns differ from
-   Table Row: ID 90 · Title 240 · Collection 130 · Size 120 · Price 100 · Likes 56 · Shopify 76 ·
-   Source 150. Narrower than drawn since Shopify and Source joined (owner, 2026-09-25): at the drawn
-   widths the row needed 1373px against the 1172 a 1440 screen gives it, and Open / Edit went off the
-   right edge. Every column still fits what it holds; the gaps went from 16 to 12 for the same reason. */
+   Table Row: ID 90 · Title 180 · Collection 130 · Size 120 · Price 100 · Likes 56 · Shopify 76.
+   Narrower than drawn since Shopify joined (owner, 2026-09-25): at the drawn widths the row needed
+   1373px against the 1172 a 1440 screen gives it. The Source column left and the Title narrowed on
+   2026-09-29 (owner: "reduce the space taken up by the product name"); the ID links the source now. */
 .irow {
   display: flex;
   flex-direction: column;
@@ -555,7 +555,7 @@
 }
 .irow__title {
   flex: none;
-  width: 240px;
+  width: 180px;
 }
 .irow__collection {
   flex: none;
@@ -585,28 +585,17 @@
   padding-block: 0;
   font-size: var(--text-sm);
 }
-/* The scraped product page, opened in a new tab (owner, 2026-09-25); the label is its site. The
-   ellipsis is on the link rather than the cell, so a clipped cell never clips the focus ring too. */
-.irow__source {
-  flex: none;
-  width: 150px;
-  white-space: nowrap;
-  color: var(--ink-soft);
-}
-.irow__source a {
-  display: inline-block;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  vertical-align: top;
+/* The ID is the scraped product page, opened in a new tab (owner, 2026-09-29; the Source column it
+   replaced had carried it since 2026-09-25). Underlined, so it reads as a link at a glance. */
+.irow__id a {
   color: inherit;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
-.irow__source a:hover {
+.irow__id a:hover {
   color: var(--ink);
 }
-.irow__source a:focus-visible {
+.irow__id a:focus-visible {
   outline: var(--border-width-focus) solid var(--border-focus);
   outline-offset: 2px;
 }
@@ -616,8 +605,8 @@
 .irow__action {
   flex: none;
   display: flex;
-  /* 12, not `--tight` — that is 4px in admin mode, which ran "Open" and "Edit" together into one
-     word at a glance. These are two separate destinations and must read as two. */
+  /* 12, not `--tight` — that is 4px in admin mode, which ran two actions together into one word at
+     a glance ("Finish photo import" beside "Open/Edit", Save beside Cancel while renaming). */
   gap: var(--stack-md);
   font-size: var(--text-sm);
   color: var(--ink-soft);

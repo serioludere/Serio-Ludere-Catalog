@@ -158,38 +158,56 @@ const methodOptions = termOptions(rug?.method, METHOD_OPTIONS);
     {
       /* The texture photograph (owner, 2026-09-20): one of these photos is the close-up of the weave,
          and the buyer's product popup shows it where the marker chips used to be. A radio per tile,
-         so choosing one un-chooses the last — a rug has exactly one texture — with "No texture photo"
-         below as the way to take the choice back. rug-form.ts reads the checked radio on save; on the
-         ADD form the value is the supplier URL, which it swaps for the Drive id the import returns. */
+         so choosing one un-chooses the last — a rug has exactly one texture. rug-form.ts reads the
+         checked radio on save; on the ADD form the value is the supplier URL, which it swaps for the
+         Drive id the import returns.
+
+         Owner, 2026-09-29: chosen by tapping the PHOTO, "the way you select photos on social media":
+         the whole picture is the radio's label and a tick fills its corner. On the add form a texture
+         is required before a fetched rug can be saved (validate() in rug-form.ts), so the "No texture
+         photo" way back is the edit form's alone. */
     }
-    <p class="hint">Tick the close-up of the weave: the customer sees it in the product popup.</p>
+    <p class="hint">
+      Tap the close-up of the weave to make it the texture photo: the customer sees it in the product popup.{
+        !edit && ' Required before saving.'
+      }
+    </p>
     <div id="photoStrip" class="grid photos">
       {
         rug?.photos.map((id, i) => (
-          <label class="card tile">
-            {/* The cover, as the catalogue card shows it (features.ts `coverFullHeight`). */}
-            <div class="ph" data-fit={i === 0 && coverFills ? 'height' : undefined}>
-              <img src={driveImageUrl(id, 800)} alt="" loading="lazy" />
-            </div>
-            <div class="mt">
+          <div class="card tile">
+            <label class="pick" title="Make this the texture photo">
               <input
                 type="radio"
                 name="texture"
+                class="pick__input"
                 data-texture
                 value={id}
                 checked={rug?.textureId === id}
                 aria-label={`Photo ${i + 1} is the texture photo`}
               />
-              texture · {i + 1}
-            </div>
-          </label>
+              {/* The cover, as the catalogue card shows it (features.ts `coverFullHeight`). */}
+              <div class="ph" data-fit={i === 0 && coverFills ? 'height' : undefined}>
+                <img src={driveImageUrl(id, 800)} alt="" loading="lazy" />
+              </div>
+              <span class="pick__check" aria-hidden="true" />
+              <span class="pick__badge" aria-hidden="true">
+                Texture
+              </span>
+            </label>
+            <span class="mt">Photo {i + 1}</span>
+          </div>
         ))
       }
     </div>
-    <label class="chk" id="textureNone">
-      <input type="radio" name="texture" data-texture value="" checked={!rug?.textureId} />
-      No texture photo
-    </label>
+    {
+      edit && (
+        <label class="chk" id="textureNone">
+          <input type="radio" name="texture" data-texture value="" checked={!rug?.textureId} />
+          No texture photo
+        </label>
+      )
+    }
     <p class="hint" id="photoHint" hidden>
       Photo storage is not connected, so photos cannot be uploaded. Paste Google Drive links below instead.
     </p>
@@ -551,8 +569,10 @@ const methodOptions = termOptions(rug?.method, METHOD_OPTIONS);
     padding-left: var(--stack-lg);
     margin: var(--stack-sm) 0 0;
   }
+  /* 160, up from 120 (owner, 2026-09-29: "make the texture photo selection area bigger"): the photo
+     IS the texture button now, so a bigger tile is a bigger target and an easier close-up to judge. */
   .photos {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: var(--stack-md);
     margin-top: var(--stack-md);
   }
@@ -564,11 +584,88 @@ const methodOptions = termOptions(rug?.method, METHOD_OPTIONS);
   .photos .tile .mt {
     word-break: break-all;
   }
-  .photos label.tile {
-    cursor: pointer;
-  }
   .photos .tile input {
     width: auto;
+  }
+  .photos .tile .keep {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--stack-xs);
+    cursor: pointer;
+  }
+  /* The texture pick (owner, 2026-09-29): the whole photograph is the radio's label, as on a phone's
+     photo picker. The radio itself is kept (form semantics, keyboard, screen readers) but drawn as
+     the round tick in the photo's corner; the chosen photo gets an accent frame and a "Texture" tag. */
+  .photos .pick {
+    position: relative;
+    display: block;
+    cursor: pointer;
+  }
+  .photos .tile .pick__input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .photos .pick__check {
+    position: absolute;
+    top: var(--stack-sm);
+    right: var(--stack-sm);
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    box-sizing: border-box;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: rgb(0 0 0 / 0.28);
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.35);
+    transition: background-color var(--motion-transition) ease-out;
+  }
+  .photos .pick:hover .pick__check {
+    background: rgb(0 0 0 / 0.45);
+  }
+  .photos .pick__input:checked ~ .pick__check {
+    border-color: var(--accent);
+    background: var(--accent);
+  }
+  /* The tick: two borders of a box, turned. */
+  .photos .pick__input:checked ~ .pick__check::after {
+    content: '';
+    width: 11px;
+    height: 6px;
+    margin-top: -3px;
+    border-left: 2px solid #fff;
+    border-bottom: 2px solid #fff;
+    transform: rotate(-45deg);
+  }
+  .photos .pick__input:checked ~ .ph {
+    outline: 3px solid var(--accent);
+    outline-offset: -3px;
+  }
+  .photos .pick__input:focus-visible ~ .ph {
+    outline: var(--border-width-focus) solid var(--border-focus);
+    outline-offset: 2px;
+  }
+  .photos .pick__badge {
+    position: absolute;
+    left: 50%;
+    bottom: var(--stack-sm);
+    transform: translateX(-50%);
+    padding: 2px var(--stack-sm);
+    border-radius: 999px;
+    background: var(--accent);
+    color: #fff;
+    font-size: var(--text-xs);
+    font-weight: 600;
+    white-space: nowrap;
+    visibility: hidden;
+  }
+  .photos .pick__input:checked ~ .pick__badge {
+    visibility: visible;
   }
   .cnt-inline {
     color: var(--accent);

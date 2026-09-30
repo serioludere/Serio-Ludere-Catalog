@@ -27,7 +27,10 @@
 // for five days (`preview-dark`, now removed from modes.css); it is the ordinary preview mode again,
 // the same ground as the catalogue the password opens, so the logo, the field and the button all
 // take the realm's own colours with no overrides here.
-import AdminLogo from '../admin/AdminLogo.astro';
+//
+// Owner, 2026-09-29: the logo is the studio's "SL" mark now (SlMark.astro), in place of the full
+// wordmark the admin login shares.
+import SlMark from './SlMark.astro';
 
 interface Props {
   slug: string;
@@ -38,7 +41,7 @@ const { slug } = Astro.props;
 <main class="pv-gate">
   <section class="pv-gate-col">
     <div class="pv-gate-brand">
-      <AdminLogo />
+      <SlMark />
     </div>
 
     <form class="pv-gate-form" method="post" action={`/api/customers/${slug}/login`} data-gate={slug}>
@@ -109,10 +112,11 @@ const { slug } = Astro.props;
     gap: var(--stack-sm);
     width: 100%;
   }
-  /* 160, the admin card's own logo width — 40% of the 400 card, as drawn. */
-  .pv-gate-brand :global(.admin-logo) {
-    width: 160px;
-    height: auto;
+  /* The SL mark is a tall monogram (150 × 227), so it is sized by its height: 120, which sits over
+     the 400 card about as heavily as the 160-wide wordmark it replaced (owner, 2026-09-29). */
+  .pv-gate-brand :global(.sl-mark) {
+    width: auto;
+    height: 120px;
     color: var(--ink);
   }
   /* No max-width: the field and the button run the full inner width of the card, as they do on the

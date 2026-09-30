@@ -16,6 +16,7 @@ import {
   GOOGLE_SHEET_ID,
   SCRAPE_JINA_FALLBACK,
   SCRAPE_RESPECT_ROBOTS,
+  SERIOLUDERE_STORE_PASSWORD,
   SHEETS_CACHE_TTL,
 } from 'astro:env/server';
 import { join } from 'node:path';
@@ -261,7 +262,12 @@ export interface AdminDeps {
    * land in the service account's own Drive (§5.1) — the photos endpoint answers `drive_not_authorised`.
    */
   drive?: DriveClient;
-  scrape: { jinaFallback: boolean; respectRobots: boolean };
+  scrape: {
+    jinaFallback: boolean;
+    respectRobots: boolean;
+    /** serioludere.com's storefront password, for when the shop is locked (owner, 2026-09-29). */
+    storefrontPassword?: string;
+  };
   /** Rates-tab conversion for non-USD supplier prices (§4.7); undefined when the currency is unknown. */
   convertToUsd: (amount: number, currency: string) => number | undefined;
   /**
@@ -353,6 +359,7 @@ export function getAdminDeps(): AdminDeps {
         // Defaults to honouring robots.txt: an absent variable must never quietly turn a
         // politeness rule off (brief §11).
         respectRobots: SCRAPE_RESPECT_ROBOTS ?? true,
+        ...(SERIOLUDERE_STORE_PASSWORD ? { storefrontPassword: SERIOLUDERE_STORE_PASSWORD } : {}),
       },
       convertToUsd,
     };

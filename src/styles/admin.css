@@ -660,6 +660,34 @@ td pre {
   gap: var(--stack-lg);
   margin-top: var(--space-form);
 }
+/* The Products grid view sizes its cards as the buyer's grid does (owner, 2026-09-30; the columns
+   and gaps of .pv-grid in src/pages/[slug]/index.astro, breakpoint for breakpoint): a fixed number
+   of equal columns — five on a wide monitor, four at desktop, three on a laptop, two on a tablet,
+   one on a phone — so every card in a row is the same size and does not change with every few
+   pixels of window, which is what auto-fill did. */
+.grid.rugs-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  column-gap: var(--stack-2xl);
+  row-gap: var(--stack-xl);
+  align-items: start;
+}
+@media (min-width: 1800px) {
+  .grid.rugs-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+@media (max-width: 1199px) {
+  .grid.rugs-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 899px) {
+  .grid.rugs-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--stack-lg);
+  }
+}
+/* One column on a phone: in the admin's one phone block, near the end of this file. */
 /* Owner, 2026-09-17: no border, and the text below the photo is centred.
    With the border gone the PHOTO is what marks where one product ends and the next begins — which
    is why `.grid` carries a generous gap and `.card .ph` keeps its `--subtle` well. Hover moves the
@@ -844,6 +872,53 @@ td pre {
   margin-top: var(--stack-md);
 }
 
+/* The Products page's collection tabs, drawn as the buyer's are (owner, 2026-09-30: "make the tabs
+   look the same as the customer page") — CollectionFilters.astro's .pv-chip, value for value: text
+   tabs on a hairline, the pressed one bold on a 3px line. The lines are inset shadows, not borders,
+   so pressing a tab never changes its height. The count stays, quieter than the name. */
+.chips.rugfilters {
+  align-items: center;
+  column-gap: var(--stack-xl);
+  row-gap: var(--stack-sm);
+}
+.rugfilters .chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--stack-xs);
+  padding: var(--stack-sm) 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: inset 0 -1px 0 0 var(--rule);
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  line-height: var(--leading-body);
+  white-space: nowrap;
+}
+.rugfilters .chip:hover {
+  color: var(--ink);
+}
+.rugfilters .chip.on,
+.rugfilters .chip[aria-pressed='true'] {
+  background: none;
+  color: var(--ink);
+  font-weight: 700;
+  box-shadow: inset 0 -3px 0 0 var(--ink);
+}
+.rugfilters .chip__count {
+  font-weight: 400;
+  color: var(--ink-muted);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .rugfilters .chip {
+    transition:
+      box-shadow var(--motion-quick) var(--motion-ease),
+      color var(--motion-quick) var(--motion-ease);
+  }
+}
+/* Centred lines on a phone, as the buyer's tabs are: in the admin's one phone block, below. */
+
 /* The Filter Bar's `filters` slot: the drawn 180px collection select, then the status chips, on the
    one line Figma draws (23:183). Inside the bar they are part of the row, so they lose the stack
    margin that spaced them as blocks. */
@@ -970,6 +1045,16 @@ a:focus-visible {
    size and silently not on another is a worse failure than a slightly taller card.
 --------------------------------------------------------------------------------------------- */
 @media (max-width: 767px) {
+  /* The Products grid and its collection tabs as the buyer's are on a phone (owner, 2026-09-30): one
+     card per row, and the tab lines centred. */
+  .grid.rugs-grid {
+    grid-template-columns: 1fr;
+  }
+  .chips.rugfilters {
+    justify-content: center;
+    column-gap: var(--stack-lg);
+  }
+
   #clientTable,
   #clientTable tbody,
   #clientTable tr,

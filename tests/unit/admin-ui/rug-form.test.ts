@@ -641,6 +641,16 @@ describe('add mode', () => {
     pickCollection('Kilims');
     set('f_photos', `https://drive.google.com/file/d/1cccccccccccccccccccccccccccccccc/view`);
     (document.getElementById('f_notes') as HTMLTextAreaElement).value = 'note';
+    // A fetched rug is not saved without its texture photograph (owner, 2026-09-29), and nothing is
+    // sent until it has one.
+    await form.add();
+    expect(cls('m2')).toBe('msg on err');
+    expect(text('m2')).toContain('Choose the texture photo');
+    expect(calls.map((c) => c.url)).toEqual(['/api/admin/scrape']);
+    // Chosen by tapping the photograph itself: the whole picture is the radio's label.
+    const texture = document.querySelector<HTMLInputElement>('#photoStrip input[data-texture]')!;
+    texture.closest('label')!.click();
+    expect(texture.checked).toBe(true);
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true }));
     expect(form.busy()).toBe(true);
     expect((document.getElementById('btnAdd') as HTMLButtonElement).disabled).toBe(true);
@@ -671,6 +681,8 @@ describe('add mode', () => {
       sourceUrl: scraped.sourceUrl,
       notes: 'note',
       roundPrice: true,
+      // The tapped photo, traded for the Drive id its import returned.
+      textureId: PHOTO,
     });
     expect(calls.map((c) => c.url)).toEqual(['/api/admin/scrape', '/api/admin/photos', '/api/admin/rugs']);
     expect(cls('m1')).toBe('msg on ok');
@@ -684,6 +696,58 @@ describe('add mode', () => {
     expect(pickedCollections()).toEqual(['Kilims']);
     expect(cls('preview')).toBe('preview');
     expect(val('f_id')).toBe('SL-030'); // reset: back to the allocated number until the next scrape
+  });
+
+  it('texture: tapping a photo chooses it and keeps it; dropping it from the save un-chooses it', async () => {
+    // Owner, 2026-09-29: chosen "the way you select photos on social media, checkbox inside" — the
+    // whole picture is the texture radio's label, and a texture is always one of the saved photos.
+    form = mount((url) =>
+      url === '/api/admin/scrape'
+        ? { status: 200, body: { ok: true, data: scraped, via: 'impit', cached: true, ms: 1 } }
+        : { status: 500, body: {} },
+    );
+    set('url', 'https://ecarpetgallery.com/us_en/red-5x8-andelz-area-rugs-380114');
+    await form.fetchUrl();
+    // Required on the add form, so its "No texture photo" way out is the edit form's alone.
+    expect(document.getElementById('textureNone')).toBeNull();
+    const tiles = [...document.querySelectorAll<HTMLElement>('#photoStrip .tile')];
+    expect(tiles).toHaveLength(2);
+    const keep = tiles.map((t) => t.querySelector<HTMLInputElement>('input[data-url]')!);
+    const tex = tiles.map((t) => t.querySelector<HTMLInputElement>('input[data-texture]')!);
+    const pick = tex.map((t) => t.closest('label')!);
+    // The tick is inside the photograph: the label that owns the radio holds the picture.
+    expect(pick[1]!.querySelector('img')).not.toBeNull();
+    expect(pick[1]!.querySelector('.pick__check')).not.toBeNull();
+    // Nothing is pre-chosen: the studio decides which photo is the weave.
+    expect(tex.some((t) => t.checked)).toBe(false);
+
+    keep[1]!.click(); // photo 2 out of the save
+    expect(text('photoCount')).toBe('1 of 2 selected');
+    pick[1]!.click(); // …then chosen as the texture, which puts it back in
+    expect(tex[1]!.checked).toBe(true);
+    expect(keep[1]!.checked).toBe(true);
+    expect(text('photoCount')).toBe('2 of 2 selected');
+    keep[1]!.click(); // dropping the texture's photo un-chooses it
+    expect(tex[1]!.checked).toBe(false);
+    expect(tex[0]!.checked).toBe(false);
+  });
+
+  it('asks for no texture when no photos are being saved', async () => {
+    // "Save photos to Drive" off: nothing reaches Drive, so there is nothing for a texture to be.
+    form = mount((url) =>
+      url === '/api/admin/scrape'
+        ? { status: 200, body: { ok: true, data: scraped, via: 'impit', cached: true, ms: 1 } }
+        : url === '/api/admin/rugs'
+          ? { status: 201, body: { ok: true, rug: { id: '380114', slug: 'x' }, row: 3, audit: { row: 2 } } }
+          : { status: 500, body: {} },
+    );
+    set('url', 'https://ecarpetgallery.com/us_en/red-5x8-andelz-area-rugs-380114');
+    await form.fetchUrl();
+    pickCollection('Kilims');
+    (document.getElementById('savePhotos') as HTMLInputElement).checked = false;
+    await form.add();
+    expect(text('m1')).toContain('Product saved successfully');
+    expect(calls.map((c) => c.url)).toEqual(['/api/admin/scrape', '/api/admin/rugs']);
   });
 
   it('shows the server validation issues and keeps the form when the create fails', async () => {
@@ -740,6 +804,18 @@ describe('edit mode', () => {
     expect(form.chips.values()).toEqual(['Kilim']);
     expect(document.querySelectorAll('#photoStrip img')).toHaveLength(1);
     expect(val('f_photos')).toBe(PHOTO);
+    // The texture is chosen by tapping the photograph here too (owner, 2026-09-29), and an existing
+    // rug may still have none: "No texture photo" stays on the edit form, pressed for this one.
+    const pick = document.querySelector<HTMLLabelElement>('#photoStrip label.pick')!;
+    expect(pick.querySelector('input[data-texture]')?.getAttribute('value')).toBe(PHOTO);
+    expect(pick.querySelector('img')).not.toBeNull();
+    expect(document.querySelector<HTMLInputElement>('#textureNone input')?.checked).toBe(true);
+    pick.click();
+    expect(form.collect().textureId).toBe(PHOTO);
+    document.querySelector<HTMLInputElement>('#textureNone input')!.click();
+    // Read the radios themselves: happy-dom caches a `:checked` query across a property change.
+    expect(pick.querySelector<HTMLInputElement>('input[data-texture]')!.checked).toBe(false);
+    expect(document.querySelector<HTMLInputElement>('#textureNone input')!.checked).toBe(true);
     expect((document.getElementById('roundOnSave') as HTMLInputElement).checked).toBe(false);
     // Products have no status since 2026-09-16: no Archive/Restore pair, and the site link is always live.
     expect(document.getElementById('btnArchive')).toBeNull();

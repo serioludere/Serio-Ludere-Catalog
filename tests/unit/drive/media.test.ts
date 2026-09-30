@@ -200,7 +200,7 @@ describe('createPublicMediaReader', () => {
     let sawAuth: string | null = 'unset';
     const fetchImpl = (async (input: string | URL | Request, init?: RequestInit) => {
       sawAuth = new Headers(init?.headers).get('authorization');
-      expect(String(input)).toBe(`https://lh3.googleusercontent.com/d/${FILE_ID}=w1600`);
+      expect(String(input)).toBe(`https://lh3.googleusercontent.com/d/${FILE_ID}=w1600-rw-v1`);
       return image();
     }) as unknown as typeof fetch;
     const out = await createPublicMediaReader({ fetchImpl })(FILE_ID, 1600);
@@ -215,9 +215,9 @@ describe('createPublicMediaReader', () => {
     await a.read(FILE_ID, 9999);
     await a.read(FILE_ID, 400);
     expect(a.urls).toEqual([
-      `https://lh3.googleusercontent.com/d/${FILE_ID}=w800`,
-      `https://lh3.googleusercontent.com/d/${FILE_ID}=w800`,
-      `https://lh3.googleusercontent.com/d/${FILE_ID}=w400`,
+      `https://lh3.googleusercontent.com/d/${FILE_ID}=w800-rw-v1`,
+      `https://lh3.googleusercontent.com/d/${FILE_ID}=w800-rw-v1`,
+      `https://lh3.googleusercontent.com/d/${FILE_ID}=w400-rw-v1`,
     ]);
   });
 
@@ -249,6 +249,33 @@ describe('createPublicMediaReader', () => {
       }) as unknown as typeof fetch,
     });
     expect(await dead(FILE_ID)).toMatchObject({ ok: false, error: 'drive_error', detail: 'ECONNRESET' });
+  });
+
+  it('asks for compressed WebP, and the same width without it when lh3 refuses the option', async () => {
+    // Owner, 2026-09-29: a cut-out cover came back as a 1.4 MB PNG for one 800px card.
+    const a = lh3((url) => (url.endsWith('-rw-v1') ? new Response('bad option', { status: 400 }) : image()));
+    expect(await a.read(FILE_ID, 400)).toMatchObject({ ok: true, contentType: 'image/jpeg' });
+    expect(a.urls).toEqual([
+      `https://lh3.googleusercontent.com/d/${FILE_ID}=w400-rw-v1`,
+      `https://lh3.googleusercontent.com/d/${FILE_ID}=w400`,
+    ]);
+  });
+
+  it('never retries a missing file or a dead network: those answers are not about the format', async () => {
+    for (const status of [403, 404]) {
+      const a = lh3(() => new Response('nope', { status }));
+      expect(await a.read(FILE_ID)).toEqual({ ok: false, error: 'not_found' });
+      expect(a.urls).toHaveLength(1);
+    }
+    let calls = 0;
+    const dead = createPublicMediaReader({
+      fetchImpl: (async () => {
+        calls++;
+        throw new Error('ECONNRESET');
+      }) as unknown as typeof fetch,
+    });
+    expect(await dead(FILE_ID)).toMatchObject({ ok: false, error: 'drive_error' });
+    expect(calls).toBe(1);
   });
 
   it('refuses a non-image body: the proxy serves from our own origin', async () => {

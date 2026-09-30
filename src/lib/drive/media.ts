@@ -112,7 +112,20 @@ export function coerceWidth(value: unknown): ProxyWidth {
  *
  * The id is validated before it reaches the URL and the width comes from a closed set, so there is
  * no input here that can steer the request elsewhere.
+ *
+ * **Compressed WebP** (owner, 2026-09-29: "the photos are too slow at loading"). Asked for a width
+ * alone, lh3 answers in a format of its own choosing, and for a cover with a transparent backdrop —
+ * every cut-out cover, which is most of the catalogue — that is PNG: 1.4 MB for one 800px card,
+ * 2.6 MB at 1600. `-rw` asks for WebP, which keeps the transparency, but for a PNG original lh3 makes
+ * it lossless and it stays near 1.3 MB; `-v1` is what makes it lossy. Measured on 2026-09-29 at 800px:
+ * a Karavan cut-out 1367 KB → 70 KB, a Serio Ludere PNG 1874 KB → 151 KB, an ECG JPEG 283 KB → 113 KB,
+ * transparency intact on the first two. A page of cards goes from tens of megabytes to a few.
+ *
+ * `-v1` is not a documented option, so if lh3 ever refuses the request for anything but "no such
+ * file", the same width is asked for again without it: slower, but never a missing photo.
  */
+export const LH3_COMPRESSED = '-rw-v1';
+
 export function createPublicMediaReader(opts: {
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
@@ -121,34 +134,46 @@ export function createPublicMediaReader(opts: {
   const timeoutMs = opts.timeoutMs ?? MEDIA_TIMEOUT_MS;
   return async (fileId, width = 800) => {
     if (!isDriveFileId(fileId)) return { ok: false, error: 'bad_id' };
-    const url = `https://lh3.googleusercontent.com/d/${fileId}=w${coerceWidth(width)}`;
-    let res: Response;
-    try {
-      res = await fetchImpl(url, { signal: AbortSignal.timeout(timeoutMs) });
-    } catch (e) {
-      return { ok: false, error: 'drive_error', detail: serializeError(e).message };
-    }
-    // 403 and 404 are the same answer: whether the file is missing or merely not public is not
-    // something a caller may probe.
-    if (res.status === 403 || res.status === 404) {
-      await res.body?.cancel();
-      return { ok: false, error: 'not_found' };
-    }
-    if (!res.ok) {
-      await res.body?.cancel();
-      return { ok: false, error: 'drive_error', detail: `lh3 answered ${res.status}` };
-    }
-    const contentType = mimeOf(res.headers.get('content-type'));
-    if (!isImageType(contentType)) {
-      await res.body?.cancel();
-      return { ok: false, error: 'not_an_image', detail: contentType || 'missing content-type' };
-    }
-    const contentLength = res.headers.get('content-length');
-    return {
-      ok: true,
-      body: res.body,
-      contentType,
-      ...(contentLength ? { contentLength } : {}),
-    };
+    const base = `https://lh3.googleusercontent.com/d/${fileId}=w${coerceWidth(width)}`;
+    const compressed = await readLh3(fetchImpl, `${base}${LH3_COMPRESSED}`, timeoutMs);
+    // Only a refusal of the REQUEST earns a second try. 403/404 is the file's own answer, which no
+    // format option changes, and a network failure or timeout would only be waited out twice.
+    const refused =
+      !compressed.ok &&
+      (compressed.error === 'not_an_image' ||
+        (compressed.error === 'drive_error' && (compressed.detail ?? '').startsWith('lh3 answered')));
+    return refused ? readLh3(fetchImpl, base, timeoutMs) : compressed;
+  };
+}
+
+/** One lh3 request, answered as the proxy needs it. Never throws. */
+async function readLh3(fetchImpl: typeof fetch, url: string, timeoutMs: number): Promise<MediaResult> {
+  let res: Response;
+  try {
+    res = await fetchImpl(url, { signal: AbortSignal.timeout(timeoutMs) });
+  } catch (e) {
+    return { ok: false, error: 'drive_error', detail: serializeError(e).message };
+  }
+  // 403 and 404 are the same answer: whether the file is missing or merely not public is not
+  // something a caller may probe.
+  if (res.status === 403 || res.status === 404) {
+    await res.body?.cancel();
+    return { ok: false, error: 'not_found' };
+  }
+  if (!res.ok) {
+    await res.body?.cancel();
+    return { ok: false, error: 'drive_error', detail: `lh3 answered ${res.status}` };
+  }
+  const contentType = mimeOf(res.headers.get('content-type'));
+  if (!isImageType(contentType)) {
+    await res.body?.cancel();
+    return { ok: false, error: 'not_an_image', detail: contentType || 'missing content-type' };
+  }
+  const contentLength = res.headers.get('content-length');
+  return {
+    ok: true,
+    body: res.body,
+    contentType,
+    ...(contentLength ? { contentLength } : {}),
   };
 }

@@ -181,7 +181,7 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
   <div id="table" class="rugtable-scroll" tabindex="0" role="region" aria-label="Products table">
     <RugTable rugs={rugs} collections={collections} likesById={likesById} />
   </div>
-  <div id="grid" class="grid" hidden>
+  <div id="grid" class="grid rugs-grid" hidden>
     {
       rugs.map((rug) => (
         <RugCardAdmin rug={rug} collections={collections} likes={likesById.get(rug.id) ?? 0} />

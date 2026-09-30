@@ -222,6 +222,13 @@ export interface TransportInit {
   headers: Record<string, string>;
   signal: AbortSignal;
   client: TransportClient;
+  /**
+   * GET unless said otherwise. The one POST is the studio's own storefront password form
+   * (store-password.ts); everything the scraper reads is a GET.
+   */
+  method?: 'GET' | 'POST';
+  /** Request body, for that POST only. */
+  body?: string;
   /** Which impit profile to impersonate; ignored by the undici client. Default 'chrome'. */
   browser?: ImpitBrowser;
   logger?: Logger;
@@ -272,6 +279,11 @@ export interface ScrapeOptions {
   roundStep?: number;
   /** Keyless Jina Reader fallback for ECG (SCRAPE_JINA_FALLBACK); default true. */
   jinaFallback?: boolean;
+  /**
+   * The password of the studio's own Shopify storefront (SERIOLUDERE_STORE_PASSWORD), used only
+   * when serioludere.com answers 401 (store-password.ts). Never sent to any other shop.
+   */
+  storefrontPassword?: string;
   logger?: Logger;
   /** Replaces the impit/undici transport (unit tests never hit the network). */
   fetchImpl?: Transport;

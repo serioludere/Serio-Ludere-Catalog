@@ -109,6 +109,10 @@ export default defineConfig({
       // request is made. Set it to false only for a supplier the studio has a relationship with, and
       // record that decision — it is the owner's call, not the code's (docs/ADMIN_SPEC.md §4.5).
       SCRAPE_RESPECT_ROBOTS: envField.boolean({ context: 'server', access: 'secret', default: true }),
+      // The studio's own Shopify storefront password (owner, 2026-09-29). Only used when
+      // serioludere.com answers 401 — its "coming soon" password page — to sign in and read the
+      // product anyway (src/lib/scrape/store-password.ts). Unset: a locked store says so, as before.
+      SERIOLUDERE_STORE_PASSWORD: envField.string({ context: 'server', access: 'secret', optional: true }),
       // Customer realm + FX (brief §8, §10, §18). AUTH_SECRET signs customer session cookies; when it
       // is unset the customer realm stays disabled and /{slug} answers 404.
       AUTH_SECRET: envField.string({ context: 'server', access: 'secret', optional: true, min: 32 }),

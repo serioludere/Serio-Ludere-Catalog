@@ -450,19 +450,21 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
       const box = el('div', { class: 'ph' }, img, doc);
       const check = el(
         'input',
-        { type: 'checkbox', 'data-url': p.url, checked: true, 'aria-label': `Photo ${i + 1}` },
+        { type: 'checkbox', 'data-url': p.url, checked: true, 'aria-label': `Keep photo ${i + 1}` },
         [],
         doc,
       );
       check.checked = true;
-      check.addEventListener('change', updatePhotoCount);
-      // The texture radio, beside the keep checkbox: the same control the edit form renders server
-      // side, except that its value is still a supplier URL here — add() trades it for the Drive id.
+      // The texture, chosen by tapping the photo itself (owner, 2026-09-29: "the way you select photos
+      // on social media, checkbox inside"): the whole picture is the radio's label, and the tick sits
+      // in its corner. The same markup the edit form renders server side (RugFields.astro), except
+      // that the value is still a supplier URL here — add() trades it for the Drive id.
       const texture = el(
         'input',
         {
           type: 'radio',
           name: 'texture',
+          class: 'pick__input',
           'data-texture': '',
           value: p.url,
           'aria-label': `Photo ${i + 1} is the texture photo`,
@@ -470,11 +472,34 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
         [],
         doc,
       );
+      // A texture is always one of the photos being saved: choosing it keeps it, and dropping it from
+      // the save un-chooses it (the save then asks for another, see validate()).
+      texture.addEventListener('change', () => {
+        if (texture.checked && !check.checked) {
+          check.checked = true;
+          updatePhotoCount();
+        }
+      });
+      check.addEventListener('change', () => {
+        if (!check.checked && texture.checked) texture.checked = false;
+        updatePhotoCount();
+      });
+      const pick = el(
+        'label',
+        { class: 'pick', title: 'Make this the texture photo' },
+        [
+          texture,
+          box,
+          el('span', { class: 'pick__check', 'aria-hidden': 'true' }, [], doc),
+          el('span', { class: 'pick__badge', 'aria-hidden': 'true' }, 'Texture', doc),
+        ],
+        doc,
+      );
       photoStrip.appendChild(
         el(
-          'label',
+          'div',
           { class: 'card tile' },
-          [box, el('span', { class: 'mt' }, [check, ` ${i + 1}`, texture, ' texture'], doc)],
+          [pick, el('label', { class: 'mt keep' }, [check, ` Keep · ${i + 1}`], doc)],
           doc,
         ),
       );
@@ -807,6 +832,16 @@ export function initRugForm(doc: Document = document, opts: RugFormOptions = {})
     if (f.price.value.trim() && parsePrice(f.price.value) === undefined) {
       msg(m2, 'The price must be a number such as 1335 or 1335.50.', 'err');
       f.price.focus();
+      return false;
+    }
+    // A fetched rug is not saved without its texture photograph (owner, 2026-09-29), and the texture
+    // is one of the photos being saved. Only when photos ARE being saved: a manual entry, or "Save
+    // photos to Drive" switched off, has nothing for a texture to point at.
+    const saving = !edit && !manual && Boolean(savePhotos?.checked) ? selectedPhotoUrls() : [];
+    if (saving.length > 0 && !saving.includes(texturePick())) {
+      msg(m2, 'Choose the texture photo first: tap the close-up of the weave in Photos.', 'err');
+      // Scrolled to, not focused: a focus ring on the first photo reads as if it had been chosen.
+      photoStrip.scrollIntoView?.({ block: 'center' });
       return false;
     }
     return true;

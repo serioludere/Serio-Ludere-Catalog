@@ -127,6 +127,13 @@ describe('P9 · fetch failed, manual fallback', () => {
     expect(body()).toContain('The link is kept as source attribution either way.');
   });
 
+  it('never names the shop twice when the reason already starts with it', () => {
+    // "serioludere.com serioludere.com is password-protected…" until 2026-09-30.
+    view.failed('serioludere.com is password-protected (HTTP 401)', 'serioludere.com');
+    expect(body()).toContain('serioludere.com is password-protected (HTTP 401)');
+    expect(body()).not.toContain('serioludere.com serioludere.com');
+  });
+
   it('offers manual entry and a retry, and neither is destructive', () => {
     expect(footerLabels()).toEqual(['Enter it manually instead', 'Try fetching again']);
     const [manual, retry] = [...document.querySelectorAll<HTMLButtonElement>('[data-fetch-footer] button')];

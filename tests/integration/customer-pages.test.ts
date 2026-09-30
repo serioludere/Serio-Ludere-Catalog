@@ -132,6 +132,13 @@ describe('/{slug} — the gate', () => {
     // Owner, 2026-09-17: the brand block is the logo mark, not a text title or a standfirst line.
     expect(html).not.toContain('A private preview, prepared for you');
     expect(html).toContain('aria-label="Serio Ludere"');
+    // Owner, 2026-09-29: the studio's "SL" mark (SL_italic 10.svg, drawn for a cream ground) in place
+    // of the full wordmark the admin login shares — in the page's ink, so it reads on the cream.
+    const brand = html.slice(html.indexOf('pv-gate-brand'), html.indexOf('pv-gate-form'));
+    expect(brand).toContain('class="sl-mark"');
+    expect(brand).toContain('viewBox="0 0 150 227"');
+    expect(brand).toContain('fill="currentColor"');
+    expect(brand).not.toContain('admin-logo');
     // Owner, 2026-09-22: the gate is back on the cream ground with dark ink — the ordinary preview
     // mode, the same one the catalogue behind it runs on — after five days on a black theme.
     expect(html).toContain('data-mode="preview"');
@@ -191,6 +198,13 @@ describe('/{slug} — the signed-in catalog', () => {
     expect(html).not.toContain('href="/rugs/winks"');
     // Card = like only.
     expect(html).toMatch(/class="sr-only"[^>]*>Like this rug</);
+    // Owner, 2026-09-29: the popup shows the heart alone — the visible "Like" beside it is gone,
+    // while the button keeps its "Like this rug" for screen readers.
+    const popup = html.slice(html.indexOf('data-detail="SL-021"'), html.indexOf('data-detail="SL-022"'));
+    expect(popup).toContain('pv-modal__react');
+    expect(popup).not.toContain('pv-modal__react-label');
+    expect(popup).not.toMatch(/>\s*Like\s*</);
+    expect(popup).toMatch(/class="sr-only"[^>]*>Like this rug</);
     expect(html).not.toContain('data-vote="dislike"');
     expect(html).toContain('data-source="card"');
     // The realm is published for the reaction batch; the server still verifies the cookie.
@@ -230,6 +244,11 @@ describe('/{slug} — the signed-in catalog', () => {
     expect(plates).toContain('pv-modal__texture');
     // The hero comes first, so the rug is the subject and the weave the detail beside it.
     expect(plates.indexOf('pv-modal__photo')).toBeLessThan(plates.indexOf('pv-modal__texture'));
+    /* Owner, 2026-09-29: "the texture photo still shows a thin slice, we need full photo, perhaps pop
+       up larger". It is a button now, carrying the 1600px copy the tap enlarges. */
+    expect(plates).toMatch(/<button type="button" class="pv-modal__texture"/);
+    expect(plates).toContain('data-texture-zoom="/api/image/1TeXtUrE0000000000000000000000000?w=1600"');
+    expect(plates).toContain('tap to enlarge');
 
     const withMarkers = templateFor('SL-022');
     expect(withMarkers).not.toContain('pv-modal__texture');

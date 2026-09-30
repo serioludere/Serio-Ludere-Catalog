@@ -26,6 +26,7 @@ import { priceToUsd } from './money.ts';
 import { pricingRuleName, supplierRetail } from '../price.ts';
 import { RobotsCache, defaultRobotsCache, isPathAllowed, robotsAllows, type RobotsRules } from './robots.ts';
 import { looksLikeJson, parseShopifyProduct, shopifyRung, shouldProbeShopify } from './shopify.ts';
+import { dropStorefrontSession, storefrontSession, unlockStorefront } from './store-password.ts';
 import { NO_STORE_PRICE } from './storefront.ts';
 import { HostThrottle, defaultHostThrottle } from './throttle.ts';
 import {
@@ -107,6 +108,24 @@ interface Ctx {
   jina: boolean;
   /** Rules for the target host, already fetched once; used to vet the secondary URLs. */
   robots: RobotsRules;
+  /** Signs in to the studio's password-protected storefront (store-password.ts); used once. */
+  unlock?: () => Promise<string | undefined>;
+  /** What that sign-in did, for the message when the shop still answers 401. */
+  storefront?: 'opened' | 'refused';
+}
+
+/**
+ * 401 is a Shopify storefront behind its password page. Worth saying in as many words: the link is
+ * right, the shop is just locked — and, since 2026-09-29, what would open it.
+ */
+function passwordMessage(host: string, storefront: Ctx['storefront']): string {
+  const locked = `${host} is password-protected (HTTP 401)`;
+  if (storefront === 'refused')
+    return `${locked} and the store password the site has (SERIOLUDERE_STORE_PASSWORD) was refused — check it matches the one in Shopify`;
+  if (storefront === 'opened') return `${locked} even after signing in with the store password`;
+  return host.replace(/^www\./, '') === 'serioludere.com'
+    ? `${locked} — give the site the store password (SERIOLUDERE_STORE_PASSWORD) and it will sign in, or lift the password in Shopify`
+    : `${locked} — a storefront behind Shopify's password page cannot be read until it is open`;
 }
 
 function cloneRug(data: ScrapedRug): ScrapedRug {
@@ -289,6 +308,29 @@ async function scrapeShopifyFirst(det: DetectedKaravan, ctx: Ctx): Promise<Attem
     } catch (e) {
       lastError = fromError(e);
     }
+    /* The studio's own shop behind its password page (owner, 2026-09-29): sign in with the store
+       password, once per scrape, and ask again. Every later request of this scrape — the .json, the
+       page — carries the same cookie, because they all read ctx.fetchOpts. */
+    if (js?.status === 401 && ctx.unlock && !ctx.signal.aborted) {
+      const unlock = ctx.unlock;
+      ctx.unlock = undefined;
+      let cookie: string | undefined;
+      try {
+        cookie = await unlock();
+      } catch (e) {
+        lastError = fromError(e);
+      }
+      ctx.storefront = cookie ? 'opened' : 'refused';
+      if (cookie) {
+        ctx.fetchOpts.headers = { ...ctx.fetchOpts.headers, Cookie: cookie };
+        try {
+          js = await fetchText(det.jsUrl, 'impit', { ...ctx.fetchOpts, kind: 'json' });
+        } catch (e) {
+          lastError = fromError(e);
+          js = undefined;
+        }
+      }
+    }
     if (js?.status === 404) return fail('not_found', 'product not found (HTTP 404)', 404);
     jsOk = js !== undefined && js.status < 400 && looksLikeJson(js.body);
     if (!jsOk) {
@@ -317,7 +359,7 @@ async function scrapeShopifyFirst(det: DetectedKaravan, ctx: Ctx): Promise<Attem
         return fail(
           json.status === 403 ? 'blocked' : 'fetch_failed',
           json.status === 401
-            ? `${host} is password-protected (HTTP 401) — a storefront behind Shopify's password page cannot be read until it is open`
+            ? passwordMessage(host, ctx.storefront)
             : `${host} answered HTTP ${json.status}`,
           json.status,
         );
@@ -433,6 +475,19 @@ export async function scrapeRug(input: string, opts: ScrapeOptions = {}): Promis
     jina: opts.jinaFallback ?? true,
     robots: { agent: '', rules: [] },
   };
+  // The studio's own storefront, when it is behind its password (owner, 2026-09-29): an hour-old
+  // sign-in goes on from the first request, and the password is there to sign in again on a 401.
+  if (det.supplier === 'serioludere') {
+    const session = storefrontSession(det.sourceUrl);
+    if (session) fetchOpts.headers = { ...fetchOpts.headers, Cookie: session };
+    const password = opts.storefrontPassword;
+    if (password) {
+      ctx.unlock = () => {
+        dropStorefrontSession(det.sourceUrl);
+        return unlockStorefront(det.sourceUrl, password, fetchOpts);
+      };
+    }
+  }
   try {
     // brief §11: robots.txt, once per host, cached, and a Disallow is the `blocked` error code.
     if (opts.respectRobots !== false) {

@@ -178,7 +178,9 @@ export class FetchModalView {
     bar.hidden = true;
     clear(body);
 
-    body.append(el('p', { class: 'fetch__lede' }, `${host} ${reason}`, this.doc));
+    // Some reasons already name the shop ("serioludere.com is password-protected…"); never twice.
+    const lede = host && reason.startsWith(host) ? reason : `${host} ${reason}`;
+    body.append(el('p', { class: 'fetch__lede' }, lede, this.doc));
     body.append(
       el(
         'p',

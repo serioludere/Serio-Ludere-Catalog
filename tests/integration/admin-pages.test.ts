@@ -174,9 +174,15 @@ describe('/admin/rugs', () => {
     expect(html).toContain('id="collectionChips"');
     expect(html).toMatch(/id="collectionChips"[^>]*data-multi="false"/);
     expect(html).toMatch(/data-value="\*" aria-pressed="true"/);
-    expect(html).toMatch(/data-value="kilims"[^>]*>\s*Kilims\s*1/);
-    expect(html).toMatch(/data-value="tulu"[^>]*>\s*Tulu\s*1/);
-    expect(html).toMatch(/data-value="__none"[^>]*>\s*No collection\s*1/);
+    // The count in its own span since 2026-09-30, so the tabs can set it quieter than the name.
+    expect(html).toMatch(/data-value="kilims"[^>]*>\s*Kilims\s*<span class="chip__count">\s*1<\/span>/);
+    expect(html).toMatch(/data-value="tulu"[^>]*>\s*Tulu\s*<span class="chip__count">\s*1<\/span>/);
+    expect(html).toMatch(
+      /data-value="__none"[^>]*>\s*No collection\s*<span class="chip__count">\s*1<\/span>/,
+    );
+    // Drawn as the buyer's collection tabs (owner, 2026-09-30), and the grid view sized as theirs.
+    expect(html).toContain('class="chips rugfilters"');
+    expect(html).toContain('id="grid" class="grid rugs-grid"');
     // …and the select it replaced is gone, along with the status chips entirely.
     expect(html).not.toContain('id="f_collection_filter"');
     expect(html).not.toContain('id="statusChips"');

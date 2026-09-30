@@ -54,16 +54,38 @@ const specRowsOf = (card: CardView): Array<{ key: string; value: string }> => [
             ) : (
               <span class="pv-modal__empty">Photo to come</span>
             )}
+            {/* The whole photograph, never a slice of it (owner, 2026-09-29: "the texture photo still
+                shows a thin slice, we need full photo, perhaps pop up larger"), and a button: a tap
+                opens it at 1600px over the whole dialog (product-dialog.ts). */}
             {card.textureUrl && (
-              <figure class="pv-modal__texture">
+              <button
+                type="button"
+                class="pv-modal__texture"
+                data-texture-zoom={card.textureZoomUrl ?? card.textureUrl}
+                data-texture-alt={`${card.name}, the weave up close`}
+              >
                 <img
                   src={card.textureUrl}
                   alt={`${card.name}, the weave up close`}
                   loading="lazy"
                   decoding="async"
                 />
-                <figcaption class="pv-modal__texture-label">texture</figcaption>
-              </figure>
+                <span class="pv-modal__texture-label">
+                  texture
+                  <svg
+                    viewBox="0 0 16 16"
+                    width="12"
+                    height="12"
+                    fill="none"
+                    aria-hidden="true"
+                    focusable="false"
+                  >
+                    <circle cx="7" cy="7" r="4.5" stroke="currentColor" />
+                    <path d="M10.5 10.5L14 14M5 7h4M7 5v4" stroke="currentColor" stroke-linecap="round" />
+                  </svg>
+                  <span class="sr-only">, tap to enlarge</span>
+                </span>
+              </button>
             )}
           </div>
           {photos.length > 1 && (
@@ -102,13 +124,9 @@ const specRowsOf = (card: CardView): Array<{ key: string; value: string }> => [
           }
           {card.description && <p class="pv-modal__desc">{card.description}</p>}
           <div class="pv-modal__react">
+            {/* The heart alone (owner, 2026-09-29: the visible "Like" beside it, added 2026-09-20, is
+                gone). The button still carries its own "Like this rug" for screen readers. */}
             <Reactions rugId={card.id} mode="detail" />
-            {/* The heart alone says nothing until you already know what it does (owner, 2026-09-20).
-                The button keeps its own "Like this rug" for screen readers; this is the visible word
-                beside it, and it is not a second control — clicking it does nothing. */}
-            <span class="pv-modal__react-label" aria-hidden="true">
-              Like
-            </span>
           </div>
           <SpecTable rows={specRowsOf(card)} widthCm={card.widthCm} lengthCm={card.lengthCm} />
         </div>
@@ -124,6 +142,19 @@ const specRowsOf = (card: CardView): Array<{ key: string; value: string }> => [
     </svg>
   </button>
   <div class="pv-modal__body" data-product-body></div>
+  {
+    /* The enlarged texture (owner, 2026-09-29): one overlay for every rug, filled by the script from
+       the texture button that was tapped. It covers the whole dialog; a tap anywhere, the close
+       button or Esc puts the rug back. */
+  }
+  <div class="pv-zoom" data-zoom hidden>
+    <img class="pv-zoom__img" data-zoom-img alt="" decoding="async" />
+    <button type="button" class="pv-zoom__close" data-zoom-close aria-label="Close the enlarged photograph">
+      <svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true" focusable="false">
+        <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" stroke-linecap="round"></path>
+      </svg>
+    </button>
+  </div>
 </dialog>
 
 <script>
@@ -250,29 +281,93 @@ const specRowsOf = (card: CardView): Array<{ key: string; value: string }> => [
     padding: 0;
     list-style: none;
   }
-  /* The texture plate: a full-height column beside the hero. `cover`, not `contain` — a crop of a
-     close-up is still a close-up, where letterboxing it would waste the room it has. */
+  /* The texture plate: a column beside the hero holding the WHOLE photograph (owner, 2026-09-29).
+     It was `cover` in a full-height column, which cut a square close-up down to a thin upright
+     slice; now the picture keeps its own shape, centred in the column, and a tap enlarges it. */
   .pv-modal__texture {
     flex: 0 0 32%;
+    align-self: center;
     display: flex;
     flex-direction: column;
     gap: var(--stack-xs);
     min-width: 0;
+    max-height: 100%;
     margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: zoom-in;
   }
   .pv-modal__texture img {
-    flex: 1 1 auto;
+    display: block;
     width: 100%;
+    height: auto;
     min-height: 0;
-    object-fit: cover;
+    object-fit: contain;
     border: var(--rule-width) solid var(--rule);
+  }
+  .pv-modal__texture:hover img {
+    border-color: var(--ink-soft);
+  }
+  .pv-modal__texture:focus-visible {
+    outline: var(--border-width-focus) solid var(--border-focus);
+    outline-offset: 2px;
   }
   .pv-modal__texture-label {
     flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--stack-xs);
     font-family: var(--body);
     font-size: var(--text-xs);
     color: var(--ink-muted);
     text-align: center;
+  }
+  /* The enlarged texture: over the whole dialog, the photograph as large as it fits, never cropped. */
+  .pv-zoom {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    display: flex;
+    padding: var(--stack-lg);
+    background: var(--surface);
+    cursor: zoom-out;
+  }
+  .pv-zoom[hidden] {
+    display: none;
+  }
+  /* The element fills the overlay's box and `contain` fits the picture inside it, whatever its shape.
+     A max-height on an auto-sized image let a tall 1600px photo run past the dialog and be cropped by
+     it — the very slice this view exists to avoid. */
+  .pv-zoom__img {
+    display: block;
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    object-fit: contain;
+  }
+  .pv-zoom__close {
+    position: absolute;
+    inset-block-start: var(--stack-sm);
+    inset-inline-end: var(--stack-sm);
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: var(--rule-width) solid var(--rule);
+    border-radius: 100%;
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .pv-zoom__close:hover {
+    color: var(--brand);
   }
   .pv-modal__marker {
     padding: var(--corner-chip-pad, 2px 6px);
@@ -307,11 +402,6 @@ const specRowsOf = (card: CardView): Array<{ key: string; value: string }> => [
      the two stylesheets happened to load in. With it, this rule wins outright. */
   .pv-modal__react :global(.pv-circle .pv-glyph svg) {
     filter: none;
-  }
-  .pv-modal__react-label {
-    font-family: var(--body);
-    font-size: var(--text-sm);
-    color: var(--ink-soft);
   }
   /* The spec panel is drawn for a page column; inside the dialog it is already on a panel. */
   .pv-modal__info :global(.pv-spec) {
@@ -365,10 +455,14 @@ const specRowsOf = (card: CardView): Array<{ key: string; value: string }> => [
       max-height: 34dvh;
     }
     .pv-modal__texture {
-      flex-basis: 28%;
+      flex-basis: 34%;
     }
     .pv-modal__texture img {
       max-height: 34dvh;
+    }
+    /* On a phone the dialog scrolls as one, so the overlay is pinned to the screen instead. */
+    .pv-zoom {
+      position: fixed;
     }
     .pv-modal__info {
       overflow: visible;

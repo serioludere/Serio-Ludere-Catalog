@@ -34,7 +34,8 @@ const { id, label, chips, multi = false, class: className } = Astro.props;
         aria-pressed={c.pressed ? 'true' : 'false'}
       >
         {c.label}
-        {c.count !== undefined && ` ${c.count}`}
+        {/* Its own span so a tab strip can set the count quieter than the name; the text reads the same. */}
+        {c.count !== undefined && <span class="chip__count">{` ${c.count}`}</span>}
       </button>
     ))
   }

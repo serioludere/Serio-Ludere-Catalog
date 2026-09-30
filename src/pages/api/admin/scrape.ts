@@ -73,6 +73,7 @@ export const POST = adminPost(
       roundStep: roundStepOf(settings),
       jinaFallback: deps.scrape.jinaFallback,
       respectRobots: deps.scrape.respectRobots,
+      storefrontPassword: deps.scrape.storefrontPassword,
       convertToUsd: deps.convertToUsd,
       logger: consoleLogger,
     });

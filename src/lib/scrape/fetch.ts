@@ -95,11 +95,19 @@ export const defaultTransport: Transport = async (url, init) => {
   if (init.client === 'impit') {
     const impit = await loadImpit(init.logger ?? silentLogger, init.browser);
     if (impit) {
-      const r = await impit.fetch(url, { headers: init.headers, signal: init.signal, redirect: 'manual' });
+      const r = await impit.fetch(url, {
+        method: init.method ?? 'GET',
+        ...(init.body !== undefined ? { body: init.body } : {}),
+        headers: init.headers,
+        signal: init.signal,
+        redirect: 'manual',
+      });
       return { status: r.status, headers: r.headers, body: r.body, via: 'impit', abort: () => r.abort() };
     }
   }
   const r = await undiciFetch(url, {
+    method: init.method ?? 'GET',
+    ...(init.body !== undefined ? { body: init.body } : {}),
     headers: { 'User-Agent': BROWSER_USER_AGENT, ...init.headers },
     signal: init.signal,
     redirect: 'manual',

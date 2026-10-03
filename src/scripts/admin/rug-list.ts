@@ -5,6 +5,7 @@ import { shouldRotate } from '../../lib/rotate.ts';
 import { initChips } from './chips.ts';
 import { byId, maybe } from './dom.ts';
 import { initPager } from '../ui/paginate.ts';
+import { bindStickyBar } from '../ui/sticky.ts';
 import { post, type ApiOptions } from './api.ts';
 import { msg } from './msg.ts';
 
@@ -173,7 +174,18 @@ export function initRugList(doc: Document = document): RugList {
 
   // One collection at a time (owner, 2026-09-17), and one is always pressed: `allowNone` stays off so
   // releasing the current tab is impossible, and "All" is how you get back to everything.
-  const collectionChips = initChips(byId('collectionChips', doc), { onChange: apply });
+  // The tabs stick under the topbar on scroll (owner, 2026-10-03); a tab pressed from there takes the
+  // studio back to the top of the new list rather than leaving them part-way down it.
+  const tabs = byId('collectionChips', doc);
+  const anchor = doc.querySelector<HTMLElement>('[data-sticky-anchor]');
+  const win = doc.defaultView;
+  const sticky = anchor && win ? bindStickyBar(tabs, anchor, { win }) : undefined;
+  const collectionChips = initChips(tabs, {
+    onChange: () => {
+      apply();
+      sticky?.reveal();
+    },
+  });
   q.addEventListener('input', apply);
   doc.addEventListener('click', (e) => {
     const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-retry]');

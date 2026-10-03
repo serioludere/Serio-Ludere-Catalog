@@ -1315,6 +1315,20 @@
   border-right: var(--rule-width) solid var(--rule);
   background: var(--surface);
 }
+/* The rail stays put while the page scrolls (owner, 2026-10-03). It was a stretched flex item, as
+   tall as the page, so on a long product list its links went off the top with everything else. Now
+   it is one viewport tall and pinned, scrolling on its own only if a short window cannot fit it.
+   Desktop only: at 767 and below it is the fixed bottom tab bar, further down. */
+@media (min-width: 768px) {
+  .shell__nav {
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    height: 100vh;
+    height: 100dvh;
+    overflow-y: auto;
+  }
+}
 .shell__brand {
   display: flex;
   flex-direction: column;
@@ -1428,7 +1442,14 @@
   display: flex;
   flex-direction: column;
 }
+/* Sticky on scroll at every width (owner, 2026-10-03): the page title, the way home on a phone and
+   the only sign-out control stay in reach. Above content (the Products tabs pin under it at 24) and
+   below the phone tab bar (30) and the drawer (40). Its height is published as --shell-topbar-h
+   (AdminLayout), which is how a bar that sticks beneath it knows where to stop. */
 .shell__topbar {
+  position: sticky;
+  top: 0;
+  z-index: 25;
   box-sizing: border-box;
   display: flex;
   align-items: center;

@@ -118,14 +118,22 @@ const title = 'Serio Ludere';
           <PreviewControls rates={rates} placement="header" search={searchable} />
         </PreviewHeader>
         <main class="pv-main">
-          <section class="pv-wrap pv-title">
-            <div class="pv-title-row">
+          {/* The tab strip sticks under the header on scroll (owner, 2026-10-03), so a buyer deep in
+              a collection can change it without scrolling back up. It is its own child of <main>
+              rather than the first row of the intro section: a sticky box only travels as far as
+              its parent, and the intro section ends a few lines down. The anchor marks where the
+              bar rests in the flow (scripts/ui/sticky.ts). */}
+          <span class="pv-tabbar-anchor" data-tabbar-anchor aria-hidden="true" />
+          <div class="pv-tabbar" data-tabbar>
+            <div class="pv-wrap pv-title-row">
               {collections.length > 0 && (
                 <CollectionFilters collections={collections} active={activeFilter} />
               )}
               <span class="pv-spacer" aria-hidden="true" />
               <PreviewControls rates={rates} search={searchable} />
             </div>
+          </div>
+          <section class="pv-wrap pv-title">
             {/* The selected collection's own description, as the intro to the cards below it (owner,
                 2026-09-18). filters.ts fills it from the pressed tab; blank under "All", and hidden
                 outright rather than left as an empty line that would still take its gap. */}
@@ -137,7 +145,7 @@ const title = 'Serio Ludere';
             </button>
           </section>
 
-          <section class="pv-wrap">
+          <section class="pv-wrap pv-results">
             {cards.length > 0 ? (
               <div class="pv-grid">
                 {cards.map((card) => (
@@ -222,6 +230,52 @@ const title = 'Serio Ludere';
     }
   }
 
+  /* The sticky tab bar (owner, 2026-10-03). It pins under the header — whose height sticky.ts
+     publishes as --pv-header-h; the fallbacks are that header's own arithmetic, for the frames before
+     the script runs — and carries the page ground, so rugs pass under it rather than through it.
+     Its 8px of padding gives the pinned tabs room to breathe; everything around it is measured to
+     put the tabs, the intro and the grid exactly where they sat before the bar existed:
+       tabs     56 + 8      = 64 under the header (--section-gap, as drawn)
+       intro    8 + 24      = 32 under the tabs (the 8 + 24 the intro always had)
+       grid     8 + 56      = 64 under the intro, or under the tabs when there is no intro
+     `<main>`'s own gap is set aside for this, because the spacing between these three now depends on
+     whether the intro is showing. */
+  .pv-main {
+    gap: 0;
+    padding-top: calc(var(--section-gap) - var(--stack-sm));
+  }
+  .pv-tabbar-anchor {
+    display: block;
+    height: 0;
+  }
+  .pv-tabbar {
+    position: sticky;
+    top: var(
+      --pv-header-h,
+      calc(2 * var(--stack-md) + var(--leading-heading) * var(--h4) + var(--rule-width))
+    );
+    z-index: 20;
+    padding-block: var(--stack-sm);
+    background: var(--canvas);
+    transition: box-shadow var(--motion-quick) var(--motion-ease);
+  }
+  /* An edge only while pinned, so the bar reads as chrome over the rugs; at rest the page is as drawn. */
+  .pv-tabbar.is-stuck {
+    box-shadow: 0 var(--rule-width) 0 0 var(--rule);
+  }
+  .pv-title {
+    margin-top: var(--stack-xl);
+    padding-bottom: var(--stack-sm);
+  }
+  /* "All" has no description: the intro section then takes no room at all, and the grid sits the
+     same 64 under the tabs that it sits under an intro. */
+  .pv-title:has(> [data-collection-intro][hidden]) {
+    display: none;
+  }
+  .pv-results {
+    margin-top: calc(var(--section-gap) - var(--stack-sm));
+  }
+
   /* The collection description (owner, 2026-09-20). It was --text-lg, a step ABOVE the tab titles
      it sits under; it is body size now, runs the full width of the grid, and is clamped to three
      lines with a 'read more' under it. */
@@ -230,8 +284,8 @@ const title = 'Serio Ludere';
        apart, so the description read as part of the tabs rather than as the introduction to the
        rugs. 24 is the page's next step up (--stack-xl) and leaves the strip and the paragraph as
        two things; the 'read more' stays at 8 because it belongs to THIS paragraph, and nesting a
-       small step inside a large one is what makes the rhythm read as deliberate. */
-    margin-top: var(--stack-xl);
+       small step inside a large one is what makes the rhythm read as deliberate. Since the tabs
+       moved into their own sticky bar (2026-10-03) the 24 is `.pv-title`'s margin, below. */
     max-width: none;
     /* Owner, 2026-09-25: 11px. It was twice the body size from 2026-09-23, which made the
        introduction louder than the rugs it introduces; it is a quiet note under the tabs now. */
@@ -292,6 +346,10 @@ const title = 'Serio Ludere';
     .pv-title-row .pv-spacer,
     .pv-title-row :global(.pv-controls) {
       display: none;
+    }
+    /* The phone header is the controls' row: 12 + 28 + 12 and its hairline (PreviewHeader). */
+    .pv-tabbar {
+      top: var(--pv-header-h, calc(2 * var(--stack-md) + 28px + var(--rule-width)));
     }
     .pv-state {
       padding-inline: var(--stack-lg);

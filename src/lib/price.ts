@@ -45,9 +45,13 @@ export function suggestRetail(
    Per-supplier retail formulas (owner, 2026-09-13).
 
    Until now every supplier shared one multiplier from the Settings tab. The owner supplied a
-   different rule for each of the two suppliers, and neither is a plain multiplication: Karavan's
-   adds a flat amount that depends on which band the SCRAPED price falls in, and ecarpetgallery's
-   adds a flat 150 after the multiplier. A single `markup` number cannot express either.
+   different rule for each of the two suppliers, and neither is a plain multiplication: each adds a
+   flat amount that depends on which band the SCRAPED price falls in. A single `markup` number
+   cannot express either.
+
+   ecarpetgallery's rule was `× 1.5 + 150` until the owner replaced it on 2026-10-03 with
+   `× 0.75 × 2 + band`, the same bands Karavan uses. The multiplier is unchanged (0.75 × 2 = 1.5);
+   what moved is the flat amount — 100 below $500 and 200 above $1000 instead of 150 everywhere.
 
    These functions take the supplier price already converted to USD and return the retail figure
    BEFORE rounding — the caller applies `roundUpToStep`, so the "round to nearest 5/50" setting keeps
@@ -55,14 +59,14 @@ export function suggestRetail(
 --------------------------------------------------------------------------------------------- */
 
 /**
- * The flat amount Karavan's rule adds, chosen by the band the base price falls in.
+ * The flat amount both supplier rules add, chosen by the band the base price falls in.
  *
  * The owner's wording is "if X<500 then add 100 USD, if X=500 to 1000 then add 150 USD, if X>1000
- * then add 200 USD", and confirmed X to be the base USD price — the figure scraped from the page,
- * not the multiplied one. The boundaries are therefore inclusive at both ends of the middle band:
- * 500 and 1000 both add 150.
+ * then add 200 USD", and confirmed X to be the base USD price — the figure scraped from the page
+ * (converted to USD), not the multiplied one. The boundaries are therefore inclusive at both ends of
+ * the middle band: 500 and 1000 both add 150.
  */
-export function karavanBand(basePriceUsd: number): number {
+export function priceBand(basePriceUsd: number): number {
   if (basePriceUsd < 500) return 100;
   if (basePriceUsd <= 1000) return 150;
   return 200;
@@ -71,12 +75,13 @@ export function karavanBand(basePriceUsd: number): number {
 /** karavanrug.com: base × 0.7 × 2, then the band amount for the base price. */
 export function karavanRetail(basePriceUsd: number): number {
   // Written as the owner wrote it (× 0.7 × 2, not × 1.4) so the rule stays legible against the note.
-  return basePriceUsd * 0.7 * 2 + karavanBand(basePriceUsd);
+  return basePriceUsd * 0.7 * 2 + priceBand(basePriceUsd);
 }
 
-/** ecarpetgallery.com: the USD price × 1.5, then a flat 150. */
+/** ecarpetgallery.com (owner, 2026-10-03): the USD price × 0.75 × 2, then the band amount for it. */
 export function ecarpetgalleryRetail(priceUsd: number): number {
-  return priceUsd * 1.5 + 150;
+  // As the owner wrote it (× 0.75 × 2, not × 1.5), like Karavan's above.
+  return priceUsd * 0.75 * 2 + priceBand(priceUsd);
 }
 
 /**
@@ -98,7 +103,7 @@ export const SUPPLIER_FORMULAS: Readonly<Record<string, (priceUsd: number) => nu
 /** A human-readable name for the rule applied, shown next to the suggested price in the admin form. */
 export function pricingRuleName(supplier: string): string | undefined {
   if (supplier === 'karavanrug') return 'karavanrug: base × 0.7 × 2 + band';
-  if (supplier === 'ecarpetgallery') return 'ecarpetgallery: USD × 1.5 + 150';
+  if (supplier === 'ecarpetgallery') return 'ecarpetgallery: USD × 0.75 × 2 + band';
   if (supplier === 'serioludere') return "serioludere: the store's own price";
   return undefined;
 }

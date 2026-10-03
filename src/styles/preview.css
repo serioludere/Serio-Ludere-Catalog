@@ -223,12 +223,21 @@
    hairline. The detail header is 148, because its wordmark is H4 (57:229) and its box is 19. */
 /* Owner, 2026-09-20: the band was --section-gap (64) top and bottom around a 140px logo, so a
    third of the first screen was chrome. One tight row now: the name, set in the brand face. */
+/* Sticky on scroll (owner, 2026-10-03): the navigation stays in reach however far down the page the
+   buyer is — the wordmark home, the back link on a rug's page, and on a phone the unit, currency and
+   search controls. It carries the page ground so content passes under it, and sits one layer above
+   the catalogue's tab bar, which pins directly beneath it, so the phone's open search (which lies
+   over this row) is never under the tabs. */
 .pv-header {
+  position: sticky;
+  top: 0;
+  z-index: 21;
   display: flex;
   align-items: center;
   gap: var(--stack-md);
   padding: var(--stack-md) var(--gutter);
   border-bottom: var(--rule-width) solid var(--rule);
+  background: var(--canvas);
 }
 
 .pv-header .pv-wordmark {

@@ -102,11 +102,11 @@ describe('scrapeRug: ecarpetgallery.com', () => {
       seenPrice: 700,
       seenCurrency: 'USD',
       priceUsd: 700,
-      // ecarpetgallery's own formula (owner, 2026-09-13): 700 × 1.5 + 150 = 1200. The Settings
-      // markup of 1.6 is deliberately ignored — the formula IS the rule for this supplier.
+      // ecarpetgallery's own formula (owner, 2026-10-03): 700 × 0.75 × 2 + 150 (the 500–1000 band)
+      // = 1200. The Settings markup of 1.6 is deliberately ignored — the formula IS the rule here.
       suggestedRetailUsd: 1200,
       markupApplied: undefined,
-      pricingRule: 'ecarpetgallery: USD × 1.5 + 150',
+      pricingRule: 'ecarpetgallery: USD × 0.75 × 2 + band',
       roundStep: 5,
     });
     expect(calls.map((c) => [c.url, c.client])).toEqual([[ECG_380114_URL, 'impit']]);
@@ -498,7 +498,7 @@ describe('finalisePricing (ADMIN_SPEC §4.7 / §7)', () => {
       markup: 1.6,
     });
     expect(out.priceUsd).toBe(990);
-    // 990 × 1.5 + 150 = 1635. The 1.6 markup passed above is ignored: `base` is an ecarpetgallery
+    // 990 × 0.75 × 2 + 150 (500–1000 band) = 1635. The 1.6 markup passed above is ignored: `base` is an ecarpetgallery
     // rug, and that supplier has a formula.
     expect(out.suggestedRetailUsd).toBe(1635);
     expect(out.warnings).toEqual(['existing', 'price converted from EUR 900 with the Rates tab (estimate)']);
@@ -515,7 +515,7 @@ describe('finalisePricing (ADMIN_SPEC §4.7 / §7)', () => {
       { ...base, seenCurrency: 'USD', seenPrice: 833 },
       { markup: 1.6, roundStep: 0 },
     );
-    // 833 × 1.5 + 150 = 1399.5, rounded up to the next 5 → 1400 (roundStep 0 falls back to 5).
+    // 833 × 0.75 × 2 + 150 = 1399.5, rounded up to the next 5 → 1400 (roundStep 0 falls back to 5).
     expect(usd).toMatchObject({ priceUsd: 833, suggestedRetailUsd: 1400, roundStep: 5 });
   });
 });

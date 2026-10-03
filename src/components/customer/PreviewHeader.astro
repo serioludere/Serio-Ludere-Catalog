@@ -107,8 +107,9 @@ const controls = Astro.slots.has('default');
       padding-block: var(--stack-md);
       gap: var(--stack-sm);
       flex-wrap: wrap;
-      /* The open name search lies over this row, gutter to gutter (PreviewControls). */
-      position: relative;
+      /* The open name search lies over this row, gutter to gutter (PreviewControls). The header's
+         own `position: sticky` (preview.css) is what it is placed against; a `relative` here would
+         unpin the header on exactly the screen where it carries the controls. */
     }
     .pv-header--controls .pv-spacer {
       min-width: 0;

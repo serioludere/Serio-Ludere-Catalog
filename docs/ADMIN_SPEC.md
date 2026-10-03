@@ -363,7 +363,9 @@ auth.logout | auth.lockout`; `target_tab` ∈ `Rugs | Collections | Tags | Clien
 > **Per-supplier formulas supersede the markup for the two known suppliers (owner, 2026-09-13).**
 > `karavanrug` prices at `base × 0.7 × 2 + band(base)`, where the band is `+100` below 500, `+150`
 > across 500–1000 inclusive, and `+200` above 1000 — the band reads the **scraped** price, not the
-> multiplied one. `ecarpetgallery` prices at `USD × 1.5 + 150`. Both are then rounded up by
+> multiplied one. `ecarpetgallery` prices at `USD × 0.75 × 2 + band(USD)` with the same bands, read
+> from the USD price before multiplying (owner, 2026-10-03; it was `USD × 1.5 + 150` until then —
+> the multiplier is the same, only the flat amount now varies). Both are then rounded up by
 > `price_round_step` as before. The formula ignores any `retail_markup.*` row for that supplier
 > rather than letting a stale setting silently reprice the catalogue; `retail_markup` still governs
 > owned stock and any unrecognised supplier. Implemented in `src/lib/price.ts` (`supplierRetail`).

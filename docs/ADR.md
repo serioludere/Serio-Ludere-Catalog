@@ -822,7 +822,10 @@ number could not express them. The formula **ignores** a configured markup for t
 than letting it override: a stale Settings row silently repricing the catalogue is a failure the
 owner cannot see. `retail_markup` still governs owned stock and anything unrecognised, which is what
 it is now for. The visible consequence is a repricing — ECG $700 moves 1120 → 1200, a $4000 Karavan
-6000 → 5800.
+6000 → 5800. **Amended (owner, 2026-10-03):** ecarpetgallery is now `USD × 0.75 × 2 + band(USD)`,
+the same bands as Karavan (`priceBand` in `src/lib/price.ts`). The multiplier is unchanged, so a rug
+in the 500–1000 band prices exactly as before; one under $500 is $50 lower and one over $1000 is $50
+higher. Only new scrapes see it — saved rugs keep the price already written to the sheet.
 
 **The scrambled customer route uses `-` and `_`, not the `~` and `.` first chosen.** The owner's
 example (`/hi6g2a3a%s`) uses `%`, which begins a percent-escape in a URL path; `%s` is not valid hex,

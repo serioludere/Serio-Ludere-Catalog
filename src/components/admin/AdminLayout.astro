@@ -111,7 +111,11 @@ const heading = title.replace(/^Serio Ludere\s*—\s*/, '');
     }
     <script>
       import { initScrollLock } from '../../scripts/ui/scroll-lock.ts';
+      import { publishHeight } from '../../scripts/ui/sticky.ts';
       initScrollLock();
+      // The topbar sticks on scroll (owner, 2026-10-03); the Products tabs pin directly under it.
+      const topbar = document.querySelector<HTMLElement>('.shell__topbar');
+      if (topbar) publishHeight(topbar, '--shell-topbar-h');
     </script>
   </body>
 </html>

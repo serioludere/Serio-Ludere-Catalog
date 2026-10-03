@@ -1,4 +1,4 @@
-// Per-supplier retail formulas (owner, 2026-09-13).
+// Per-supplier retail formulas (owner, 2026-09-13; ecarpetgallery's replaced 2026-10-03).
 //
 // The interesting part is not the arithmetic, it is the BOUNDARIES. The owner's wording is
 // "if X<500 then add 100 USD, if X=500 to 1000 then add 150 USD, if X>1000 then add 200 USD", which
@@ -7,27 +7,27 @@
 import { describe, expect, it } from 'vitest';
 import {
   ecarpetgalleryRetail,
-  karavanBand,
   karavanRetail,
+  priceBand,
   pricingRuleName,
   supplierRetail,
 } from '../../../src/lib/price.ts';
 
-describe('karavanBand', () => {
+describe('priceBand', () => {
   it('adds 100 below 500', () => {
-    expect(karavanBand(1)).toBe(100);
-    expect(karavanBand(499.99)).toBe(100);
+    expect(priceBand(1)).toBe(100);
+    expect(priceBand(499.99)).toBe(100);
   });
 
   it('adds 150 across the inclusive 500–1000 band, both ends included', () => {
-    expect(karavanBand(500)).toBe(150); // "X=500 to 1000" — 500 is IN the middle band
-    expect(karavanBand(750)).toBe(150);
-    expect(karavanBand(1000)).toBe(150); // …and so is 1000
+    expect(priceBand(500)).toBe(150); // "X=500 to 1000" — 500 is IN the middle band
+    expect(priceBand(750)).toBe(150);
+    expect(priceBand(1000)).toBe(150); // …and so is 1000
   });
 
   it('adds 200 above 1000', () => {
-    expect(karavanBand(1000.01)).toBe(200);
-    expect(karavanBand(5000)).toBe(200);
+    expect(priceBand(1000.01)).toBe(200);
+    expect(priceBand(5000)).toBe(200);
   });
 });
 
@@ -47,18 +47,28 @@ describe('karavanRetail', () => {
 });
 
 describe('ecarpetgalleryRetail', () => {
-  it('multiplies by 1.5 then adds a flat 150', () => {
-    expect(ecarpetgalleryRetail(700)).toBe(1200);
-    expect(ecarpetgalleryRetail(0.01)).toBeCloseTo(150.015, 6);
-    expect(ecarpetgalleryRetail(1000)).toBe(1650);
+  it('multiplies by 0.75 then 2, then adds the band for the USD price (owner, 2026-10-03)', () => {
+    expect(ecarpetgalleryRetail(400)).toBe(700); // 600 + 100
+    expect(ecarpetgalleryRetail(499.99)).toBeCloseTo(849.985, 6); // 749.985 + 100
+    expect(ecarpetgalleryRetail(500)).toBe(900); // 750 + 150 — 500 is in the middle band
+    expect(ecarpetgalleryRetail(700)).toBe(1200); // 1050 + 150
+    expect(ecarpetgalleryRetail(1000)).toBe(1650); // 1500 + 150 — and so is 1000
+    expect(ecarpetgalleryRetail(1001)).toBeCloseTo(1701.5, 6); // 1501.5 + 200
+    expect(ecarpetgalleryRetail(2000)).toBe(3200); // 3000 + 200
+  });
+
+  it('reads the band from the USD price, not the multiplied one', () => {
+    // 400 × 1.5 = 600 would sit in the middle band, but 400 is below 500 so the flat amount is 100.
+    expect(ecarpetgalleryRetail(400) - 400 * 1.5).toBe(100);
   });
 });
 
 describe('supplierRetail', () => {
   it('rounds the formula up to the step, leaving the setting that owners actually tune in charge', () => {
-    // 833 × 1.5 + 150 = 1399.5 → next 5 is 1400; next 50 is 1400 as well.
+    // 833 × 0.75 × 2 + 150 = 1399.5 → next 5 is 1400; next 50 is 1400 as well.
     expect(supplierRetail('ecarpetgallery', 833, undefined, 5)).toBe(1400);
     expect(supplierRetail('ecarpetgallery', 810, undefined, 50)).toBe(1400); // 1365 → 1400
+    expect(supplierRetail('ecarpetgallery', 333, undefined, 5)).toBe(600); // 499.5 + 100 → 600
   });
 
   it('ignores the Settings markup for a supplier that has a formula', () => {
@@ -103,7 +113,7 @@ describe('supplierRetail', () => {
 describe('pricingRuleName', () => {
   it('names the rule for each supplier that has one, so the form can show what was applied', () => {
     expect(pricingRuleName('karavanrug')).toContain('0.7');
-    expect(pricingRuleName('ecarpetgallery')).toContain('1.5');
+    expect(pricingRuleName('ecarpetgallery')).toBe('ecarpetgallery: USD × 0.75 × 2 + band');
     expect(pricingRuleName('serioludere')).toBe("serioludere: the store's own price");
   });
 

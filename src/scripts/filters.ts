@@ -14,8 +14,13 @@
 // collection while there is a query: a buyer typing a rug's name wants that rug, not to be told it
 // is in another tab. No tab is pressed meanwhile, since none of them is what the grid shows; emptying
 // the field brings the tab back, and pressing a tab ends the search.
+//
+// The strip sticks under the header on scroll (owner, 2026-10-03), so it can be pressed from deep in
+// a collection. When it is, the buyer is taken back to the top of the new result rather than left
+// part-way down it (ui/sticky.ts).
 import { SEARCH_EVENT, SEARCH_RESET_EVENT, nameMatches, type SearchDetail } from './customer/search.ts';
 import { initPager } from './ui/paginate.ts';
+import { bindStickyBar, publishHeight } from './ui/sticky.ts';
 
 const PARAM = 'collection';
 const SLUG_RE = /^[a-z0-9-]{1,80}$/;
@@ -83,6 +88,14 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
 
   const empty = doc.querySelector<HTMLElement>('[data-grid-empty]');
   const emptyText = empty?.textContent ?? '';
+
+  /* The sticky bar the strip lives in, pinned under the header — whose height the bar needs for its
+     `top`, so it is published here, where the only thing that sticks below it is bound. */
+  const bar = doc.querySelector<HTMLElement>('[data-tabbar]');
+  const anchor = doc.querySelector<HTMLElement>('[data-tabbar-anchor]');
+  const header = doc.querySelector<HTMLElement>('.pv-header');
+  const unpublish = bar && header ? publishHeight(header, '--pv-header-h', { doc }) : undefined;
+  const sticky = bar && anchor && win ? bindStickyBar(bar, anchor, { win }) : undefined;
 
   /* Written only when the number actually moves: re-setting identical text re-fires the live region,
      which is how a status line turns into a screen reader repeating itself. */
@@ -157,6 +170,7 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
       doc.dispatchEvent(new CustomEvent(SEARCH_RESET_EVENT));
     }
     setActive(chip.dataset.filter);
+    sticky?.reveal();
   };
 
   const onSearch = (e: Event): void => {
@@ -164,6 +178,8 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
     if (next === query) return;
     query = next;
     apply();
+    // The result is a different list too; a search typed from the pinned bar starts at its top.
+    sticky?.reveal();
   };
 
   nav.addEventListener('click', onClick);
@@ -177,6 +193,8 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
   return () => {
     nav.removeEventListener('click', onClick);
     doc.removeEventListener(SEARCH_EVENT, onSearch);
+    sticky?.dispose();
+    unpublish?.();
   };
 }
 

@@ -156,8 +156,11 @@ const syncLabel_ = snapshot ? syncLabel(snapshot.fetchedAt) : undefined;
     /* Owner, 2026-09-17: the collection tabs sit BELOW the search bar rather than inside it, and
       select one at a time. They were briefly multi-select; a combined view of two collections read
       as neither, and on a real catalogue the row was the widest thing in the bar. "All" is how you
-      get back to everything — rug-list.ts keeps exactly one pressed. */
+      get back to everything — rug-list.ts keeps exactly one pressed.
+      Owner, 2026-10-03: they stick under the topbar on scroll. The empty anchor marks where the strip
+      rests in the flow, which a pinned strip's own position cannot tell (scripts/ui/sticky.ts). */
   }
+  <div class="sticky-anchor" data-sticky-anchor aria-hidden="true"></div>
   <Chips id="collectionChips" label="Filter by collection" chips={collectionChips} class="rugfilters" />
   <p class="hint" id="count" role="status" aria-live="polite"></p>
   <div id="m-retry" class="msg"></div>

@@ -7,8 +7,8 @@ import { a as adminRuntime } from "./http_BM_MA3wM.mjs";
 import { h as clientLink, s as parseAdminSnapshot, t as ADMIN_READ_RANGES, x as CLIENT_CODE_RE } from "./read_OzURy9vU.mjs";
 import { t as coverFillsHeight } from "./cover-fit_DCPobnYk.mjs";
 import { t as dims } from "./units_BFAJ7W-k.mjs";
-import { t as $$AdminLayout } from "./AdminLayout_CBi0tv5j.mjs";
-import { t as $$CopyButton } from "./CopyButton_DK5e7Mqg.mjs";
+import { t as $$AdminLayout } from "./AdminLayout_C1sVXFgz.mjs";
+import { t as $$CopyButton } from "./CopyButton_ByKnQQ44.mjs";
 import { n as buildSavesReport, t as SAVES_READ_RANGE } from "./saves_pMlP3ks5.mjs";
 //#region src/components/ui/Badge.astro
 createAstro("https://astro.build");

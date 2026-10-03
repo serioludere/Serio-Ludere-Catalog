@@ -1,0 +1,100 @@
+---
+// The studio's note to a signed-in buyer (owner, 2026-10-03): a full-width band that rises from the
+// bottom of the catalog ten seconds after it opens, with a Close button. The timing and the
+// remembered dismissal live in src/scripts/customer/studio-note.ts.
+//
+// On the page ground with a hairline above it, like the header's rule below it: one theme for the
+// whole realm (owner, 2026-09-22), so the note is a band of the page, not a dark slab over it.
+---
+
+<aside class="pv-note" data-studio-note aria-label="A note from the studio" hidden>
+  <div class="pv-note__inner">
+    <div class="pv-note__copy">
+      <p class="pv-note__text">
+        Almost every piece in our collection is one of a kind, made once and never repeated. If you love
+        something but need a different size or color palette, just ask. What you see here is only part of our
+        inventory, and we're happy to help you find a close match. And if you've fallen for something or have
+        an idea of your own, we can have it made for you.
+      </p>
+      <p class="pv-note__hint">Click any carpet for more details.</p>
+    </div>
+    <button type="button" class="pv-btn pv-note__close" data-studio-note-close>Close</button>
+  </div>
+</aside>
+
+<script>
+  import { initStudioNote } from '../../scripts/customer/studio-note.ts';
+  initStudioNote();
+</script>
+
+<style>
+  .pv-note {
+    position: fixed;
+    inset-inline: 0;
+    inset-block-end: 0;
+    z-index: 10;
+    padding-block-end: env(safe-area-inset-bottom);
+    background: var(--surface-raised);
+    border-top: var(--rule-width) solid var(--rule);
+    box-shadow: 0 -12px 32px rgb(0 0 0 / 0.06);
+    transform: translateY(100%);
+    transition: transform var(--motion-transition) var(--motion-ease);
+  }
+  .pv-note.is-open {
+    transform: none;
+  }
+
+  .pv-note__inner {
+    display: flex;
+    align-items: center;
+    gap: var(--stack-2xl);
+    padding: var(--stack-xl) var(--gutter);
+  }
+
+  .pv-note__copy {
+    display: flex;
+    flex-direction: column;
+    gap: var(--stack-sm);
+    max-width: 92ch;
+  }
+
+  .pv-note__text {
+    font-size: var(--text-base);
+    line-height: var(--leading-body);
+    color: var(--ink);
+    text-wrap: pretty;
+  }
+
+  .pv-note__hint {
+    font-size: var(--text-sm);
+    font-weight: 700;
+    color: var(--ink-soft);
+  }
+
+  /* .pv-btn is full-width by default (it was drawn for forms); here it is a button beside the copy. */
+  .pv-note__close {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 120px;
+    margin-inline-start: auto;
+  }
+
+  @media (max-width: 767px) {
+    .pv-note__inner {
+      flex-direction: column;
+      align-items: stretch;
+      gap: var(--stack-lg);
+      padding: var(--stack-lg) var(--gutter);
+    }
+    .pv-note__close {
+      width: 100%;
+      margin-inline-start: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pv-note {
+      transition: none;
+    }
+  }
+</style>

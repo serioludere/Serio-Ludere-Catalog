@@ -21,6 +21,7 @@ import PreviewHeader from '../../components/customer/PreviewHeader.astro';
 import PreviewLayout from '../../components/customer/PreviewLayout.astro';
 import ProductCard from '../../components/customer/ProductCard.astro';
 import ProductDialog from '../../components/customer/ProductDialog.astro';
+import StudioNote from '../../components/customer/StudioNote.astro';
 import CollectionFilters from '../../components/customer/CollectionFilters.astro';
 import PageNav from '../../components/ui/PageNav.astro';
 import { findCustomer, noteVisit } from '../../lib/customer/http.ts';
@@ -186,6 +187,8 @@ const title = 'Serio Ludere';
           </section>
         </main>
         <PreviewFooter />
+        {/* Rises from the bottom ten seconds in (owner, 2026-10-03). */}
+        <StudioNote />
       </>
     )
   }
@@ -234,15 +237,15 @@ const title = 'Serio Ludere';
      publishes as --pv-header-h; the fallbacks are that header's own arithmetic, for the frames before
      the script runs — and carries the page ground, so rugs pass under it rather than through it.
      Its 8px of padding gives the pinned tabs room to breathe; everything around it is measured to
-     put the tabs, the intro and the grid exactly where they sat before the bar existed:
-       tabs     56 + 8      = 64 under the header (--section-gap, as drawn)
+     put the tabs, the intro and the grid where they sat before the bar existed:
+       tabs     16 + 8      = 24 under the header (owner, 2026-10-03: the drawn 64 was dead space)
        intro    8 + 24      = 32 under the tabs (the 8 + 24 the intro always had)
        grid     8 + 56      = 64 under the intro, or under the tabs when there is no intro
      `<main>`'s own gap is set aside for this, because the spacing between these three now depends on
      whether the intro is showing. */
   .pv-main {
     gap: 0;
-    padding-top: calc(var(--section-gap) - var(--stack-sm));
+    padding-top: calc(var(--stack-xl) - var(--stack-sm));
   }
   .pv-tabbar-anchor {
     display: block;

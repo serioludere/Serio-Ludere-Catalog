@@ -813,17 +813,14 @@ td pre {
    With no chip, a soft halo in the card's
    ground keeps both legible where the corner falls on a dark rug; it is an edge, not a background.
    `.ph` is in the selector on purpose: `.card .ph span` (the "no photo" label, 0,2,1) otherwise wins
-   and draws the count at 11px in grey.
-   Owner, 2026-10-03: 8px between the heart you can see and the number, and the number takes the
-   heart's own shadow — one drop-shadow on the pair, so the two can never drift apart. The heart's
-   stroke stops 2.5px inside its 20px box, so the gap gives that back. */
+   and draws the count at 11px in grey. */
 .card .ph .lk {
   position: absolute;
   bottom: var(--stack-sm);
   right: var(--stack-sm);
   display: inline-flex;
   align-items: center;
-  gap: calc(var(--stack-sm) - 2.5px);
+  gap: var(--stack-xs);
   color: var(--ink);
   font-family: var(--body);
   /* The admin's 15px step (`--h3` in admin mode): a notch above the card's own text. */
@@ -832,12 +829,15 @@ td pre {
   letter-spacing: normal;
   font-variant-numeric: tabular-nums;
   line-height: 1;
-  filter: drop-shadow(0 0 1.5px var(--surface));
+  text-shadow:
+    0 0 2px var(--surface),
+    0 0 4px var(--surface);
 }
 .card .ph .lk svg {
   flex: none;
   fill: var(--brand);
   stroke: var(--brand);
+  filter: drop-shadow(0 0 1.5px var(--surface));
 }
 /* Signed / Antique corner badge (owner, 2026-09-13) — top-left, opposite the photo count, and
    styled exactly like it so the two corners read as one family rather than two ideas. */

@@ -166,21 +166,19 @@ const likes = visibleLikes(card.likes);
     z-index: 2;
     display: flex;
     align-items: center;
+    gap: var(--tight);
   }
 
   /* The count sits left of the heart so the circle stays hard against the corner. Mono, so a card
-     ticking from 9 to 10 does not shift the heart sideways.
-     Owner, 2026-10-03: no chip behind it — the number is drawn like the heart beside it, in cream with
-     the heart's own glyph shadow, and 8px from the heart you can SEE. The heart's 64px button keeps
-     18px of empty hit area left of the stroke ((64 − 36) / 2 for the glyph box, plus the artwork's
-     4px inset), so the margin takes that back. */
+     ticking from 9 to 10 does not shift the heart sideways. */
   .pv-card-likes {
-    margin-inline-end: calc(var(--stack-sm) - 18px);
     font-family: var(--mono);
     font-size: var(--text-sm);
     line-height: 1;
-    color: var(--ink-cream);
-    filter: var(--shadow-glyph);
+    padding: 2px 6px;
+    border-radius: var(--radius-pill);
+    background: var(--surface-raised);
+    color: var(--ink-soft);
   }
 
   /* Top-left, opposite the heart. A list because a rug can be both Signed and Antique. */

@@ -5,10 +5,10 @@ import { t as renderScript } from "./motion-spec_D-Pj3-r2.mjs";
 import { St as serializeError, i as getClient, xt as consoleLogger } from "./runtime_ze_g5m0z.mjs";
 import { S as COLLECTION_DESCRIPTION_MAX, i as fetchAdminSnapshot, u as syncLabel } from "./read_OzURy9vU.mjs";
 import { o as jsonForScript } from "./view_DOOWEoSU.mjs";
-import { t as $$AdminLayout } from "./AdminLayout_C1sVXFgz.mjs";
-import { t as $$Button } from "./Button_B-lpSdLq.mjs";
-import { n as $$Modal, t as $$EmptyState } from "./EmptyState_Bbxy8bOK.mjs";
-import { t as $$Input } from "./Input_h0ETpxLf.mjs";
+import { t as $$AdminLayout } from "./AdminLayout_CBi0tv5j.mjs";
+import { t as $$Button } from "./Button_CBOOetbp.mjs";
+import { n as $$Modal, t as $$EmptyState } from "./EmptyState_DFXjrNV7.mjs";
+import { t as $$Input } from "./Input_BwfSVj3a.mjs";
 //#region src/pages/admin/collections.astro
 var collections_exports = /* @__PURE__ */ __exportAll({
 	default: () => $$Collections,

@@ -127,6 +127,13 @@ const likes = visibleLikes(card.likes);
     max-width: none;
     height: 100%;
   }
+  /* Owner, 2026-10-04: on a phone the photo sits at the TOP of its 2:3 plate, so the rug starts 16
+     under the tabs or the collection intro; a squarer photo's spare plate falls below it, not above. */
+  @media (max-width: 767px) {
+    .pv-card-image img {
+      object-position: top;
+    }
+  }
   /* The storefront's own image hover, at a gentler amount: 600ms ease-out, 4% rather than 30%.
      Pointer devices only. */
   @media (hover: hover) and (prefers-reduced-motion: no-preference) {

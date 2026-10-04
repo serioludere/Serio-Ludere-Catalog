@@ -4,7 +4,7 @@ import { t as createComponent } from "./compiler_CXPqD_v7.mjs";
 import { t as renderScript } from "./motion-spec_D-Pj3-r2.mjs";
 import { St as serializeError, i as getClient, xt as consoleLogger } from "./runtime_ze_g5m0z.mjs";
 import { V as AUDIT_ACTIONS, i as fetchAdminSnapshot } from "./read_OzURy9vU.mjs";
-import { t as $$AdminLayout } from "./AdminLayout_BjPRCi2J.mjs";
+import { t as $$AdminLayout } from "./AdminLayout_BkbPVq4x.mjs";
 //#region src/lib/admin/audit-labels.ts
 var AUDIT_LABELS = {
 	"rug.create": "Product added",

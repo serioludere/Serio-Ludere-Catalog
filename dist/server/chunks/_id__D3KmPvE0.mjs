@@ -5,7 +5,7 @@ import { t as renderScript } from "./motion-spec_D-Pj3-r2.mjs";
 import { St as serializeError, i as getClient, xt as consoleLogger } from "./runtime_ze_g5m0z.mjs";
 import { j as ID_RE, m as roundStepOf, o as findRugById } from "./read_OzURy9vU.mjs";
 import { o as jsonForScript } from "./view_DOOWEoSU.mjs";
-import { t as $$AdminLayout } from "./AdminLayout_BkbPVq4x.mjs";
+import { t as $$AdminLayout } from "./AdminLayout_BjPRCi2J.mjs";
 import { t as $$RugFields } from "./RugFields_BNLrD1H_.mjs";
 import { t as fetchAdminSnapshotWithLikes } from "./likes_CgW8enPk.mjs";
 //#region src/pages/admin/rugs/[id].astro

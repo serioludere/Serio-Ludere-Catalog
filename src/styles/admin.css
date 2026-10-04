@@ -1091,11 +1091,6 @@ a:focus-visible {
     /* Owner, 2026-10-04: the first card closer under the tabs and the count line on a phone. */
     margin-top: var(--stack-sm);
   }
-  /* And each photo at the top of its 2:3 plate, as on the buyer's card: a squarer photo's spare plate
-     falls below it, not above. A turned photo (.rot) is drawn sideways, so it stays centred. */
-  .grid.rugs-grid .card .ph img:not(.rot) {
-    object-position: top;
-  }
   .chips.rugfilters {
     justify-content: center;
     column-gap: var(--stack-lg);

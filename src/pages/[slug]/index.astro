@@ -346,11 +346,14 @@ const title = 'Serio Ludere';
       gap: var(--stack-sm);
       flex-wrap: wrap;
     }
-    /* Owner, 2026-10-04: the grid sits 24 under the intro (or under the tabs, with no intro) on a
-       phone, not 64 — the same step the tabs sit under the header. 8 of it is .pv-title's (or the
-       tab bar's) bottom padding. */
+    /* Owner, 2026-10-04: no dead space between the tabs and the first rug on a phone. The intro sits
+       16 under the tabs (8 of it the tab bar's padding), and the grid 16 under the intro, or under
+       the tabs when there is no intro (8 of it .pv-title's or the tab bar's bottom padding). */
+    .pv-title {
+      margin-top: var(--stack-sm);
+    }
     .pv-results {
-      margin-top: calc(var(--stack-xl) - var(--stack-sm));
+      margin-top: var(--stack-sm);
     }
     .pv-title-row .pv-spacer,
     .pv-title-row :global(.pv-controls) {

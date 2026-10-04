@@ -1,7 +1,7 @@
 import { F as maybeRenderHead, L as addAttribute, O as renderComponent, P as renderTemplate, T as spreadAttributes, W as createAstro, j as renderSlot } from "./runtime_skv-YCY6.mjs";
 import { t as createComponent } from "./compiler_CXPqD_v7.mjs";
 import { t as renderScript } from "./motion-spec_D-Pj3-r2.mjs";
-import { n as $$Icon } from "./AdminLayout_Cc5W_MM3.mjs";
+import { n as $$Icon } from "./AdminLayout_BjPRCi2J.mjs";
 //#region src/components/ui/Input.astro
 createAstro("https://astro.build");
 var $$Input = createComponent(($$result, $$props, $$slots) => {

@@ -1,6 +1,6 @@
 import { F as maybeRenderHead, L as addAttribute, O as renderComponent, P as renderTemplate, W as createAstro, j as renderSlot } from "./runtime_skv-YCY6.mjs";
 import { t as createComponent } from "./compiler_CXPqD_v7.mjs";
-import { n as $$Icon } from "./AdminLayout_Cc5W_MM3.mjs";
+import { n as $$Icon } from "./AdminLayout_BjPRCi2J.mjs";
 //#region src/components/ui/FetchModal.astro
 createAstro("https://astro.build");
 var $$FetchModal = createComponent(($$result, $$props, $$slots) => {

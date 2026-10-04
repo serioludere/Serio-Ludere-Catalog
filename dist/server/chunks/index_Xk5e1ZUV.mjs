@@ -3,7 +3,7 @@ import { F as maybeRenderHead, O as renderComponent, P as renderTemplate } from 
 import { t as createComponent } from "./compiler_CXPqD_v7.mjs";
 import { St as serializeError, i as getClient, xt as consoleLogger } from "./runtime_ze_g5m0z.mjs";
 import { i as fetchAdminSnapshot, n as adminCounts } from "./read_OzURy9vU.mjs";
-import { t as $$AdminLayout } from "./AdminLayout_C1sVXFgz.mjs";
+import { t as $$AdminLayout } from "./AdminLayout_Cc5W_MM3.mjs";
 //#region src/pages/admin/index.astro
 var admin_exports = /* @__PURE__ */ __exportAll({
 	default: () => $$Index,
@@ -30,8 +30,8 @@ var $$Index = createComponent(async ($$result, $$props, $$slots) => {
 The catalogue sheet is missing its admin columns, so products cannot be edited yet. Ask your developer
         to run the sheet setup.
 </div>`}${settingsWarnings.map((w) => renderTemplate`<div class="msg busy on">${w}</div>`)}<section class="stack" aria-labelledby="h-counts"> <h3 id="h-counts">Catalogue</h3> <div class="stats"> <div class="stat"> <div class="k">Products</div> <div class="v">${counts ? counts.rugs : "—"}</div> </div> <div class="stat"> <div class="k">Collections</div> <div class="v">${counts ? counts.collections : "—"}</div> </div> <div class="stat"> <div class="k">Tags</div> <div class="v">${counts ? counts.tags : "—"}</div> </div> <div class="stat"> <div class="k">Customers</div> <div class="v"> ${counts ? counts.clients.active : "—"} ${counts && counts.clients.revoked > 0 && renderTemplate`<small>+${counts.clients.revoked} paused</small>`} </div> </div> </div> </section> ` })}`;
-}, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/pages/admin/index.astro", void 0);
-var $$file = "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/pages/admin/index.astro";
+}, "/home/user/Serio-Ludere-Catalog/src/pages/admin/index.astro", void 0);
+var $$file = "/home/user/Serio-Ludere-Catalog/src/pages/admin/index.astro";
 var $$url = "/admin";
 //#endregion
 //#region \0virtual:astro:page:src/pages/admin/index@_@astro

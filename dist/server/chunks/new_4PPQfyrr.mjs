@@ -6,9 +6,9 @@ import { St as serializeError, i as getClient, xt as consoleLogger } from "./run
 import { a as adminRuntime } from "./http_BM_MA3wM.mjs";
 import { i as fetchAdminSnapshot, m as roundStepOf } from "./read_OzURy9vU.mjs";
 import { o as jsonForScript } from "./view_DOOWEoSU.mjs";
-import { t as $$AdminLayout } from "./AdminLayout_C1sVXFgz.mjs";
-import { t as $$RugFields } from "./RugFields_BHnBwMbM.mjs";
-import { t as $$FetchModal } from "./FetchModal_DW3TSCxu.mjs";
+import { t as $$AdminLayout } from "./AdminLayout_Cc5W_MM3.mjs";
+import { t as $$RugFields } from "./RugFields_BNLrD1H_.mjs";
+import { t as $$FetchModal } from "./FetchModal_BFAuBToi.mjs";
 import { n as nextRugId } from "./ids_BcKhPSck.mjs";
 import { f as reservedIds, r as driveScope } from "./_shared_DaCDSoV1.mjs";
 //#region src/pages/admin/rugs/new.astro
@@ -73,12 +73,12 @@ The catalogue sheet is missing its admin columns, so products cannot be added ye
 		"roundStep": roundStep,
 		"driveScopeOk": driveScopeOk,
 		"nextId": nextId
-	})} <script type="application/json" id="admin-data">${unescapeHTML(jsonForScript(data))}<\/script>${renderScript($$result, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/pages/admin/rugs/new.astro?astro&type=script&index=0&lang.ts")}${renderComponent($$result, "FetchModal", $$FetchModal, {
+	})} <script type="application/json" id="admin-data">${unescapeHTML(jsonForScript(data))}<\/script>${renderScript($$result, "/home/user/Serio-Ludere-Catalog/src/pages/admin/rugs/new.astro?astro&type=script&index=0&lang.ts")}${renderComponent($$result, "FetchModal", $$FetchModal, {
 		"id": "fetch-result",
 		"title": "Fetching"
 	})} ` })}`;
-}, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/pages/admin/rugs/new.astro", void 0);
-var $$file = "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/pages/admin/rugs/new.astro";
+}, "/home/user/Serio-Ludere-Catalog/src/pages/admin/rugs/new.astro", void 0);
+var $$file = "/home/user/Serio-Ludere-Catalog/src/pages/admin/rugs/new.astro";
 var $$url = "/admin/rugs/new";
 //#endregion
 //#region \0virtual:astro:page:src/pages/admin/rugs/new@_@astro

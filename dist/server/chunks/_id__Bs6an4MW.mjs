@@ -5,8 +5,8 @@ import { t as renderScript } from "./motion-spec_D-Pj3-r2.mjs";
 import { St as serializeError, i as getClient, xt as consoleLogger } from "./runtime_ze_g5m0z.mjs";
 import { j as ID_RE, m as roundStepOf, o as findRugById } from "./read_OzURy9vU.mjs";
 import { o as jsonForScript } from "./view_DOOWEoSU.mjs";
-import { t as $$AdminLayout } from "./AdminLayout_C1sVXFgz.mjs";
-import { t as $$RugFields } from "./RugFields_BHnBwMbM.mjs";
+import { t as $$AdminLayout } from "./AdminLayout_Cc5W_MM3.mjs";
+import { t as $$RugFields } from "./RugFields_BNLrD1H_.mjs";
 import { t as fetchAdminSnapshotWithLikes } from "./likes_CgW8enPk.mjs";
 //#region src/pages/admin/rugs/[id].astro
 var _id__exports = /* @__PURE__ */ __exportAll({
@@ -69,9 +69,9 @@ Back to products
 		"roundStep": roundStep,
 		"driveScopeOk": null,
 		"likes": likesById.get(rug.id) ?? 0
-	})} <script type="application/json" id="admin-data">${unescapeHTML(jsonForScript(data))}<\/script>${renderScript($$result, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/pages/admin/rugs/[id].astro?astro&type=script&index=0&lang.ts")}` })}`}` })}`;
-}, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/pages/admin/rugs/[id].astro", void 0);
-var $$file = "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/pages/admin/rugs/[id].astro";
+	})} <script type="application/json" id="admin-data">${unescapeHTML(jsonForScript(data))}<\/script>${renderScript($$result, "/home/user/Serio-Ludere-Catalog/src/pages/admin/rugs/[id].astro?astro&type=script&index=0&lang.ts")}` })}`}` })}`;
+}, "/home/user/Serio-Ludere-Catalog/src/pages/admin/rugs/[id].astro", void 0);
+var $$file = "/home/user/Serio-Ludere-Catalog/src/pages/admin/rugs/[id].astro";
 var $$url = "/admin/rugs/[id]";
 //#endregion
 //#region \0virtual:astro:page:src/pages/admin/rugs/[id]@_@astro

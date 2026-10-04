@@ -40,8 +40,8 @@ var $$Logout = createComponent(async ($$result, $$props, $$slots) => {
 	}
 	clearSessionCookie(Astro.cookies, adminRuntime.isSecureSite);
 	return Astro.redirect("/admin/login", 303);
-}, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/pages/admin/logout.astro", void 0);
-var $$file = "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/pages/admin/logout.astro";
+}, "/home/user/Serio-Ludere-Catalog/src/pages/admin/logout.astro", void 0);
+var $$file = "/home/user/Serio-Ludere-Catalog/src/pages/admin/logout.astro";
 var $$url = "/admin/logout";
 //#endregion
 //#region \0virtual:astro:page:src/pages/admin/logout@_@astro

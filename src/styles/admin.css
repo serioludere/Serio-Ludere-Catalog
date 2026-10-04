@@ -1089,6 +1089,21 @@ a:focus-visible {
   .grid.rugs-grid {
     grid-template-columns: 1fr;
   }
+  /* Owner, 2026-10-04: as on the buyer's card, the plate takes the photo's own shape on a phone, so
+     a squarer photo no longer sits in a band of empty plate above and below it. `auto 2 / 3` holds
+     the 2:3 plate until the photo loads. A turned photo (.rot, added once it loads) keeps the 2:3
+     plate: its box is drawn sideways, so the plate cannot take its shape from it. */
+  .grid.rugs-grid .card .ph:has(> img:not(.rot)) {
+    display: block;
+    aspect-ratio: auto;
+  }
+  .grid.rugs-grid .card .ph > img:not(.rot) {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    aspect-ratio: auto 2 / 3;
+  }
   .chips.rugfilters {
     justify-content: center;
     column-gap: var(--stack-lg);

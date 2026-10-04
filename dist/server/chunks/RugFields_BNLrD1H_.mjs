@@ -170,7 +170,7 @@ var $$Checkbox = createComponent(($$result, $$props, $$slots) => {
 	Astro.self = $$Checkbox;
 	const { name, id = name, label, checked = false, indeterminate = false, disabled = false, value, class: className } = Astro.props;
 	return renderTemplate`${maybeRenderHead($$result)}<label${addAttribute(["check", className], "class:list")}${addAttribute(id, "for")}> <input class="check__box" type="checkbox"${addAttribute(id, "id")}${addAttribute(name, "name")}${addAttribute(value, "value")}${addAttribute(checked, "checked")}${addAttribute(disabled, "disabled")}${addAttribute(indeterminate ? "true" : void 0, "data-indeterminate")}> <span>${label}</span> </label>`;
-}, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/components/ui/Checkbox.astro", void 0);
+}, "/home/user/Serio-Ludere-Catalog/src/components/ui/Checkbox.astro", void 0);
 //#endregion
 //#region src/components/ui/MultiSelect.astro
 createAstro("https://astro.build");
@@ -189,7 +189,7 @@ var $$MultiSelect = createComponent(($$result, $$props, $$slots) => {
 		"label": o.label,
 		"checked": o.selected === true
 	})}`)} ${options.length === 0 && renderTemplate`<p class="msel__empty">No collections yet — add one first.</p>`} </div> </details> </div>`;
-}, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/components/ui/MultiSelect.astro", void 0);
+}, "/home/user/Serio-Ludere-Catalog/src/components/ui/MultiSelect.astro", void 0);
 //#endregion
 //#region src/components/admin/RugFields.astro
 createAstro("https://astro.build");
@@ -280,6 +280,6 @@ Yes
 </button> <button class="btn btn--secondary" id="confirmNo" type="button">
 Cancel
 </button> </div> </dialog>`}`;
-}, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/components/admin/RugFields.astro", void 0);
+}, "/home/user/Serio-Ludere-Catalog/src/components/admin/RugFields.astro", void 0);
 //#endregion
 export { $$RugFields as t };

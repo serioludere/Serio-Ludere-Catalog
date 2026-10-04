@@ -213,7 +213,7 @@ var $$Icon = createComponent(($$result, $$props, $$slots) => {
 		]
 	}[name];
 	return renderTemplate`${maybeRenderHead($$result)}<svg viewBox="0 0 16 16"${addAttribute(size, "width")}${addAttribute(size, "height")} fill="none" aria-hidden="true" focusable="false"${addAttribute(className, "class")}${spreadAttributes(rest)}> ${paths.map((p) => renderTemplate`<path${addAttribute(p.d, "d")} stroke="currentColor"${addAttribute(p.cap, "stroke-linecap")}${addAttribute(p.join, "stroke-linejoin")}></path>`)} </svg>`;
-}, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/components/ui/Icon.astro", void 0);
+}, "/home/user/Serio-Ludere-Catalog/src/components/ui/Icon.astro", void 0);
 //#endregion
 //#region src/components/ui/AppShell.astro
 createAstro("https://astro.build");
@@ -251,7 +251,7 @@ var $$AppShell = createComponent(($$result, $$props, $$slots) => {
 		icon: "refresh",
 		label: "Google"
 	}].map((item) => renderTemplate`<a class="shell__link shell__link--secondary"${addAttribute(item.href, "href")}${addAttribute(active === item.key ? "page" : void 0, "aria-current")}> ${renderComponent($$result, "Icon", $$Icon, { "name": item.icon })} <span>${item.label}</span> </a>`)} ${renderSlot($$result, $$slots["nav-footer"])} </nav> <div class="shell__main"> <header class="shell__topbar">  <a class="shell__home" href="/admin">Serio Ludere</a> <h1 class="shell__title">${title}</h1> ${meta && renderTemplate`<span class="shell__meta">${meta}</span>`} ${renderSlot($$result, $$slots["topbar"])} </header> <main class="shell__content">${renderSlot($$result, $$slots["default"])}</main> </div> </div>`;
-}, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/components/ui/AppShell.astro", void 0);
+}, "/home/user/Serio-Ludere-Catalog/src/components/ui/AppShell.astro", void 0);
 //#endregion
 //#region src/components/admin/AdminLayout.astro
 createAstro("https://astro.build");
@@ -276,7 +276,7 @@ var $$AdminLayout = createComponent(($$result, $$props, $$slots) => {
 	}, {
 		"default": ($$result) => renderTemplate`  ${renderSlot($$result, $$slots["default"])} `,
 		"topbar": ($$result) => renderTemplate`<form method="post" action="/admin/logout" class="logout"> <button class="shell__logout" type="submit"> ${renderComponent($$result, "Icon", $$Icon, { "name": "logout" })} <span class="sr-only">Log out</span> </button> </form>`
-	})}` : renderTemplate`<div class="bare"> <main> ${renderSlot($$result, $$slots["default"])} </main> </div>`} ${renderScript($$result, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/components/admin/AdminLayout.astro?astro&type=script&index=0&lang.ts")}</body> </html>`;
-}, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/components/admin/AdminLayout.astro", void 0);
+	})}` : renderTemplate`<div class="bare"> <main> ${renderSlot($$result, $$slots["default"])} </main> </div>`} ${renderScript($$result, "/home/user/Serio-Ludere-Catalog/src/components/admin/AdminLayout.astro?astro&type=script&index=0&lang.ts")}</body> </html>`;
+}, "/home/user/Serio-Ludere-Catalog/src/components/admin/AdminLayout.astro", void 0);
 //#endregion
 export { $$Icon as n, $$AdminLayout as t };

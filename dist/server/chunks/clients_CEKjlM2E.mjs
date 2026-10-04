@@ -7,10 +7,10 @@ import { St as serializeError, i as getClient, xt as consoleLogger } from "./run
 import { a as adminRuntime } from "./http_BM_MA3wM.mjs";
 import { h as clientLink, i as fetchAdminSnapshot, u as syncLabel, y as withoutSecrets } from "./read_OzURy9vU.mjs";
 import { o as jsonForScript } from "./view_DOOWEoSU.mjs";
-import { n as $$Icon, t as $$AdminLayout } from "./AdminLayout_C1sVXFgz.mjs";
-import { t as $$CopyButton } from "./CopyButton_ByKnQQ44.mjs";
-import { t as $$Button } from "./Button_B-lpSdLq.mjs";
-import { n as $$Modal, t as $$EmptyState } from "./EmptyState_Bbxy8bOK.mjs";
+import { n as $$Icon, t as $$AdminLayout } from "./AdminLayout_Cc5W_MM3.mjs";
+import { t as $$CopyButton } from "./CopyButton_Dabk-ZLm.mjs";
+import { t as $$Button } from "./Button_DXPJ5732.mjs";
+import { n as $$Modal, t as $$EmptyState } from "./EmptyState_BnMbWkIc.mjs";
 //#region src/components/ui/CredentialPanel.astro
 createAstro("https://astro.build");
 var $$CredentialPanel = createComponent(($$result, $$props, $$slots) => {
@@ -23,7 +23,7 @@ var $$CredentialPanel = createComponent(($$result, $$props, $$slots) => {
 		"data-copy-what": "both",
 		"class": "credential__both"
 	}, { "default": ($$result) => renderTemplate` Copy link ` })} </section>`;
-}, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/components/ui/CredentialPanel.astro", void 0);
+}, "/home/user/Serio-Ludere-Catalog/src/components/ui/CredentialPanel.astro", void 0);
 //#endregion
 //#region src/pages/admin/clients.astro
 var clients_exports = /* @__PURE__ */ __exportAll({
@@ -89,9 +89,9 @@ The preview link never changes, so a rename costs the buyer nothing.
 </p> <label class="field__label" for="renameDialogInput">Client name</label> <input class="input" id="renameDialogInput" type="text" autocomplete="off" aria-describedby="renameDialogHint" maxlength="60" required> <p class="msg err" id="renameDialogErr" hidden></p> <div class="actions"> <button class="btn btn--primary" id="renameDialogOk" type="submit">Save name</button> <button class="btn btn--secondary" id="renameDialogCancel" type="button">Cancel</button> </div> </form> </dialog> <template id="copyTpl">${templateEnter($$result)}${renderComponent($$result, "CopyButton", $$CopyButton, {
 		"value": "",
 		"label": "Copy link"
-	})}${templateExit($$result)}</template> <script type="application/json" id="admin-data">${unescapeHTML(jsonForScript(data))}<\/script>${renderScript($$result, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/pages/admin/clients.astro?astro&type=script&index=0&lang.ts")}` })}`;
-}, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/pages/admin/clients.astro", void 0);
-var $$file = "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/pages/admin/clients.astro";
+	})}${templateExit($$result)}</template> <script type="application/json" id="admin-data">${unescapeHTML(jsonForScript(data))}<\/script>${renderScript($$result, "/home/user/Serio-Ludere-Catalog/src/pages/admin/clients.astro?astro&type=script&index=0&lang.ts")}` })}`;
+}, "/home/user/Serio-Ludere-Catalog/src/pages/admin/clients.astro", void 0);
+var $$file = "/home/user/Serio-Ludere-Catalog/src/pages/admin/clients.astro";
 var $$url = "/admin/clients";
 //#endregion
 //#region \0virtual:astro:page:src/pages/admin/clients@_@astro

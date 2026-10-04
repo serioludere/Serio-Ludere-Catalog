@@ -127,6 +127,25 @@ const likes = visibleLikes(card.likes);
     max-width: none;
     height: 100%;
   }
+  /* Owner, 2026-10-04: on a phone the plate takes the photo's own shape. One card per row makes the
+     2:3 plate as tall as 1.5 screen widths, so a squarer photo, shown whole, sat in a band of empty
+     plate above and below it: the gap under the tabs, and between rugs, read as dead space. The
+     img's `auto 2 / 3` holds the plate at 2:3 until the photo loads (so lazy loading still has
+     something to measure), then gives way to the photo's own ratio. A card with no photo keeps the
+     2:3 plate. */
+  @media (max-width: 767px) {
+    .pv-card-image:has(> img) {
+      display: block;
+      aspect-ratio: auto;
+    }
+    .pv-card-image:has(> img) img,
+    .pv-card-image[data-fit='height'] img {
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      aspect-ratio: auto 2 / 3;
+    }
+  }
   /* The storefront's own image hover, at a gentler amount: 600ms ease-out, 4% rather than 30%.
      Pointer devices only. */
   @media (hover: hover) and (prefers-reduced-motion: no-preference) {

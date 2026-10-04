@@ -7,8 +7,8 @@ import { a as adminRuntime } from "./http_BM_MA3wM.mjs";
 import { h as clientLink, s as parseAdminSnapshot, t as ADMIN_READ_RANGES, x as CLIENT_CODE_RE } from "./read_OzURy9vU.mjs";
 import { t as coverFillsHeight } from "./cover-fit_DCPobnYk.mjs";
 import { t as dims } from "./units_BFAJ7W-k.mjs";
-import { t as $$AdminLayout } from "./AdminLayout_C1sVXFgz.mjs";
-import { t as $$CopyButton } from "./CopyButton_ByKnQQ44.mjs";
+import { t as $$AdminLayout } from "./AdminLayout_Cc5W_MM3.mjs";
+import { t as $$CopyButton } from "./CopyButton_Dabk-ZLm.mjs";
 import { n as buildSavesReport, t as SAVES_READ_RANGE } from "./saves_pMlP3ks5.mjs";
 //#region src/components/ui/Badge.astro
 createAstro("https://astro.build");
@@ -21,7 +21,7 @@ var $$Badge = createComponent(($$result, $$props, $$slots) => {
 		tone !== "neutral" && `badge--${tone}`,
 		className
 	], "class:list")}>${renderSlot($$result, $$slots["default"])}</span>`;
-}, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/components/ui/Badge.astro", void 0);
+}, "/home/user/Serio-Ludere-Catalog/src/components/ui/Badge.astro", void 0);
 //#endregion
 //#region src/components/ui/StatBlock.astro
 createAstro("https://astro.build");
@@ -34,7 +34,7 @@ var $$StatBlock = createComponent(($$result, $$props, $$slots) => {
 		tone !== "default" && `statblock--${tone}`,
 		className
 	], "class:list")}> <span class="statblock__label">${label}</span> <span class="statblock__value">${value}</span> </div>`;
-}, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/components/ui/StatBlock.astro", void 0);
+}, "/home/user/Serio-Ludere-Catalog/src/components/ui/StatBlock.astro", void 0);
 //#endregion
 //#region src/lib/admin/visits.ts
 /** Bounded like the saves report: the same growth breaker governs both append-only logs. */
@@ -231,9 +231,9 @@ Liked<span class="cust__sec-long" data-astro-cid-kxbmmqbw> — most recent first
 		"data-astro-cid-kxbmmqbw": true
 	}, { "default": ($$result) => renderTemplate`Saved` })} </div> <p class="gcard__id mono" data-astro-cid-kxbmmqbw>${r.rugId}</p> <p class="gcard__name" data-astro-cid-kxbmmqbw>${r.name}</p> <p class="gcard__size" data-astro-cid-kxbmmqbw>${sizeOf.get(r.rugId) ?? ""}</p> </article>`)} </div>` : renderTemplate`<p class="hint" data-astro-cid-kxbmmqbw>Nothing liked yet.</p>`} <p class="hint" data-astro-cid-kxbmmqbw>
 Copy the product numbers to share this shortlist with a supplier.
-${status === "revoked" && " This link has been revoked; the buyer can no longer sign in."} </p> </section> ` })} ${renderScript($$result, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/pages/admin/clients/[code].astro?astro&type=script&index=0&lang.ts")}`;
-}, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/pages/admin/clients/[code].astro", void 0);
-var $$file = "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/pages/admin/clients/[code].astro";
+${status === "revoked" && " This link has been revoked; the buyer can no longer sign in."} </p> </section> ` })} ${renderScript($$result, "/home/user/Serio-Ludere-Catalog/src/pages/admin/clients/[code].astro?astro&type=script&index=0&lang.ts")}`;
+}, "/home/user/Serio-Ludere-Catalog/src/pages/admin/clients/[code].astro", void 0);
+var $$file = "/home/user/Serio-Ludere-Catalog/src/pages/admin/clients/[code].astro";
 var $$url = "/admin/clients/[code]";
 //#endregion
 //#region \0virtual:astro:page:src/pages/admin/clients/[code]@_@astro

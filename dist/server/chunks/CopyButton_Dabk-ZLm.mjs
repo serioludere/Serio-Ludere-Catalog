@@ -1,6 +1,6 @@
 import { F as maybeRenderHead, L as addAttribute, O as renderComponent, P as renderTemplate, W as createAstro } from "./runtime_skv-YCY6.mjs";
 import { t as createComponent } from "./compiler_CXPqD_v7.mjs";
-import { n as $$Icon } from "./AdminLayout_C1sVXFgz.mjs";
+import { n as $$Icon } from "./AdminLayout_Cc5W_MM3.mjs";
 //#region src/components/ui/CopyButton.astro
 createAstro("https://astro.build");
 var $$CopyButton = createComponent(($$result, $$props, $$slots) => {
@@ -14,6 +14,6 @@ var $$CopyButton = createComponent(($$result, $$props, $$slots) => {
 		"name": "check",
 		"class": "copy__icon--copied"
 	})} <span data-copy-label>${label}</span> </button>`;
-}, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/components/ui/CopyButton.astro", void 0);
+}, "/home/user/Serio-Ludere-Catalog/src/components/ui/CopyButton.astro", void 0);
 //#endregion
 export { $$CopyButton as t };

@@ -3,7 +3,7 @@ import { F as maybeRenderHead, L as addAttribute, O as renderComponent, P as ren
 import { t as createComponent } from "./compiler_CXPqD_v7.mjs";
 import { f as ratesFor, u as loadCatalogue } from "./runtime_ze_g5m0z.mjs";
 import { a as catalogueRugs, i as cardView, l as rugsWithTag, n as SLUG_PARAM_RE } from "./view_DOOWEoSU.mjs";
-import { i as $$Header, o as $$Footer, r as $$Layout, t as $$RugCard } from "./RugCard_DUhMWeB1.mjs";
+import { i as $$Header, o as $$Footer, r as $$Layout, t as $$RugCard } from "./RugCard_B5UkQe84.mjs";
 //#region src/components/RugGrid.astro
 createAstro("https://astro.build");
 var $$RugGrid = createComponent(($$result, $$props, $$slots) => {
@@ -28,7 +28,7 @@ Try again
 		"priority": loadMode[i] === "priority",
 		"href": hrefFor ? hrefFor(card) : void 0
 	})}`)} </div>`} </main>`;
-}, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/components/RugGrid.astro", void 0);
+}, "/home/user/Serio-Ludere-Catalog/src/components/RugGrid.astro", void 0);
 //#endregion
 //#region src/pages/tags/[slug].astro
 var _slug__exports = /* @__PURE__ */ __exportAll({
@@ -78,8 +78,8 @@ Tag · ${found.name} · ${n} ${n === 1 ? "rug" : "rugs"} </p> </div> </section>`
 		"eager": 4,
 		"heading": found ? `Tag · ${found.name}` : "Catalogue"
 	})} ${renderComponent($$result, "Footer", $$Footer, {})} ` })}`;
-}, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/pages/tags/[slug].astro", void 0);
-var $$file = "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/pages/tags/[slug].astro";
+}, "/home/user/Serio-Ludere-Catalog/src/pages/tags/[slug].astro", void 0);
+var $$file = "/home/user/Serio-Ludere-Catalog/src/pages/tags/[slug].astro";
 var $$url = "/tags/[slug]";
 //#endregion
 //#region \0virtual:astro:page:src/pages/tags/[slug]@_@astro

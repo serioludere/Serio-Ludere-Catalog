@@ -1,7 +1,7 @@
 import { F as maybeRenderHead, L as addAttribute, O as renderComponent, P as renderTemplate, W as createAstro, j as renderSlot } from "./runtime_skv-YCY6.mjs";
 import { t as createComponent } from "./compiler_CXPqD_v7.mjs";
-import { n as $$Icon } from "./AdminLayout_C1sVXFgz.mjs";
-import { t as $$Button } from "./Button_B-lpSdLq.mjs";
+import { n as $$Icon } from "./AdminLayout_Cc5W_MM3.mjs";
+import { t as $$Button } from "./Button_DXPJ5732.mjs";
 //#region src/components/ui/Modal.astro
 createAstro("https://astro.build");
 var $$Modal = createComponent(($$result, $$props, $$slots) => {
@@ -9,7 +9,7 @@ var $$Modal = createComponent(($$result, $$props, $$slots) => {
 	Astro.self = $$Modal;
 	const { id, title, class: className } = Astro.props;
 	return renderTemplate`${maybeRenderHead($$result)}<dialog${addAttribute(id, "id")}${addAttribute(["modal", className], "class:list")}${addAttribute(`${id}-title`, "aria-labelledby")}> <div class="modal__header"> <h2 class="modal__title"${addAttribute(`${id}-title`, "id")}>${title}</h2> <button type="button" class="modal__close"${addAttribute(id, "data-close")}> ${renderComponent($$result, "Icon", $$Icon, { "name": "close" })} <span class="sr-only">Close</span> </button> </div> <div class="modal__body">${renderSlot($$result, $$slots["default"])}</div> <div class="modal__footer">${renderSlot($$result, $$slots["footer"])}</div> </dialog>`;
-}, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/components/ui/Modal.astro", void 0);
+}, "/home/user/Serio-Ludere-Catalog/src/components/ui/Modal.astro", void 0);
 //#endregion
 //#region src/components/ui/EmptyState.astro
 createAstro("https://astro.build");
@@ -57,6 +57,6 @@ var $$EmptyState = createComponent(($$result, $$props, $$slots) => {
 		"href": href,
 		"data-empty-action": type
 	}, { "default": ($$result) => renderTemplate`${preset.action}` })} </div>`;
-}, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/components/ui/EmptyState.astro", void 0);
+}, "/home/user/Serio-Ludere-Catalog/src/components/ui/EmptyState.astro", void 0);
 //#endregion
 export { $$Modal as n, $$EmptyState as t };

@@ -1,6 +1,6 @@
 import { F as maybeRenderHead, L as addAttribute, O as renderComponent, P as renderTemplate, T as spreadAttributes, W as createAstro, j as renderSlot } from "./runtime_skv-YCY6.mjs";
 import { t as createComponent } from "./compiler_CXPqD_v7.mjs";
-import { n as $$Icon } from "./AdminLayout_C1sVXFgz.mjs";
+import { n as $$Icon } from "./AdminLayout_Cc5W_MM3.mjs";
 //#region src/components/ui/Button.astro
 createAstro("https://astro.build");
 var $$Button = createComponent(($$result, $$props, $$slots) => {
@@ -21,6 +21,6 @@ var $$Button = createComponent(($$result, $$props, $$slots) => {
 		"name": icon,
 		"class": "btn__icon"
 	})}`} ${loading ? loadingLabel : renderTemplate`${renderSlot($$result, $$slots["default"])}`} </button>`}`;
-}, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/components/ui/Button.astro", void 0);
+}, "/home/user/Serio-Ludere-Catalog/src/components/ui/Button.astro", void 0);
 //#endregion
 export { $$Button as t };

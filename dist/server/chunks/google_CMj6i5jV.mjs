@@ -4,9 +4,9 @@ import { t as createComponent } from "./compiler_CXPqD_v7.mjs";
 import { t as renderScript } from "./motion-spec_D-Pj3-r2.mjs";
 import { At as GOOGLE_OAUTH_CLIENT_ID, a as getGoogleConnection, at as googleAuthAdvice, c as getSheetIdStore, kt as GOOGLE_AUTH_MODE, m as sheetIdIfAny, o as getGoogleStore, ot as missingScopes, st as redirectUriFor } from "./runtime_ze_g5m0z.mjs";
 import { a as adminRuntime } from "./http_BM_MA3wM.mjs";
-import { t as $$AdminLayout } from "./AdminLayout_C1sVXFgz.mjs";
-import { t as $$Button } from "./Button_B-lpSdLq.mjs";
-import { t as $$Input } from "./Input_h0ETpxLf.mjs";
+import { t as $$AdminLayout } from "./AdminLayout_Cc5W_MM3.mjs";
+import { t as $$Button } from "./Button_DXPJ5732.mjs";
+import { t as $$Input } from "./Input_B8a2kJzz.mjs";
 //#region src/pages/admin/google.astro
 var google_exports = /* @__PURE__ */ __exportAll({
 	default: () => $$Google,
@@ -101,9 +101,9 @@ No catalogue sheet yet. One is normally created the moment a Google account is c
 		"style": "primary"
 	}, { "default": ($$result) => renderTemplate`
 Create the catalogue sheet
-` })} </div> <div id="mSheet" class="msg"></div> ` })}`} </section> ${renderScript($$result, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/pages/admin/google.astro?astro&type=script&index=0&lang.ts")}` })}`;
-}, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/pages/admin/google.astro", void 0);
-var $$file = "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/pages/admin/google.astro";
+` })} </div> <div id="mSheet" class="msg"></div> ` })}`} </section> ${renderScript($$result, "/home/user/Serio-Ludere-Catalog/src/pages/admin/google.astro?astro&type=script&index=0&lang.ts")}` })}`;
+}, "/home/user/Serio-Ludere-Catalog/src/pages/admin/google.astro", void 0);
+var $$file = "/home/user/Serio-Ludere-Catalog/src/pages/admin/google.astro";
 var $$url = "/admin/google";
 //#endregion
 //#region \0virtual:astro:page:src/pages/admin/google@_@astro

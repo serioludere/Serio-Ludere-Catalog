@@ -4,9 +4,9 @@ import { t as createComponent } from "./compiler_CXPqD_v7.mjs";
 import { t as renderScript } from "./motion-spec_D-Pj3-r2.mjs";
 import { Q as money, _t as driveImageUrl, f as ratesFor, t as baseCurrency, u as loadCatalogue } from "./runtime_ze_g5m0z.mjs";
 import { i as findCustomer } from "./http_Cj4-WIIV.mjs";
-import { a as $$PreviewFooter, i as $$PreviewHeader, n as $$Reactions, o as $$PreviewControls, r as $$PreviewLayout, t as $$SpecTable } from "./SpecTable_C3blbnZb.mjs";
+import { a as $$PreviewFooter, i as $$PreviewHeader, n as $$Reactions, o as $$PreviewControls, r as $$PreviewLayout, t as $$SpecTable } from "./SpecTable_C0OezWzi.mjs";
 import { a as catalogueRugs, i as cardView } from "./view_DOOWEoSU.mjs";
-import { t as $$Pager } from "./Pager_DEjVkYC7.mjs";
+import { t as $$Pager } from "./Pager_DL27wwLv.mjs";
 import { t as dims } from "./units_BFAJ7W-k.mjs";
 //#region src/pages/[slug]/[productId].astro
 var _productId__exports = /* @__PURE__ */ __exportAll({
@@ -131,9 +131,9 @@ var $$ProductId = createComponent(async ($$result, $$props, $$slots) => {
 		"total": sib.total,
 		"hrefFor": hrefForCard,
 		"data-astro-cid-w72pnaip": true
-	})} </nav>`} </main>`}${renderComponent($$result, "PreviewFooter", $$PreviewFooter, { "data-astro-cid-w72pnaip": true })} ` })} ${renderScript($$result, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/pages/[slug]/[productId].astro?astro&type=script&index=0&lang.ts")}`;
-}, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/pages/[slug]/[productId].astro", void 0);
-var $$file = "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/pages/[slug]/[productId].astro";
+	})} </nav>`} </main>`}${renderComponent($$result, "PreviewFooter", $$PreviewFooter, { "data-astro-cid-w72pnaip": true })} ` })} ${renderScript($$result, "/home/user/Serio-Ludere-Catalog/src/pages/[slug]/[productId].astro?astro&type=script&index=0&lang.ts")}`;
+}, "/home/user/Serio-Ludere-Catalog/src/pages/[slug]/[productId].astro", void 0);
+var $$file = "/home/user/Serio-Ludere-Catalog/src/pages/[slug]/[productId].astro";
 var $$url = "/[slug]/[productId]";
 //#endregion
 //#region \0virtual:astro:page:src/pages/[slug]/[productId]@_@astro

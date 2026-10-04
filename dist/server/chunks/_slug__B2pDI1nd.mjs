@@ -5,9 +5,9 @@ import { t as renderScript } from "./motion-spec_D-Pj3-r2.mjs";
 import { Q as money, _t as driveImageUrl, f as ratesFor, t as baseCurrency, u as loadCatalogue } from "./runtime_ze_g5m0z.mjs";
 import { a as catalogueRugs, c as relatedCards, d as withLeads, i as cardView, n as SLUG_PARAM_RE, u as siblings } from "./view_DOOWEoSU.mjs";
 import { t as likesText } from "./likes_Bt2PBY3j.mjs";
-import { t as $$Pager } from "./Pager_DEjVkYC7.mjs";
+import { t as $$Pager } from "./Pager_DL27wwLv.mjs";
 import { t as dims } from "./units_BFAJ7W-k.mjs";
-import { a as $$RugPhoto, i as $$Header, n as $$VoteButtons, o as $$Footer, r as $$Layout, t as $$RugCard } from "./RugCard_DUhMWeB1.mjs";
+import { a as $$RugPhoto, i as $$Header, n as $$VoteButtons, o as $$Footer, r as $$Layout, t as $$RugCard } from "./RugCard_B5UkQe84.mjs";
 //#region src/components/Gallery.astro
 createAstro("https://astro.build");
 var $$Gallery = createComponent(($$result, $$props, $$slots) => {
@@ -37,8 +37,8 @@ var $$Gallery = createComponent(($$result, $$props, $$slots) => {
 ‹
 </button>`} ${ids.length > 1 && renderTemplate`<button type="button" class="lb-next" aria-label="Next photo">
 ›
-</button>`} <p class="lb-count" aria-live="polite"></p> </dialog>`} ${renderScript($$result, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/components/Gallery.astro?astro&type=script&index=0&lang.ts")}`;
-}, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/components/Gallery.astro", void 0);
+</button>`} <p class="lb-count" aria-live="polite"></p> </dialog>`} ${renderScript($$result, "/home/user/Serio-Ludere-Catalog/src/components/Gallery.astro?astro&type=script&index=0&lang.ts")}`;
+}, "/home/user/Serio-Ludere-Catalog/src/components/Gallery.astro", void 0);
 //#endregion
 //#region src/components/RelatedRugs.astro
 createAstro("https://astro.build");
@@ -52,7 +52,7 @@ var $$RelatedRugs = createComponent(($$result, $$props, $$slots) => {
 		"related": true,
 		"href": hrefFor ? hrefFor(c) : void 0
 	})}`)} </div> <a class="back-all"${addAttribute(backHref ?? `/?collection=${collectionSlug}`, "href")}>← All ${collection}</a> </section>`;
-}, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/components/RelatedRugs.astro", void 0);
+}, "/home/user/Serio-Ludere-Catalog/src/components/RelatedRugs.astro", void 0);
 //#endregion
 //#region src/components/Specs.astro
 createAstro("https://astro.build");
@@ -68,7 +68,7 @@ var $$Specs = createComponent(($$result, $$props, $$slots) => {
 		["Method", card.method]
 	].filter(([, v]) => Boolean(v));
 	return renderTemplate`${maybeRenderHead($$result)}<dl class="specs"> ${dimText && renderTemplate`${renderComponent($$result, "Fragment", Fragment, {}, { "default": ($$result) => renderTemplate` <dt>Size</dt> <dd data-dims${addAttribute(card.widthCm ?? "", "data-w")}${addAttribute(card.lengthCm ?? "", "data-l")}> ${dimText} </dd> ` })}`} ${rows.map(([k, v]) => renderTemplate`${renderComponent($$result, "Fragment", Fragment, {}, { "default": ($$result) => renderTemplate` <dt>${k}</dt> <dd>${v}</dd> ` })}`)} <dt>Reference</dt> <dd class="ref">${card.id}</dd> </dl>`;
-}, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/components/Specs.astro", void 0);
+}, "/home/user/Serio-Ludere-Catalog/src/components/Specs.astro", void 0);
 //#endregion
 //#region src/pages/rugs/[slug].astro
 var _slug__exports = /* @__PURE__ */ __exportAll({
@@ -144,8 +144,8 @@ This rug is not in the catalogue.
 		"collection": card.collection,
 		"collectionSlug": card.collectionSlug
 	})}`}${renderComponent($$result, "Footer", $$Footer, {})} ` })}`;
-}, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/pages/rugs/[slug].astro", void 0);
-var $$file = "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/pages/rugs/[slug].astro";
+}, "/home/user/Serio-Ludere-Catalog/src/pages/rugs/[slug].astro", void 0);
+var $$file = "/home/user/Serio-Ludere-Catalog/src/pages/rugs/[slug].astro";
 var $$url = "/rugs/[slug]";
 //#endregion
 //#region \0virtual:astro:page:src/pages/rugs/[slug]@_@astro

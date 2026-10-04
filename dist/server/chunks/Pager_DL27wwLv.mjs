@@ -12,6 +12,6 @@ var $$Pager = createComponent(($$result, $$props, $$slots) => {
 ‹ <span class="word">Prev</span> </span>`} <span class="pos"> ${index} / ${total} </span> ${next ? renderTemplate`<a rel="next"${addAttribute(href(next), "href")}${addAttribute(`Next: ${next.name}`, "aria-label")}> <span class="word">Next</span> ›
 </a>` : renderTemplate`<span class="is-off" aria-hidden="true"> <span class="word">Next</span> ›
 </span>`} </div>`;
-}, "C:/Users/Ramez/Desktop/Serio-Ludere-Catalog/src/components/Pager.astro", void 0);
+}, "/home/user/Serio-Ludere-Catalog/src/components/Pager.astro", void 0);
 //#endregion
 export { $$Pager as t };

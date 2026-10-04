@@ -86,6 +86,12 @@
       gap: var(--stack-lg);
       padding: var(--stack-lg) var(--gutter);
     }
+    /* Owner, 2026-10-04: on a phone the note runs the band's full width, centred, over the
+       full-width Close button; the 92ch measure is for wide screens. */
+    .pv-note__copy {
+      max-width: none;
+      text-align: center;
+    }
     .pv-note__close {
       width: 100%;
       margin-inline-start: 0;

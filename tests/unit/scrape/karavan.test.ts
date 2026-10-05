@@ -199,7 +199,7 @@ describe('parseKaravan on the real .js + HTML (ADMIN_SPEC §4.4)', () => {
     const js = JSON.stringify({
       title: 'Long',
       handle: 'long',
-      description: `<p>${'word '.repeat(1200)}</p>`,
+      description: `<p>${'word '.repeat(1500)}</p>`,
       tags: [],
       price: 100,
       variants: [],
@@ -207,7 +207,7 @@ describe('parseKaravan on the real .js + HTML (ADMIN_SPEC §4.4)', () => {
       media: [],
     });
     const rug = parseKaravan('long', { js });
-    expect(rug?.description?.length).toBe(4000);
-    expect(rug?.warnings).toContain('description truncated to 4000 characters');
+    expect(rug?.description?.length).toBe(5000);
+    expect(rug?.warnings).toContain('description truncated to 5000 characters');
   });
 });

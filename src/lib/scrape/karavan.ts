@@ -78,7 +78,7 @@ const KV_HEADINGS: readonly string[] = [
   'condition',
 ];
 
-export const DESCRIPTION_MAX = 4000;
+export const DESCRIPTION_MAX = 5000;
 
 /** `Label: value` lines plus KV's heading-on-its-own-line blocks. */
 export function parseKaravanSpecs(descriptionHtml: string): { text: string; specs: Map<string, string> } {

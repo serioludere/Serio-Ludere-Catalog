@@ -72,7 +72,7 @@ export const RugInput = z.object({
   id: Id.optional(), // create only; absent → server allocates the next SL-nnn (required for serioludere)
   slug: Slug.optional(), // absent → derived from name (create) / kept (update)
   name: z.string().trim().min(1).max(120),
-  description: Text(4000),
+  description: Text(5000),
   collections: CollectionList, // each must match a Collections.name (case-insensitive)
   tags: z.array(TagName).max(20).default([]),
   photos: z.array(z.string().regex(DRIVE_ID_RE)).max(12).default([]), // src/lib/images.ts DRIVE_ID_RE
@@ -141,7 +141,7 @@ export type RugShopifyT = z.infer<typeof RugShopify>;
 /** Name and description only (owner, 2026-09-16): the studio never set a cover image, and the
  *  column stays in the sheet written blank rather than shifting the Collections contract. */
 /** Exported so the admin's own description box can cap and count against the same number. */
-export const COLLECTION_DESCRIPTION_MAX = 1000;
+export const COLLECTION_DESCRIPTION_MAX = 5000;
 export const CollectionInput = z.object({
   name: z.string().trim().min(1).max(80),
   description: Text(COLLECTION_DESCRIPTION_MAX),

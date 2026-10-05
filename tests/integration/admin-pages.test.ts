@@ -314,7 +314,7 @@ describe('/admin/collections', () => {
     // A textarea since 2026-09-20 (a description runs to a paragraph), with the sheet's own cap on
     // it so the box and the server agree about how much fits.
     expect(html).toMatch(
-      /<textarea[^>]*data-field="description"[^>]*maxlength="1000"[^>]*>Flat &quot;weaves&quot;<\/textarea>/,
+      /<textarea[^>]*data-field="description"[^>]*maxlength="5000"[^>]*>Flat &quot;weaves&quot;<\/textarea>/,
     );
     expect(html.replace(/\s+/g, ' ')).toContain('<span class="crow__count"> 1 product </span>'); // one rug in Kilims
     expect(html).toContain('id="btnAddCollection"');

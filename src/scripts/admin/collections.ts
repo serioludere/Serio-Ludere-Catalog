@@ -145,7 +145,7 @@ export function initCollections(doc: Document = document, opts: CollectionsOptio
   const addCollectionBtn = byId<HTMLButtonElement>('btnAddCollection', doc);
 
   /**
-   * "180 of 1000 characters" under the description box (owner, 2026-09-20). Written on open and on
+   * "180 of 5000 characters" under the description box (owner, 2026-09-20). Written on open and on
    * every keystroke, and delegated rather than bound per row, so a rebuilt row needs no re-binding.
    */
   function countDescription(scope: HTMLElement): void {

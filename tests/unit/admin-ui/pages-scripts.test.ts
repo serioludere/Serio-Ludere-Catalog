@@ -146,15 +146,15 @@ describe('collections.ts', () => {
     const row = document.querySelector<HTMLElement>('[data-id="kilims"]')!;
     const box = row.querySelector<HTMLTextAreaElement>('textarea[data-field="description"]')!;
     expect(box.value).toBe('Flat');
-    expect(box.maxLength).toBe(1000);
+    expect(box.maxLength).toBe(5000);
 
     // Opening the editor writes the count; typing keeps it current.
     row.querySelector<HTMLButtonElement>('button[data-act="edit"]')!.click();
     const count = (): string => row.querySelector('[data-desc-count]')!.textContent ?? '';
-    expect(count()).toBe('4 of 1000 characters');
+    expect(count()).toBe('4 of 5000 characters');
     box.value = 'Flat weaves, kilims and the rest of the flat-woven wall.';
     box.dispatchEvent(new Event('input', { bubbles: true }));
-    expect(count()).toBe('56 of 1000 characters');
+    expect(count()).toBe('56 of 5000 characters');
 
     // …and what the box holds is what the save sends.
     await page.saveCollection('kilims');

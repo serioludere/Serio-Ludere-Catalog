@@ -8,7 +8,7 @@ import { B as SHOPIFY_OPTIONS, m as roundStepOf, u as syncLabel } from "./read_K
 import { t as coverFillsHeight } from "./cover-fit_DCPobnYk.mjs";
 import { f as dataRot, o as jsonForScript, r as badgesFor } from "./view_DOOWEoSU.mjs";
 import { t as dims } from "./units_BFAJ7W-k.mjs";
-import { t as $$PageNav } from "./PageNav_B-pEwqJa.mjs";
+import { t as $$PageNav } from "./PageNav_Ct1IMF9n.mjs";
 import { n as $$Icon, t as $$AdminLayout } from "./AdminLayout_CoskVC47.mjs";
 import { t as $$Button } from "./Button_yjDSEfcc.mjs";
 import { n as $$Modal, t as $$EmptyState } from "./EmptyState_Y1D0BnJu.mjs";

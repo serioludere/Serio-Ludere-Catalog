@@ -255,6 +255,80 @@ describe('filters.ts', () => {
       expect(replaceState).not.toHaveBeenCalled();
     });
   });
+
+  describe('the next collection, at the end of one (owner, 2026-10-08)', () => {
+    const END = (cards: string, pager = ''): string => `
+      <nav class="pv-filters">
+        <button class="pv-chip is-on" data-filter="kilims" aria-pressed="true">Kilims</button>
+        <button class="pv-chip" data-filter="gabbeh" aria-pressed="false">Gabbeh</button>
+        <button class="pv-chip" data-filter="all" aria-pressed="false">All</button>
+      </nav>
+      ${cards}
+      ${pager}
+      <div data-next-collection hidden>
+        <p>Next collection</p>
+        <button data-next-filter><span data-next-name></span></button>
+      </div>
+      <p data-grid-empty hidden></p>`;
+    const SHORT = END(`
+      <div data-card data-rug="SL-1" data-name="Winks" data-collections="kilims"></div>
+      <div data-card data-rug="SL-2" data-name="Yellow" data-collections="gabbeh" hidden></div>`);
+    const box = (): HTMLElement => document.querySelector<HTMLElement>('[data-next-collection]')!;
+    const name = (): string | null | undefined => document.querySelector('[data-next-name]')?.textContent;
+
+    it('names the next collection under the last rug of this one, and opens it', () => {
+      page(SHORT);
+      const { win, replaceState } = fakeWin();
+      unbind = bindFilters({ win });
+      expect(box().hidden).toBe(false);
+      expect(name()).toBe('Gabbeh');
+
+      document.querySelector<HTMLButtonElement>('[data-next-filter]')!.click();
+      expect(shown()).toEqual(['SL-2']);
+      expect(document.querySelector('[data-filter="gabbeh"]')?.getAttribute('aria-pressed')).toBe('true');
+      expect(String(replaceState.mock.calls.at(-1)?.[2])).toContain('collection=gabbeh');
+    });
+
+    it('offers nothing after the last collection, under All, or during a search', () => {
+      page(SHORT);
+      unbind = bindFilters({ win: fakeWin('?collection=gabbeh').win });
+      // "All" follows Gabbeh in the strip, but it is not a collection.
+      expect(box().hidden).toBe(true);
+      document.querySelector<HTMLButtonElement>('[data-filter="all"]')!.click();
+      expect(box().hidden).toBe(true);
+
+      document.querySelector<HTMLButtonElement>('[data-filter="kilims"]')!.click();
+      expect(box().hidden).toBe(false);
+      document.dispatchEvent(new CustomEvent(SEARCH_EVENT, { detail: { query: 'win' } }));
+      expect(box().hidden).toBe(true);
+      document.dispatchEvent(new CustomEvent(SEARCH_EVENT, { detail: { query: '' } }));
+      expect(box().hidden).toBe(false);
+    });
+
+    it('waits for the last page of a collection that runs to more than one', () => {
+      const many = Array.from(
+        { length: 21 },
+        (_, i) =>
+          `<div data-card data-rug="K-${i + 1}" data-name="K${i + 1}" data-collections="kilims"></div>`,
+      ).join('');
+      page(
+        END(
+          many,
+          `<nav id="gridPager" hidden>
+             <button data-page="prev"></button><p data-page="label"></p><button data-page="next"></button>
+           </nav>`,
+        ),
+      );
+      document.getElementById('gridPager')!.scrollIntoView = () => {};
+      unbind = bindFilters({ win: fakeWin().win });
+      expect(box().hidden).toBe(true);
+
+      document.querySelector<HTMLButtonElement>('#gridPager [data-page="next"]')!.click();
+      expect(shown()).toEqual(['K-21']);
+      expect(box().hidden).toBe(false);
+      expect(name()).toBe('Gabbeh');
+    });
+  });
 });
 
 describe('preview-gallery.ts', () => {

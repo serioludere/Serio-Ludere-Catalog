@@ -194,6 +194,25 @@ describe("the buyer's tab strip", () => {
     expect(scrollTo).not.toHaveBeenCalled();
   });
 
+  it('starts a turned page at the top of the grid, not at the pager under it (owner, 2026-10-08)', () => {
+    const cards = Array.from(
+      { length: 21 },
+      (_, i) => `<div data-card data-rug="C-${i}" data-name="C${i}" data-collections="classics"></div>`,
+    ).join('');
+    document.body.innerHTML = PAGE.replace(
+      '</main>',
+      `${cards}<nav id="gridPager" hidden>
+         <button data-page="prev"></button><p data-page="label"></p><button data-page="next"></button>
+       </nav></main>`,
+    );
+    placeAnchor(document.querySelector<HTMLElement>('[data-tabbar-anchor]')!, -2000);
+    const { win, scrollTo } = fakeWin({ top: '53px', scrollY: 2600 });
+    unbind = bindFilters({ win });
+
+    document.querySelector<HTMLButtonElement>('#gridPager [data-page="next"]')!.click();
+    expect(scrollTo).toHaveBeenCalledWith({ top: 2600 - 2053, behavior: 'instant' });
+  });
+
   it("publishes the bar's own height, which the phone's fold pins against", () => {
     document.body.innerHTML = PAGE;
     document.querySelector<HTMLElement>('[data-tabbar]')!.getBoundingClientRect = () =>

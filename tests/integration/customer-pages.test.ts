@@ -420,6 +420,20 @@ describe('/{slug} — the signed-in catalog', () => {
     expect(strip).toMatch(/data-filter="all"[^>]*aria-pressed="false"/);
   });
 
+  it('pages the grid with arrows alone, and has the next collection ready under it (owner, 2026-10-08)', async () => {
+    state.down = false;
+    const { html } = await render(CustomerCatalog, '/hala', { slug: 'hala' }, { customer: 'hala' });
+    const from = html.indexOf('id="gridPager"');
+    const pager = html.slice(from, html.indexOf('</nav>', from));
+    expect(pager).toMatch(/data-page="prev"[^>]*aria-label="Previous page"/);
+    expect(pager).toMatch(/data-page="next"[^>]*aria-label="Next page"/);
+    expect(pager).not.toMatch(/>\s*(Previous|Next)\s*</);
+    // filters.ts names the next collection and shows it on the last page; the server only lays it out.
+    expect(html).toMatch(/data-next-collection[^>]*hidden/);
+    expect(html).toMatch(/data-next-filter[^>]*aria-describedby="pvNextLabel"/);
+    expect(html).toMatch(/id="pvNextLabel"[^>]*>\s*Next collection\s*</);
+  });
+
   it('renders the dropdown the strip folds into on a phone, with the same choices in the same order', async () => {
     // Owner, 2026-10-08: on a phone the pinned tabs fold into one dropdown while the buyer scrolls.
     state.down = false;

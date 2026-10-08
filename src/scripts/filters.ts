@@ -22,6 +22,9 @@
 // On a phone, the pinned strip folds into one dropdown (owner, 2026-10-08). Choosing from the
 // dropdown does exactly what pressing that tab does. While a search is on, the dropdown reads
 // "Search results" and has nothing chosen, so any collection picked from it ends the search.
+//
+// At the end of a collection, its last page offers the next collection by name (owner,
+// 2026-10-08). Turning a page takes the buyer back to the top of the grid.
 import { SEARCH_EVENT, SEARCH_RESET_EVENT, nameMatches, type SearchDetail } from './customer/search.ts';
 import { initPager } from './ui/paginate.ts';
 import { bindStickyBar, publishHeight } from './ui/sticky.ts';
@@ -70,30 +73,8 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
   // What the server rendered pressed; 'all' only for a page that pressed nothing.
   let active = chips.find((c) => c.getAttribute('aria-pressed') === 'true')?.dataset.filter ?? 'all';
 
-  /** 20 per page (owner, 2026-09-16), when the page renders the control. */
-  const pagerRoot = doc.getElementById('gridPager');
-  const pager = pagerRoot
-    ? initPager({
-        items: cards,
-        elements: {
-          root: pagerRoot,
-          prev: pagerRoot.querySelector<HTMLButtonElement>('[data-page="prev"]')!,
-          next: pagerRoot.querySelector<HTMLButtonElement>('[data-page="next"]')!,
-          label: pagerRoot.querySelector<HTMLElement>('[data-page="label"]')!,
-        },
-      })
-    : undefined;
-
   /** What the buyer typed in the name search; '' when not searching. */
   let query = '';
-
-  const matches = (card: HTMLElement): boolean =>
-    query
-      ? nameMatches(card.dataset.name ?? '', query)
-      : active === 'all' || collectionsOf(card).includes(active);
-
-  const empty = doc.querySelector<HTMLElement>('[data-grid-empty]');
-  const emptyText = empty?.textContent ?? '';
 
   /* The sticky bar the strip lives in, pinned under the header — whose height the bar needs for its
      `top`, so it is published here, where the only thing that sticks below it is bound. On a phone
@@ -112,6 +93,49 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
         })
       : undefined;
 
+  /* The way on at the end of a collection (owner, 2026-10-08). On its last page, a button named for
+     the next collection in the strip's order opens it, as pressing that tab would. "All" is not a
+     collection, so there is no button under "All" or after the last collection, and none during a
+     search either. */
+  const nextBox = doc.querySelector<HTMLElement>('[data-next-collection]');
+  const nextButton = nextBox?.querySelector<HTMLButtonElement>('[data-next-filter]');
+  const nextName = nextBox?.querySelector<HTMLElement>('[data-next-name]');
+  const collectionChips = chips.filter((c) => c.dataset.filter !== 'all');
+  const paintNext = (onLastPage: boolean): void => {
+    if (!nextBox || !nextButton) return;
+    const at = collectionChips.findIndex((c) => c.dataset.filter === active);
+    const following = at >= 0 ? collectionChips[at + 1] : undefined;
+    nextBox.hidden = Boolean(query) || !onLastPage || !following;
+    if (!following?.dataset.filter) return;
+    nextButton.dataset.nextFilter = following.dataset.filter;
+    if (nextName) nextName.textContent = following.textContent?.trim() ?? '';
+  };
+
+  /** 20 per page (owner, 2026-09-16), when the page renders the control. */
+  const pagerRoot = doc.getElementById('gridPager');
+  const pager = pagerRoot
+    ? initPager({
+        items: cards,
+        elements: {
+          root: pagerRoot,
+          prev: pagerRoot.querySelector<HTMLButtonElement>('[data-page="prev"]')!,
+          next: pagerRoot.querySelector<HTMLButtonElement>('[data-page="next"]')!,
+          label: pagerRoot.querySelector<HTMLElement>('[data-page="label"]')!,
+        },
+        onChange: (page, pages) => paintNext(page >= pages),
+        // The pager sits under the grid: a turned page starts at the top of the grid, not the foot.
+        reveal: sticky ? () => sticky.reveal() : undefined,
+      })
+    : undefined;
+
+  const matches = (card: HTMLElement): boolean =>
+    query
+      ? nameMatches(card.dataset.name ?? '', query)
+      : active === 'all' || collectionsOf(card).includes(active);
+
+  const empty = doc.querySelector<HTMLElement>('[data-grid-empty]');
+  const emptyText = empty?.textContent ?? '';
+
   /* Written only when the number actually moves: re-setting identical text re-fires the live region,
      which is how a status line turns into a screen reader repeating itself. */
   let said: number | undefined;
@@ -125,7 +149,10 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
     // The pager owns `hidden` when the page renders one: filtering decides what is in the result,
     // paging decides which 20 of it are on screen.
     if (pager) pager.apply(matches, true);
-    else for (const card of cards) card.hidden = !matches(card);
+    else {
+      for (const card of cards) card.hidden = !matches(card);
+      paintNext(true);
+    }
     let description = '';
     let name = '';
     for (const chip of chips) {
@@ -185,7 +212,7 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
     }
   };
 
-  /** A tab pressed, or the same choice made in the phone's dropdown. */
+  /** A tab pressed, or the same choice made in the phone's dropdown or the next-collection button. */
   const choose = (filter: string): void => {
     // A tab pressed mid-search ends the search: the buyer has gone back to browsing.
     if (query) {
@@ -206,6 +233,11 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
     if (next && chips.some((c) => c.dataset.filter === next)) choose(next);
   };
 
+  const onNext = (): void => {
+    const next = nextButton?.dataset.nextFilter;
+    if (next && chips.some((c) => c.dataset.filter === next)) choose(next);
+  };
+
   const onSearch = (e: Event): void => {
     const next = ((e as CustomEvent<SearchDetail>).detail?.query ?? '').trim();
     if (next === query) return;
@@ -217,6 +249,7 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
 
   nav.addEventListener('click', onClick);
   picker?.addEventListener('change', onPick);
+  nextButton?.addEventListener('click', onNext);
   doc.addEventListener(SEARCH_EVENT, onSearch);
 
   // A deep link wins over the default, but only if that chip is actually on the page.
@@ -227,6 +260,7 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
   return () => {
     nav.removeEventListener('click', onClick);
     picker?.removeEventListener('change', onPick);
+    nextButton?.removeEventListener('click', onNext);
     doc.removeEventListener(SEARCH_EVENT, onSearch);
     sticky?.dispose();
     unpublish?.();

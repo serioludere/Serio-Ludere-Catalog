@@ -163,6 +163,16 @@ function expectCspClean(html: string): void {
 }
 
 describe('/admin/rugs', () => {
+  it("keeps the words on its pager (the buyer's has arrows alone, owner 2026-10-08)", async () => {
+    state.down = false;
+    const { html } = await render(RugsPage, '/admin/rugs');
+    const from = html.indexOf('id="rugPager"');
+    const pager = html.slice(from, html.indexOf('</nav>', from));
+    expect(pager).toMatch(/data-page="prev"[^>]*>\s*Previous\s*</);
+    expect(pager).toMatch(/data-page="next"[^>]*>\s*Next\s*</);
+    expect(pager).not.toContain('pagenav__arrow');
+  });
+
   it('puts the collections in the bar as multi-select tabs with counts, and drops the status filter', async () => {
     state.down = false;
     const { status, html } = await render(RugsPage, '/admin/rugs');

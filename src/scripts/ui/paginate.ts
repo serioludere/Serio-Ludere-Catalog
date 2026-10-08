@@ -28,6 +28,13 @@ export interface PagerOptions {
   pageSize?: number;
   /** Called after every page change, so the caller can re-announce its own count. */
   onChange?: (page: number, pages: number) => void;
+  /**
+   * Takes the reader to the top of the new page when they turn one. By default the pager is scrolled
+   * into view. The buyer's catalogue scrolls back up to the top of its grid instead (owner,
+   * 2026-10-08): its pager sits under the grid, so a reader turning the page would otherwise be left
+   * at the bottom of the new one.
+   */
+  reveal?: () => void;
 }
 
 export interface Pager {
@@ -81,7 +88,8 @@ export function initPager(opts: PagerOptions): Pager {
     page = target;
     paint(opts.items.filter(last));
     // A page change moves content the reader is looking at; put them back at the top of it.
-    root.scrollIntoView({ block: 'nearest' });
+    if (opts.reveal) opts.reveal();
+    else root.scrollIntoView({ block: 'nearest' });
   };
 
   prev.addEventListener('click', () => go(page - 1));

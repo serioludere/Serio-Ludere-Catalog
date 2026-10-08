@@ -176,7 +176,39 @@ const title = 'Serio Ludere';
             {/* 20 per page (owner, 2026-09-16); filters.ts un-hides it only when there is a page 2. */}
             {/* Clicking a card opens the rug here instead of navigating (owner, 2026-09-20). */}
             <ProductDialog cards={cards} rates={rates} baseCurrency={baseCurrency} />
-            <PageNav id="gridPager" label="Rugs" />
+            {/* Arrows only (owner, 2026-10-08). */}
+            <PageNav id="gridPager" label="Rugs" arrows />
+            {/* The way on at the end of a collection (owner, 2026-10-08): on its last page, a button
+                named for the next collection opens it. filters.ts names it and decides when it shows. */}
+            <div class="pv-next" data-next-collection hidden>
+              <p class="pv-next-label" id="pvNextLabel">
+                Next collection
+              </p>
+              <button
+                type="button"
+                class="pv-btn pv-next-btn"
+                data-next-filter
+                aria-describedby="pvNextLabel"
+              >
+                <span data-next-name />
+                <svg
+                  viewBox="0 0 16 16"
+                  width="16"
+                  height="16"
+                  fill="none"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <path
+                    d="M3 8H13M9 4L13 8L9 12"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
             <p class="pv-lede" data-grid-empty hidden>
               Nothing matches that filter yet.
             </p>
@@ -278,6 +310,26 @@ const title = 'Serio Ludere';
   }
   .pv-results {
     margin-top: calc(var(--section-gap) - var(--stack-sm));
+  }
+
+  /* The next collection, under the last page of one (owner, 2026-10-08): a quiet caption over a dark
+     button, centred like the pager above it. */
+  .pv-next {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--stack-sm);
+    margin-top: var(--stack-xl);
+  }
+  .pv-next-label {
+    font-size: var(--text-sm);
+    color: var(--ink-soft);
+  }
+  .pv-next-btn {
+    width: auto;
+    min-width: 12rem;
+    padding-inline: var(--stack-xl);
+    gap: var(--stack-sm);
   }
 
   /* The collection description (owner, 2026-09-20). It was --text-lg, a step ABOVE the tab titles

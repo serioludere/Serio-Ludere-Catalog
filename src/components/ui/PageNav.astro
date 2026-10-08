@@ -8,19 +8,61 @@
 //
 // `aria-live` on the label, not on the grid: the grid changing is the point, and announcing every
 // card would bury the one fact that matters — which page you are now on.
+//
+// `arrows` (the buyer's catalogue, owner 2026-10-08): the two buttons are a left and a right arrow
+// and nothing else. "Previous page" and "Next page" stay as their names for a screen reader. The
+// admin keeps the words.
 interface Props {
   id: string;
   /** Names the control for a screen reader, e.g. "Products". */
   label: string;
   class?: string;
+  /** Arrow buttons instead of the words Previous / Next. */
+  arrows?: boolean;
 }
-const { id, label, class: className } = Astro.props;
+const { id, label, class: className, arrows = false } = Astro.props;
 ---
 
 <nav class:list={['pagenav', className]} id={id} aria-label={`${label} pages`} hidden>
-  <button type="button" class="btn btn--secondary" data-page="prev">Previous</button>
+  {
+    arrows ? (
+      <button type="button" class="pagenav__arrow" data-page="prev" aria-label="Previous page">
+        <svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true" focusable="false">
+          <path
+            d="M13 8H3M7 4L3 8L7 12"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </button>
+    ) : (
+      <button type="button" class="btn btn--secondary" data-page="prev">
+        Previous
+      </button>
+    )
+  }
   <p class="pagenav__label" data-page="label" role="status" aria-live="polite"></p>
-  <button type="button" class="btn btn--secondary" data-page="next">Next</button>
+  {
+    arrows ? (
+      <button type="button" class="pagenav__arrow" data-page="next" aria-label="Next page">
+        <svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true" focusable="false">
+          <path
+            d="M3 8H13M9 4L13 8L9 12"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </button>
+    ) : (
+      <button type="button" class="btn btn--secondary" data-page="next">
+        Next
+      </button>
+    )
+  }
 </nav>
 
 <style>
@@ -39,5 +81,33 @@ const { id, label, class: className } = Astro.props;
     /* Fixed enough not to jog the buttons as the number of pages changes. */
     min-width: 10ch;
     text-align: center;
+  }
+
+  /* A 44px square in the same bordered box as the catalogue's other controls. A disabled arrow, at
+     the first or last page, stays in place and fades to the hairline, so the row never shifts. */
+  .pagenav__arrow {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: var(--rule-width) solid var(--border-control);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+    transition:
+      color var(--motion-quick) var(--motion-ease),
+      border-color var(--motion-quick) var(--motion-ease);
+  }
+  .pagenav__arrow:hover:not(:disabled) {
+    color: var(--brand);
+  }
+  .pagenav__arrow:disabled {
+    border-color: var(--rule);
+    color: var(--ink-muted);
+    cursor: default;
   }
 </style>

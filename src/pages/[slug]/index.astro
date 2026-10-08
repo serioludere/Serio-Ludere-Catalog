@@ -123,7 +123,8 @@ const title = 'Serio Ludere';
               a collection can change it without scrolling back up. It is its own child of <main>
               rather than the first row of the intro section: a sticky box only travels as far as
               its parent, and the intro section ends a few lines down. The anchor marks where the
-              bar rests in the flow (scripts/ui/sticky.ts). */}
+              bar rests in the flow (scripts/ui/sticky.ts). On a phone the pinned strip folds into
+              one dropdown (owner, 2026-10-08; the styles below). */}
           <span class="pv-tabbar-anchor" data-tabbar-anchor aria-hidden="true" />
           <div class="pv-tabbar" data-tabbar>
             <div class="pv-wrap pv-title-row">
@@ -359,9 +360,38 @@ const title = 'Serio Ludere';
     .pv-title-row :global(.pv-controls) {
       display: none;
     }
-    /* The phone header is the controls' row: 12 + 28 + 12 and its hairline (PreviewHeader). */
+    /* The phone header is the controls' row: 12 + 28 + 12 and its hairline (PreviewHeader).
+
+       On a phone the strip folds into one dropdown on scroll (owner, 2026-10-08: the pinned tabs
+       were distracting). The bar slides up under the header with the rest of the page until only
+       its last 44px show. It pins there, and that band becomes the dropdown. The bar's height
+       (--pv-tabbar-h, published by filters.ts) stays the same throughout, because the tabs are
+       hidden, not removed. A bar that shrank as it pinned would pull the rugs up under the
+       buyer's thumb. Before the script runs, the bar pins whole, as it did before. */
     .pv-tabbar {
-      top: var(--pv-header-h, calc(2 * var(--stack-md) + 28px + var(--rule-width)));
+      --pv-picker-h: 44px;
+      --pv-pin: var(--pv-header-h, calc(2 * var(--stack-md) + 28px + var(--rule-width)));
+      top: min(var(--pv-pin), calc(var(--pv-pin) - var(--pv-tabbar-h, 0px) + var(--pv-picker-h)));
+    }
+    .pv-tabbar :global(.pv-picker) {
+      position: absolute;
+      inset-inline: 0;
+      bottom: 0;
+      display: flex;
+      height: var(--pv-picker-h);
+      padding-inline: var(--gutter);
+      visibility: hidden;
+      opacity: 0;
+    }
+    .pv-tabbar.is-stuck :global(.pv-chip) {
+      visibility: hidden;
+    }
+    /* It fades in as it takes over, and goes at once when the tabs come back, so the two never
+       show together. */
+    .pv-tabbar.is-stuck :global(.pv-picker) {
+      visibility: visible;
+      opacity: 1;
+      transition: opacity var(--motion-quick) var(--motion-ease);
     }
     .pv-state {
       padding-inline: var(--stack-lg);

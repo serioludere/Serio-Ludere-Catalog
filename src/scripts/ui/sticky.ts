@@ -15,10 +15,23 @@
 //
 // Position is read against a zero-height anchor placed immediately before the bar: a pinned bar's
 // own rect reports where it is pinned, never where it would sit in the flow.
+//
+// A bar may also pin partly tucked under the header, with only its bottom edge showing. The buyer's
+// tab strip does this on a phone, where it folds into a dropdown (owner, 2026-10-08). `restAt` then
+// tells `reveal()` to open it back out fully, below the header.
 
 export interface StickyBindings {
   doc?: Document;
   win?: Window;
+}
+
+export interface StickyBarBindings extends StickyBindings {
+  /**
+   * Where `reveal()` leaves the bar's top, in px from the top of the viewport. By default that is
+   * where the bar pins. It is never above the pin line, because a bar left there would still be
+   * pinned.
+   */
+  restAt?: () => number;
 }
 
 /** Publishes `el`'s rendered height as `prop` on <html>, and keeps it current. */
@@ -42,14 +55,24 @@ export interface StickyBar {
   dispose(): void;
 }
 
-export function bindStickyBar(bar: HTMLElement, anchor: HTMLElement, opts: StickyBindings = {}): StickyBar {
+export function bindStickyBar(
+  bar: HTMLElement,
+  anchor: HTMLElement,
+  opts: StickyBarBindings = {},
+): StickyBar {
   const win = opts.win ?? window;
 
+  /** Where the bar pins, and where it would sit in the flow, both from the top of the viewport. */
+  const place = (): { pinnedAt: number; restsAt: number } => {
+    const style = win.getComputedStyle(bar);
+    return {
+      pinnedAt: Number.parseFloat(style.top) || 0,
+      restsAt: anchor.getBoundingClientRect().top + (Number.parseFloat(style.marginTop) || 0),
+    };
+  };
   /** How far the bar's resting place is above where it is pinned; > 0 means pinned. */
   const overshoot = (): number => {
-    const style = win.getComputedStyle(bar);
-    const pinnedAt = Number.parseFloat(style.top) || 0;
-    const restsAt = anchor.getBoundingClientRect().top + (Number.parseFloat(style.marginTop) || 0);
+    const { pinnedAt, restsAt } = place();
     return pinnedAt - restsAt;
   };
   // Half a pixel of slack: fractional layout must not flicker the edge on and off at rest.
@@ -70,7 +93,8 @@ export function bindStickyBar(bar: HTMLElement, anchor: HTMLElement, opts: Stick
   win.addEventListener('resize', onScroll, { passive: true });
 
   const reveal = (): void => {
-    const by = overshoot();
+    const { pinnedAt, restsAt } = place();
+    const by = Math.max(pinnedAt, opts.restAt?.() ?? pinnedAt) - restsAt;
     if (by <= 0.5) return;
     // Instant, not smooth: the list has already changed under the bar, and a glide up through rugs
     // that are no longer the ones chosen is motion between the question and its answer.

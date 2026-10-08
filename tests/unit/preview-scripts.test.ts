@@ -2,6 +2,7 @@
 // The two client modules the redesigned preview adds: the filter strip (Figma 53:42) and the
 // thumbnail strip on the product detail page (Figma 57:242).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { SEARCH_EVENT, SEARCH_RESET_EVENT } from '../../src/scripts/customer/search.ts';
 import { bindFilters } from '../../src/scripts/filters.ts';
 import { bindPreviewGallery } from '../../src/scripts/preview-gallery.ts';
 
@@ -171,6 +172,88 @@ describe('filters.ts', () => {
   it('does nothing on a page with no strip', () => {
     page('<p>no filters here</p>');
     expect(() => bindFilters()()).not.toThrow();
+  });
+
+  describe('the dropdown the strip folds into on a phone (owner, 2026-10-08)', () => {
+    const FOLDING = `
+      <nav class="pv-filters">
+        <button class="pv-chip is-on" data-filter="kilims" aria-pressed="true">Kilims</button>
+        <button class="pv-chip" data-filter="gabbeh" data-description="Deep pile from Fars." aria-pressed="false">Gabbeh</button>
+        <button class="pv-chip" data-filter="all" aria-pressed="false">All</button>
+        <span data-picker-name>Kilims</span>
+        <select data-collection-select>
+          <option value="kilims" selected>Kilims</option>
+          <option value="gabbeh">Gabbeh</option>
+          <option value="all">All</option>
+        </select>
+      </nav>
+      <p data-collection-intro hidden></p>
+      <div data-card data-rug="SL-1" data-name="Winks" data-collections="kilims"></div>
+      <div data-card data-rug="SL-2" data-name="Yellow" data-collections="gabbeh" hidden></div>
+      <p data-grid-empty hidden></p>`;
+
+    const select = (): HTMLSelectElement =>
+      document.querySelector<HTMLSelectElement>('[data-collection-select]')!;
+    const face = (): string | null | undefined => document.querySelector('[data-picker-name]')?.textContent;
+    const pick = (value: string): void => {
+      select().value = value;
+      select().dispatchEvent(new Event('change'));
+    };
+
+    it('does what pressing that tab does', () => {
+      page(FOLDING);
+      const { win, replaceState } = fakeWin();
+      unbind = bindFilters({ win });
+      pick('gabbeh');
+      expect(shown()).toEqual(['SL-2']);
+      expect(document.querySelector('[data-filter="gabbeh"]')?.getAttribute('aria-pressed')).toBe('true');
+      expect(document.querySelector('[data-filter="kilims"]')?.getAttribute('aria-pressed')).toBe('false');
+      expect(String(replaceState.mock.calls.at(-1)?.[2])).toContain('collection=gabbeh');
+      expect(document.querySelector('[data-collection-intro]')?.textContent).toBe('Deep pile from Fars.');
+      expect(face()).toBe('Gabbeh');
+    });
+
+    it('follows the tabs, so it always names the collection on screen', () => {
+      page(FOLDING);
+      unbind = bindFilters({ win: fakeWin('?collection=gabbeh').win });
+      expect(select().value).toBe('gabbeh');
+      expect(face()).toBe('Gabbeh');
+      document.querySelector<HTMLButtonElement>('[data-filter="all"]')!.click();
+      expect(select().value).toBe('all');
+      expect(face()).toBe('All');
+    });
+
+    it('reads "Search results" with nothing chosen during a search, and picking a collection ends it', () => {
+      page(FOLDING);
+      unbind = bindFilters({ win: fakeWin().win });
+      const reset = vi.fn();
+      document.addEventListener(SEARCH_RESET_EVENT, reset);
+      document.dispatchEvent(new CustomEvent(SEARCH_EVENT, { detail: { query: 'yel' } }));
+      expect(shown()).toEqual(['SL-2']);
+      expect(face()).toBe('Search results');
+      expect(select().selectedIndex).toBe(-1);
+
+      // Even the collection the search interrupted counts as a choice, and takes the buyer back to it.
+      pick('kilims');
+      expect(reset).toHaveBeenCalledTimes(1);
+      expect(shown()).toEqual(['SL-1']);
+      expect(face()).toBe('Kilims');
+      document.removeEventListener(SEARCH_RESET_EVENT, reset);
+    });
+
+    it('ignores a value that is not one of the tabs', () => {
+      page(
+        FOLDING.replace(
+          '<option value="all">All</option>',
+          '<option value="all">All</option><option value="ghost">Ghost</option>',
+        ),
+      );
+      const { win, replaceState } = fakeWin();
+      unbind = bindFilters({ win });
+      pick('ghost');
+      expect(shown()).toEqual(['SL-1']);
+      expect(replaceState).not.toHaveBeenCalled();
+    });
   });
 });
 

@@ -18,6 +18,10 @@
 // The strip sticks under the header on scroll (owner, 2026-10-03), so it can be pressed from deep in
 // a collection. When it is, the buyer is taken back to the top of the new result rather than left
 // part-way down it (ui/sticky.ts).
+//
+// On a phone, the pinned strip folds into one dropdown (owner, 2026-10-08). Choosing from the
+// dropdown does exactly what pressing that tab does. While a search is on, the dropdown reads
+// "Search results" and has nothing chosen, so any collection picked from it ends the search.
 import { SEARCH_EVENT, SEARCH_RESET_EVENT, nameMatches, type SearchDetail } from './customer/search.ts';
 import { initPager } from './ui/paginate.ts';
 import { bindStickyBar, publishHeight } from './ui/sticky.ts';
@@ -41,6 +45,8 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
   const nav = doc.querySelector<HTMLElement>('.pv-filters');
   if (!nav) return () => {};
   const chips = [...nav.querySelectorAll<HTMLButtonElement>('button[data-filter]')];
+  const picker = nav.querySelector<HTMLSelectElement>('select[data-collection-select]');
+  const pickerName = nav.querySelector<HTMLElement>('[data-picker-name]');
   const cards = [...doc.querySelectorAll<HTMLElement>('[data-card]')];
   const live = doc.querySelector<HTMLElement>('[data-grid-live]');
   const intro = doc.querySelector<HTMLElement>('[data-collection-intro]');
@@ -90,12 +96,21 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
   const emptyText = empty?.textContent ?? '';
 
   /* The sticky bar the strip lives in, pinned under the header — whose height the bar needs for its
-     `top`, so it is published here, where the only thing that sticks below it is bound. */
+     `top`, so it is published here, where the only thing that sticks below it is bound. On a phone
+     the bar pins with all but its last 44px tucked under the header, which takes the bar's own
+     height as well; a choice made there opens it back out below the header. */
   const bar = doc.querySelector<HTMLElement>('[data-tabbar]');
   const anchor = doc.querySelector<HTMLElement>('[data-tabbar-anchor]');
   const header = doc.querySelector<HTMLElement>('.pv-header');
   const unpublish = bar && header ? publishHeight(header, '--pv-header-h', { doc }) : undefined;
-  const sticky = bar && anchor && win ? bindStickyBar(bar, anchor, { win }) : undefined;
+  const unpublishBar = bar ? publishHeight(bar, '--pv-tabbar-h', { doc }) : undefined;
+  const sticky =
+    bar && anchor && win
+      ? bindStickyBar(bar, anchor, {
+          win,
+          restAt: header ? () => header.getBoundingClientRect().bottom : undefined,
+        })
+      : undefined;
 
   /* Written only when the number actually moves: re-setting identical text re-fires the live region,
      which is how a status line turns into a screen reader repeating itself. */
@@ -112,13 +127,22 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
     if (pager) pager.apply(matches, true);
     else for (const card of cards) card.hidden = !matches(card);
     let description = '';
+    let name = '';
     for (const chip of chips) {
       // While searching no tab is pressed, so no description shows either.
       const on = !query && chip.dataset.filter === active;
       chip.classList.toggle('is-on', on);
       chip.setAttribute('aria-pressed', on ? 'true' : 'false');
-      if (on) description = chip.dataset.description ?? '';
+      if (on) {
+        description = chip.dataset.description ?? '';
+        name = chip.textContent?.trim() ?? '';
+      }
     }
+    if (picker) {
+      if (query) picker.selectedIndex = -1;
+      else picker.value = active;
+    }
+    if (pickerName) pickerName.textContent = query ? 'Search results' : name;
     /* The chosen collection's description, as the intro to the cards (owner, 2026-09-18). Hidden
        rather than emptied: the band is a flex column with a gap, so an empty <p> would still push
        the grid down by one gap under "All", which has no description of its own. */
@@ -161,16 +185,25 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
     }
   };
 
-  const onClick = (e: Event): void => {
-    const chip = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-filter]');
-    if (!chip?.dataset.filter) return;
+  /** A tab pressed, or the same choice made in the phone's dropdown. */
+  const choose = (filter: string): void => {
     // A tab pressed mid-search ends the search: the buyer has gone back to browsing.
     if (query) {
       query = '';
       doc.dispatchEvent(new CustomEvent(SEARCH_RESET_EVENT));
     }
-    setActive(chip.dataset.filter);
+    setActive(filter);
     sticky?.reveal();
+  };
+
+  const onClick = (e: Event): void => {
+    const chip = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-filter]');
+    if (chip?.dataset.filter) choose(chip.dataset.filter);
+  };
+
+  const onPick = (): void => {
+    const next = picker?.value;
+    if (next && chips.some((c) => c.dataset.filter === next)) choose(next);
   };
 
   const onSearch = (e: Event): void => {
@@ -183,6 +216,7 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
   };
 
   nav.addEventListener('click', onClick);
+  picker?.addEventListener('change', onPick);
   doc.addEventListener(SEARCH_EVENT, onSearch);
 
   // A deep link wins over the default, but only if that chip is actually on the page.
@@ -192,9 +226,11 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
 
   return () => {
     nav.removeEventListener('click', onClick);
+    picker?.removeEventListener('change', onPick);
     doc.removeEventListener(SEARCH_EVENT, onSearch);
     sticky?.dispose();
     unpublish?.();
+    unpublishBar?.();
   };
 }
 

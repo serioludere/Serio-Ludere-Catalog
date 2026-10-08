@@ -91,6 +91,47 @@ describe('bindStickyBar', () => {
     expect(scrollTo).not.toHaveBeenCalled();
   });
 
+  describe('a bar that pins tucked under the header (the phone strip, owner 2026-10-08)', () => {
+    // 139 tall, pinned at 53 - 139 + 44 = -42 so that only its last 44px show under a 53px header.
+    const tucked = (anchorAt: number, restAt: () => number, scrollY = 1200) => {
+      document.body.innerHTML = '<span data-anchor></span><div data-bar></div>';
+      const anchor = document.querySelector<HTMLElement>('[data-anchor]')!;
+      const bar = document.querySelector<HTMLElement>('[data-bar]')!;
+      placeAnchor(anchor, anchorAt);
+      const w = fakeWin({ top: '-42px', scrollY });
+      return { bar, ...w, sticky: bindStickyBar(bar, anchor, { win: w.win, restAt }) };
+    };
+
+    it('counts as pinned only once it has slid under the header as far as it goes', () => {
+      expect(tucked(20, () => 53).sticky.isStuck()).toBe(false);
+      expect(tucked(-41, () => 53).sticky.isStuck()).toBe(false);
+      expect(tucked(-43, () => 53).sticky.isStuck()).toBe(true);
+    });
+
+    it('reveal() opens it back out below the header, not at its tucked pin line', () => {
+      const { sticky, scrollTo } = tucked(-800, () => 53);
+      sticky.reveal();
+      expect(scrollTo).toHaveBeenCalledWith({ top: 1200 - 853, behavior: 'instant' });
+    });
+
+    it('reveal() opens out a strip that is only part-way under the header', () => {
+      const { sticky, scrollTo } = tucked(20, () => 53, 40);
+      sticky.reveal();
+      expect(scrollTo).toHaveBeenCalledWith({ top: 40 - 33, behavior: 'instant' });
+    });
+
+    it('never reveals a bar to above where it pins, where it would still be pinned', () => {
+      // A header that measures 0 (not laid out yet) must not leave a bar pinned at 57 still pinned.
+      document.body.innerHTML = '<span data-anchor></span><div data-bar></div>';
+      const anchor = document.querySelector<HTMLElement>('[data-anchor]')!;
+      placeAnchor(anchor, -800);
+      const { win, scrollTo } = fakeWin({ top: '57px', scrollY: 1200 });
+      const bar = document.querySelector<HTMLElement>('[data-bar]')!;
+      bindStickyBar(bar, anchor, { win, restAt: () => 0 }).reveal();
+      expect(scrollTo).toHaveBeenCalledWith({ top: 1200 - 857, behavior: 'instant' });
+    });
+  });
+
   it('stops listening once disposed', () => {
     const { anchor, bar, sticky, fire } = setup(120);
     sticky.dispose();
@@ -152,6 +193,37 @@ describe("the buyer's tab strip", () => {
     document.querySelector<HTMLButtonElement>('[data-filter="kilims"]')!.click();
     expect(scrollTo).not.toHaveBeenCalled();
   });
+
+  it("publishes the bar's own height, which the phone's fold pins against", () => {
+    document.body.innerHTML = PAGE;
+    document.querySelector<HTMLElement>('[data-tabbar]')!.getBoundingClientRect = () =>
+      ({ height: 139 }) as DOMRect;
+    unbind = bindFilters({ win: fakeWin({ top: '53px', scrollY: 0 }).win });
+    expect(document.documentElement.style.getPropertyValue('--pv-tabbar-h')).toBe('139px');
+  });
+
+  it('opens the folded strip back out under the header when the phone dropdown changes collection', () => {
+    // Owner, 2026-10-08: on a phone the pinned strip is folded to its last 44px (pinned at -42 under
+    // a 53px header). A choice made there lands at the top of the new list with the tabs showing.
+    document.body.innerHTML = PAGE.replace(
+      '</nav>',
+      `<select data-collection-select>
+         <option value="classics" selected>Classics</option>
+         <option value="kilims">Kilims</option>
+         <option value="all">All</option>
+       </select></nav>`,
+    );
+    document.querySelector<HTMLElement>('.pv-header')!.getBoundingClientRect = () =>
+      ({ top: 0, bottom: 53, height: 53 }) as DOMRect;
+    placeAnchor(document.querySelector<HTMLElement>('[data-tabbar-anchor]')!, -2000);
+    const { win, scrollTo } = fakeWin({ top: '-42px', scrollY: 2600 });
+    unbind = bindFilters({ win });
+
+    const select = document.querySelector<HTMLSelectElement>('[data-collection-select]')!;
+    select.value = 'kilims';
+    select.dispatchEvent(new Event('change'));
+    expect(scrollTo).toHaveBeenCalledWith({ top: 2600 - 2053, behavior: 'instant' });
+  });
 });
 
 describe("the studio's Products tabs", () => {
@@ -207,6 +279,29 @@ describe('the stylesheets keep the bars pinned', () => {
     expect(bar).toMatch(/position:\s*sticky/);
     expect(bar).toMatch(/--pv-header-h/);
     expect(bar).toMatch(/background:\s*var\(--canvas\)/);
+  });
+
+  it("folds the buyer's strip into its dropdown on a phone without the bar changing height", () => {
+    // Owner, 2026-10-08. The bar pins with all but the dropdown's band tucked under the header…
+    const page = read('src/pages/[slug]/index.astro');
+    const phone = page.indexOf('@media (max-width: 767px)');
+    const bar = rule(page, '    .pv-tabbar', phone);
+    expect(bar).toMatch(/top:\s*min\(/);
+    expect(bar).toMatch(/--pv-tabbar-h/);
+    expect(bar).toMatch(/--pv-picker-h/);
+    // …and the tabs are HIDDEN there, never removed: a bar that shrank as it pinned would pull the
+    // rugs up under the buyer's thumb, and its published height would no longer be its height.
+    const tabs = rule(page, '    .pv-tabbar.is-stuck :global(.pv-chip)', phone);
+    expect(tabs).toMatch(/visibility:\s*hidden/);
+    expect(tabs).not.toMatch(/display:/);
+    expect(rule(page, '    .pv-tabbar.is-stuck :global(.pv-picker)', phone)).toMatch(/visibility:\s*visible/);
+  });
+
+  it("keeps the phone dropdown's select tappable, and big enough that iOS does not zoom into it", () => {
+    const select = rule(read('src/components/customer/CollectionFilters.astro'), '  .pv-picker-select');
+    expect(select).toMatch(/opacity:\s*0/);
+    expect(select).toMatch(/font-size:\s*16px/);
+    expect(select).not.toMatch(/display:\s*none|visibility:\s*hidden|pointer-events:\s*none/);
   });
 
   it('pins the admin topbar, and the rail on desktop', () => {

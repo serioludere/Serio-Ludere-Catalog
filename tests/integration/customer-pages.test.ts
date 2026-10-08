@@ -420,6 +420,20 @@ describe('/{slug} — the signed-in catalog', () => {
     expect(strip).toMatch(/data-filter="all"[^>]*aria-pressed="false"/);
   });
 
+  it('renders the dropdown the strip folds into on a phone, with the same choices in the same order', async () => {
+    // Owner, 2026-10-08: on a phone the pinned tabs fold into one dropdown while the buyer scrolls.
+    state.down = false;
+    const { html } = await render(CustomerCatalog, '/hala', { slug: 'hala' }, { customer: 'hala' });
+    const from = html.indexOf('data-collection-picker');
+    const select = html.slice(html.indexOf('<select', from), html.indexOf('</select>', from));
+    expect(select).toMatch(/data-collection-select/);
+    expect(select).toMatch(/aria-label="Collection"/);
+    expect([...select.matchAll(/<option value="([^"]+)"/g)].map((m) => m[1])).toEqual(['kilims', 'all']);
+    // It opens naming the collection the grid opens on.
+    expect(select).toMatch(/<option value="kilims" selected/);
+    expect(html).toMatch(/data-picker-name[^>]*>\s*Kilims\s*</);
+  });
+
   it('opens on "All" when the link asks for it, with no intro line', async () => {
     state.down = false;
     const { html } = await render(
@@ -431,6 +445,8 @@ describe('/{slug} — the signed-in catalog', () => {
     expect(html).toMatch(/data-filter="all"[^>]*aria-pressed="true"/);
     expect(html).toMatch(/data-filter="kilims"[^>]*aria-pressed="false"/);
     expect(html).toMatch(/data-collection-intro[^>]*hidden/);
+    expect(html).toMatch(/<option value="all" selected/);
+    expect(html).toMatch(/data-picker-name[^>]*>\s*All\s*</);
     // A tab that is not on the page is ignored, and the first collection opens instead.
     const stray = await render(
       CustomerCatalog,

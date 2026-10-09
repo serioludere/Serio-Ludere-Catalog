@@ -26,13 +26,19 @@ const STRIP = `
   <div data-card data-rug="SL-3" data-collections="more"></div>
   <p data-grid-empty hidden></p>`;
 
-/** A window stand-in: filters.ts reads the query string and rewrites it with replaceState. */
+/**
+ * A window stand-in: filters.ts reads the query string and rewrites it with replaceState, and the
+ * phone's collection menu listens for the page scrolling while it is open.
+ */
 const fakeWin = (search = '') => {
   const replaceState = vi.fn();
   return {
     win: {
       location: { href: `http://localhost/hala${search}`, search },
       history: { replaceState },
+      scrollY: 0,
+      addEventListener: () => {},
+      removeEventListener: () => {},
     } as unknown as Window,
     replaceState,
   };
@@ -175,32 +181,38 @@ describe('filters.ts', () => {
   });
 
   describe('the dropdown the strip folds into on a phone (owner, 2026-10-08)', () => {
+    // Drawn in the catalogue's own style since 2026-10-09: a face that opens a list of rows.
     const FOLDING = `
       <nav class="pv-filters">
         <button class="pv-chip is-on" data-filter="kilims" aria-pressed="true">Kilims</button>
         <button class="pv-chip" data-filter="gabbeh" data-description="Deep pile from Fars." aria-pressed="false">Gabbeh</button>
         <button class="pv-chip" data-filter="all" aria-pressed="false">All</button>
-        <span data-picker-name>Kilims</span>
-        <select data-collection-select>
-          <option value="kilims" selected>Kilims</option>
-          <option value="gabbeh">Gabbeh</option>
-          <option value="all">All</option>
-        </select>
+        <div data-collection-picker>
+          <button data-picker-toggle aria-expanded="false"><span data-picker-name>Kilims</span></button>
+          <div data-picker-scrim hidden></div>
+          <ul data-picker-menu hidden>
+            <li><button data-pick="kilims" aria-current="true">Kilims</button></li>
+            <li><button data-pick="gabbeh">Gabbeh</button></li>
+            <li><button data-pick="all">All</button></li>
+          </ul>
+        </div>
       </nav>
       <p data-collection-intro hidden></p>
       <div data-card data-rug="SL-1" data-name="Winks" data-collections="kilims"></div>
       <div data-card data-rug="SL-2" data-name="Yellow" data-collections="gabbeh" hidden></div>
       <p data-grid-empty hidden></p>`;
 
-    const select = (): HTMLSelectElement =>
-      document.querySelector<HTMLSelectElement>('[data-collection-select]')!;
     const face = (): string | null | undefined => document.querySelector('[data-picker-name]')?.textContent;
+    const marked = (): string[] =>
+      [...document.querySelectorAll<HTMLElement>('[data-pick][aria-current="true"]')].map(
+        (r) => r.dataset.pick!,
+      );
     const pick = (value: string): void => {
-      select().value = value;
-      select().dispatchEvent(new Event('change'));
+      document.querySelector<HTMLButtonElement>('[data-picker-toggle]')!.click();
+      document.querySelector<HTMLButtonElement>(`[data-pick="${value}"]`)!.click();
     };
 
-    it('does what pressing that tab does', () => {
+    it('does what pressing that tab does, and closes', () => {
       page(FOLDING);
       const { win, replaceState } = fakeWin();
       unbind = bindFilters({ win });
@@ -211,19 +223,21 @@ describe('filters.ts', () => {
       expect(String(replaceState.mock.calls.at(-1)?.[2])).toContain('collection=gabbeh');
       expect(document.querySelector('[data-collection-intro]')?.textContent).toBe('Deep pile from Fars.');
       expect(face()).toBe('Gabbeh');
+      expect(marked()).toEqual(['gabbeh']);
+      expect(document.querySelector<HTMLElement>('[data-picker-menu]')!.hidden).toBe(true);
     });
 
-    it('follows the tabs, so it always names the collection on screen', () => {
+    it('follows the tabs, so it always names and marks the collection on screen', () => {
       page(FOLDING);
       unbind = bindFilters({ win: fakeWin('?collection=gabbeh').win });
-      expect(select().value).toBe('gabbeh');
       expect(face()).toBe('Gabbeh');
+      expect(marked()).toEqual(['gabbeh']);
       document.querySelector<HTMLButtonElement>('[data-filter="all"]')!.click();
-      expect(select().value).toBe('all');
       expect(face()).toBe('All');
+      expect(marked()).toEqual(['all']);
     });
 
-    it('reads "Search results" with nothing chosen during a search, and picking a collection ends it', () => {
+    it('reads "Search results" with no row marked during a search, and picking a collection ends it', () => {
       page(FOLDING);
       unbind = bindFilters({ win: fakeWin().win });
       const reset = vi.fn();
@@ -231,7 +245,7 @@ describe('filters.ts', () => {
       document.dispatchEvent(new CustomEvent(SEARCH_EVENT, { detail: { query: 'yel' } }));
       expect(shown()).toEqual(['SL-2']);
       expect(face()).toBe('Search results');
-      expect(select().selectedIndex).toBe(-1);
+      expect(marked()).toEqual([]);
 
       // Even the collection the search interrupted counts as a choice, and takes the buyer back to it.
       pick('kilims');
@@ -241,11 +255,11 @@ describe('filters.ts', () => {
       document.removeEventListener(SEARCH_RESET_EVENT, reset);
     });
 
-    it('ignores a value that is not one of the tabs', () => {
+    it('ignores a row that is not one of the tabs', () => {
       page(
         FOLDING.replace(
-          '<option value="all">All</option>',
-          '<option value="all">All</option><option value="ghost">Ghost</option>',
+          '<li><button data-pick="all">All</button></li>',
+          '<li><button data-pick="all">All</button></li><li><button data-pick="ghost">Ghost</button></li>',
         ),
       );
       const { win, replaceState } = fakeWin();

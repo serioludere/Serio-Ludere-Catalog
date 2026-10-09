@@ -226,11 +226,14 @@ describe("the buyer's tab strip", () => {
     // a 53px header). A choice made there lands at the top of the new list with the tabs showing.
     document.body.innerHTML = PAGE.replace(
       '</nav>',
-      `<select data-collection-select>
-         <option value="classics" selected>Classics</option>
-         <option value="kilims">Kilims</option>
-         <option value="all">All</option>
-       </select></nav>`,
+      `<div data-collection-picker>
+         <button data-picker-toggle aria-expanded="false"><span data-picker-name>Classics</span></button>
+         <ul data-picker-menu hidden>
+           <li><button data-pick="classics" aria-current="true">Classics</button></li>
+           <li><button data-pick="kilims">Kilims</button></li>
+           <li><button data-pick="all">All</button></li>
+         </ul>
+       </div></nav>`,
     );
     document.querySelector<HTMLElement>('.pv-header')!.getBoundingClientRect = () =>
       ({ top: 0, bottom: 53, height: 53 }) as DOMRect;
@@ -238,9 +241,8 @@ describe("the buyer's tab strip", () => {
     const { win, scrollTo } = fakeWin({ top: '-42px', scrollY: 2600 });
     unbind = bindFilters({ win });
 
-    const select = document.querySelector<HTMLSelectElement>('[data-collection-select]')!;
-    select.value = 'kilims';
-    select.dispatchEvent(new Event('change'));
+    document.querySelector<HTMLButtonElement>('[data-picker-toggle]')!.click();
+    document.querySelector<HTMLButtonElement>('[data-pick="kilims"]')!.click();
     expect(scrollTo).toHaveBeenCalledWith({ top: 2600 - 2053, behavior: 'instant' });
   });
 });
@@ -316,11 +318,17 @@ describe('the stylesheets keep the bars pinned', () => {
     expect(rule(page, '    .pv-tabbar.is-stuck :global(.pv-picker)', phone)).toMatch(/visibility:\s*visible/);
   });
 
-  it("keeps the phone dropdown's select tappable, and big enough that iOS does not zoom into it", () => {
-    const select = rule(read('src/components/customer/CollectionFilters.astro'), '  .pv-picker-select');
-    expect(select).toMatch(/opacity:\s*0/);
-    expect(select).toMatch(/font-size:\s*16px/);
-    expect(select).not.toMatch(/display:\s*none|visibility:\s*hidden|pointer-events:\s*none/);
+  it("draws the phone dropdown's menu in the catalogue's own box, not the platform's list", () => {
+    // Owner, 2026-10-09: the native list looked bare. The menu is the site's bordered box on the
+    // surface, rows a thumb tall, and the page behind dims as it does behind the rug popup.
+    const src = read('src/components/customer/CollectionFilters.astro');
+    expect(src).not.toMatch(/<select/);
+    const menu = rule(src, '  .pv-picker-menu');
+    expect(menu).toMatch(/border:\s*var\(--rule-width\) solid var\(--border-control\)/);
+    expect(menu).toMatch(/background:\s*var\(--surface\)/);
+    expect(menu).toMatch(/overscroll-behavior:\s*contain/);
+    expect(rule(src, '  .pv-picker-option')).toMatch(/min-height:\s*44px/);
+    expect(rule(src, '  .pv-picker-scrim')).toMatch(/background:\s*var\(--bg-overlay\)/);
   });
 
   it('pins the admin topbar, and the rail on desktop', () => {

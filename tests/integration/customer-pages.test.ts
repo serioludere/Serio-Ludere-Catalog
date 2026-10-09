@@ -438,13 +438,16 @@ describe('/{slug} — the signed-in catalog', () => {
     // Owner, 2026-10-08: on a phone the pinned tabs fold into one dropdown while the buyer scrolls.
     state.down = false;
     const { html } = await render(CustomerCatalog, '/hala', { slug: 'hala' }, { customer: 'hala' });
+    // Drawn in the catalogue's own style since 2026-10-09: a face that opens a list of rows, no <select>.
     const from = html.indexOf('data-collection-picker');
-    const select = html.slice(html.indexOf('<select', from), html.indexOf('</select>', from));
-    expect(select).toMatch(/data-collection-select/);
-    expect(select).toMatch(/aria-label="Collection"/);
-    expect([...select.matchAll(/<option value="([^"]+)"/g)].map((m) => m[1])).toEqual(['kilims', 'all']);
-    // It opens naming the collection the grid opens on.
-    expect(select).toMatch(/<option value="kilims" selected/);
+    const picker = html.slice(from, html.indexOf('</nav>', from));
+    expect(picker).not.toContain('<select');
+    expect(picker).toMatch(/data-picker-toggle[^>]*aria-expanded="false"[^>]*aria-controls="pvPickerMenu"/);
+    expect(picker).toMatch(/id="pvPickerMenu"[^>]*hidden/);
+    expect([...picker.matchAll(/data-pick="([^"]+)"/g)].map((m) => m[1])).toEqual(['kilims', 'all']);
+    // It opens naming, and marking, the collection the grid opens on.
+    expect(picker).toMatch(/data-pick="kilims"[^>]*aria-current="true"/);
+    expect(picker).not.toMatch(/data-pick="all"[^>]*aria-current/);
     expect(html).toMatch(/data-picker-name[^>]*>\s*Kilims\s*</);
   });
 
@@ -459,7 +462,7 @@ describe('/{slug} — the signed-in catalog', () => {
     expect(html).toMatch(/data-filter="all"[^>]*aria-pressed="true"/);
     expect(html).toMatch(/data-filter="kilims"[^>]*aria-pressed="false"/);
     expect(html).toMatch(/data-collection-intro[^>]*hidden/);
-    expect(html).toMatch(/<option value="all" selected/);
+    expect(html).toMatch(/data-pick="all"[^>]*aria-current="true"/);
     expect(html).toMatch(/data-picker-name[^>]*>\s*All\s*</);
     // A tab that is not on the page is ignored, and the first collection opens instead.
     const stray = await render(

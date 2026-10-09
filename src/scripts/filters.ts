@@ -19,12 +19,14 @@
 // a collection. When it is, the buyer is taken back to the top of the new result rather than left
 // part-way down it (ui/sticky.ts).
 //
-// On a phone, the pinned strip folds into one dropdown (owner, 2026-10-08). Choosing from the
-// dropdown does exactly what pressing that tab does. While a search is on, the dropdown reads
-// "Search results" and has nothing chosen, so any collection picked from it ends the search.
+// On a phone, the pinned strip folds into one dropdown (owner, 2026-10-08; its menu is
+// customer/collection-menu.ts). Choosing from the dropdown does exactly what pressing that tab
+// does. While a search is on, the dropdown reads "Search results" with no row marked, and any
+// collection picked from it ends the search.
 //
 // At the end of a collection, its last page offers the next collection by name (owner,
 // 2026-10-08). Turning a page takes the buyer back to the top of the grid.
+import { bindCollectionMenu } from './customer/collection-menu.ts';
 import { SEARCH_EVENT, SEARCH_RESET_EVENT, nameMatches, type SearchDetail } from './customer/search.ts';
 import { initPager } from './ui/paginate.ts';
 import { bindStickyBar, publishHeight } from './ui/sticky.ts';
@@ -48,8 +50,7 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
   const nav = doc.querySelector<HTMLElement>('.pv-filters');
   if (!nav) return () => {};
   const chips = [...nav.querySelectorAll<HTMLButtonElement>('button[data-filter]')];
-  const picker = nav.querySelector<HTMLSelectElement>('select[data-collection-select]');
-  const pickerName = nav.querySelector<HTMLElement>('[data-picker-name]');
+  const pickerRoot = nav.querySelector<HTMLElement>('[data-collection-picker]');
   const cards = [...doc.querySelectorAll<HTMLElement>('[data-card]')];
   const live = doc.querySelector<HTMLElement>('[data-grid-live]');
   const intro = doc.querySelector<HTMLElement>('[data-collection-intro]');
@@ -165,11 +166,7 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
         name = chip.textContent?.trim() ?? '';
       }
     }
-    if (picker) {
-      if (query) picker.selectedIndex = -1;
-      else picker.value = active;
-    }
-    if (pickerName) pickerName.textContent = query ? 'Search results' : name;
+    menu?.update(query ? '' : active, query ? 'Search results' : name);
     /* The chosen collection's description, as the intro to the cards (owner, 2026-09-18). Hidden
        rather than emptied: the band is a flex column with a gap, so an empty <p> would still push
        the grid down by one gap under "All", which has no description of its own. */
@@ -228,10 +225,20 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
     if (chip?.dataset.filter) choose(chip.dataset.filter);
   };
 
-  const onPick = (): void => {
-    const next = picker?.value;
-    if (next && chips.some((c) => c.dataset.filter === next)) choose(next);
-  };
+  /* The phone's dropdown (customer/collection-menu.ts). A collection chosen there is that tab
+     pressed. The band hides as the strip opens back out, so a keyboard user is put on the pressed
+     tab rather than left on a row that is gone. */
+  const menu = pickerRoot
+    ? bindCollectionMenu(pickerRoot, {
+        doc,
+        win,
+        onPick: (filter, byKeyboard) => {
+          if (!chips.some((c) => c.dataset.filter === filter)) return;
+          choose(filter);
+          if (byKeyboard) chips.find((c) => c.dataset.filter === filter)?.focus({ preventScroll: true });
+        },
+      })
+    : undefined;
 
   const onNext = (): void => {
     const next = nextButton?.dataset.nextFilter;
@@ -248,7 +255,6 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
   };
 
   nav.addEventListener('click', onClick);
-  picker?.addEventListener('change', onPick);
   nextButton?.addEventListener('click', onNext);
   doc.addEventListener(SEARCH_EVENT, onSearch);
 
@@ -259,7 +265,7 @@ export function bindFilters(opts: FilterBindings = {}): () => void {
 
   return () => {
     nav.removeEventListener('click', onClick);
-    picker?.removeEventListener('change', onPick);
+    menu?.dispose();
     nextButton?.removeEventListener('click', onNext);
     doc.removeEventListener(SEARCH_EVENT, onSearch);
     sticky?.dispose();

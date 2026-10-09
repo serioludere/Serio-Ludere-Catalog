@@ -22,9 +22,13 @@
 // On a phone the strip folds into one dropdown while the buyer scrolls (owner, 2026-10-08: the
 // tabs pinned under the header were distracting). The dropdown is rendered here with the tabs, so
 // both are one list in one order. It is hidden until the page's sticky bar pins it in place
-// (src/pages/[slug]/index.astro). It is a native <select> under a drawn face, for the reasons the
-// currency picker gives in PreviewControls.astro: the phone's own picker, keyboard and screen
-// reader all work without being rebuilt by hand.
+// (src/pages/[slug]/index.astro).
+//
+// Its menu is drawn in the catalogue's own style (owner, 2026-10-09: the phone's native list looked
+// bare and unstyled). It follows the picker Open state the design file draws (docs/ADR.md D18): a
+// bordered panel of rows, the current one marked with a 16px check. The face is a button and every
+// row is a button, so Tab, Enter, Space and a screen reader work as they do anywhere.
+// scripts/customer/collection-menu.ts opens and closes it.
 interface Props {
   collections: Array<{ slug: string; name: string; count: number; description?: string }>;
   /** The tab pressed on first paint: a collection slug, or 'all'. */
@@ -61,27 +65,65 @@ const activeName = collections.find((c) => c.slug === active)?.name ?? 'All';
     All
   </button>
   {
-    /* The face shows the chosen collection; the transparent select over it takes the tap and opens
-      the phone's own list. filters.ts keeps both in step with the tabs. */
+    /* The face names the chosen collection and opens the menu under it. filters.ts keeps both in
+      step with the tabs: the face's name, and `aria-current` on the row on screen. */
   }
   <div class="pv-picker" data-collection-picker>
-    <div class="pv-picker-box">
-      <span class="pv-picker-name" data-picker-name aria-hidden="true">{activeName}</span>
-      <svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true" focusable="false">
+    <button
+      type="button"
+      class="pv-picker-box"
+      data-picker-toggle
+      aria-expanded="false"
+      aria-controls="pvPickerMenu"
+    >
+      <span class="sr-only">Collection:</span>
+      <span class="pv-picker-name" data-picker-name>{activeName}</span>
+      <svg
+        class="pv-picker-chevron"
+        viewBox="0 0 16 16"
+        width="16"
+        height="16"
+        fill="none"
+        aria-hidden="true"
+        focusable="false"
+      >
         <path d="M4 6.5L8 10.5L12 6.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
         ></path>
       </svg>
-      <select class="pv-picker-select" data-collection-select aria-label="Collection">
-        {
-          collections.map((c) => (
-            <option value={c.slug} selected={c.slug === active}>
-              {c.name}
-            </option>
-          ))
-        }
-        <option value="all" selected={active === 'all'}> All </option>
-      </select>
-    </div>
+    </button>
+    <div class="pv-picker-scrim" data-picker-scrim hidden></div>
+    <ul class="pv-picker-menu" id="pvPickerMenu" data-picker-menu hidden>
+      {
+        [...collections, { slug: 'all', name: 'All' }].map((c) => (
+          <li>
+            <button
+              type="button"
+              class="pv-picker-option"
+              data-pick={c.slug}
+              aria-current={c.slug === active ? 'true' : undefined}
+            >
+              <span>{c.name}</span>
+              <svg
+                viewBox="0 0 16 16"
+                width="16"
+                height="16"
+                fill="none"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <path
+                  d="M3.5 8.5L6.5 11.5L12.5 4.5"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+          </li>
+        ))
+      }
+    </ul>
   </div>
 </nav>
 
@@ -142,20 +184,23 @@ const activeName = collections.find((c) => c.slug === active)?.name ?? 'All';
 
   /* The dropdown (owner, 2026-10-08). Nothing until the page's bar shows it on a phone. The face is
      the pressed tab's own type, bold ink at the tab size, with the currency picker's 12px chevron
-     after it. */
+     after it. The chevron turns over while the menu is open. */
   .pv-picker {
     display: none;
     align-items: center;
     justify-content: center;
   }
   .pv-picker-box {
-    position: relative;
     display: inline-flex;
     align-items: center;
     gap: var(--stack-xs);
     max-width: 100%;
     padding: var(--stack-sm) var(--stack-md);
+    border: 0;
+    background: none;
     color: var(--ink);
+    font-family: inherit;
+    cursor: pointer;
   }
   .pv-picker-name {
     overflow: hidden;
@@ -165,31 +210,106 @@ const activeName = collections.find((c) => c.slug === active)?.name ?? 'All';
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .pv-picker-box svg {
+  .pv-picker-chevron {
     flex: none;
     width: 12px;
     height: 12px;
+    transition: transform var(--motion-quick) var(--motion-ease);
   }
-  /* Laid over the whole face and invisible, so the tap lands on the real control. 16px so iOS does
-     not zoom the page when it is focused, the same reason the search field is 16px. */
-  .pv-picker-select {
+  .pv-picker-box[aria-expanded='true'] .pv-picker-chevron {
+    transform: rotate(180deg);
+  }
+
+  /* While the menu is open, the page under the band dims, with the same overlay as behind the rug
+     popup. A tap on it closes the menu and goes no further, so it never opens the rug under the
+     finger. The band and the header above it stay clear. */
+  .pv-picker-scrim {
+    position: fixed;
+    inset: calc(var(--pv-header-h, 53px) + var(--pv-picker-h, 44px)) 0 0;
+    z-index: 1;
+    background: var(--bg-overlay);
+    animation: pv-picker-fade var(--motion-quick) var(--motion-ease);
+  }
+
+  /* The menu: the catalogue's bordered box on the surface, square like every control here, hanging
+     from the band and centred under the face. The drawn picker's 40px rows are 44 here, a thumb's
+     width. A hairline sits between rows, as under the tabs. The collection on screen is bold ink
+     with the 16px check; the rest are in the tabs' softer ink. A long list scrolls inside the box,
+     never the page behind it. */
+  .pv-picker-menu {
     position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
+    top: 100%;
+    left: 50%;
+    z-index: 2;
+    width: max-content;
+    min-width: 14rem;
+    max-width: calc(100vw - 2 * var(--gutter));
+    max-height: calc(100dvh - var(--pv-header-h, 53px) - var(--pv-picker-h, 44px) - var(--gutter));
     margin: 0;
     padding: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    list-style: none;
+    border: var(--rule-width) solid var(--border-control);
+    border-radius: var(--radius);
+    background: var(--surface);
+    transform: translateX(-50%);
+    animation: pv-picker-drop var(--motion-quick) var(--motion-ease);
+  }
+  .pv-picker-menu li + li {
+    border-top: var(--rule-width) solid var(--rule);
+  }
+  .pv-picker-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--stack-lg);
+    width: 100%;
+    min-height: 44px;
+    padding: 0 var(--stack-lg);
     border: 0;
-    opacity: 0;
-    appearance: none;
-    -webkit-appearance: none;
-    font-size: 16px;
+    background: none;
+    color: var(--ink-soft);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    font-weight: 400;
+    line-height: var(--leading-body);
+    text-align: left;
+    white-space: nowrap;
     cursor: pointer;
   }
-  /* The select's own ring would be invisible with it, so the face carries the ring. */
-  .pv-picker-box:has(:focus-visible) {
-    outline: var(--focus-ring);
-    outline-offset: var(--focus-offset);
+  .pv-picker-option:hover {
+    background: var(--subtle);
+    color: var(--ink);
+  }
+  /* Inside the box, so its overflow does not cut the ring off. */
+  .pv-picker-option:focus-visible {
+    outline-offset: calc(-1 * var(--focus-offset) - 1px);
+  }
+  .pv-picker-option[aria-current='true'] {
+    color: var(--ink);
+    font-weight: 700;
+  }
+  .pv-picker-option svg {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    visibility: hidden;
+  }
+  .pv-picker-option[aria-current='true'] svg {
+    visibility: visible;
+  }
+
+  @keyframes pv-picker-drop {
+    from {
+      opacity: 0;
+      transform: translate(-50%, calc(-1 * var(--stack-xs)));
+    }
+  }
+  @keyframes pv-picker-fade {
+    from {
+      opacity: 0;
+    }
   }
 </style>
 
